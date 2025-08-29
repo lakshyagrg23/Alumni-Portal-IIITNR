@@ -1,0 +1,125 @@
+import axios from "axios";
+
+// Create axios instance
+const API = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
+  timeout: import.meta.env.VITE_API_TIMEOUT || 10000,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// Request interceptor to add auth token
+API.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor to handle auth errors
+API.interceptors.response.use(
+  (response) => {
+    return response.data;
+  },
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token expired or invalid
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    }
+
+    // Return error message from API or generic message
+    const message =
+      error.response?.data?.message || error.message || "An error occurred";
+    return Promise.reject(new Error(message));
+  }
+);
+
+// Auth service
+export const authService = {
+  // Set token for requests
+  setToken: (token) => {
+    localStorage.setItem("token", token);
+  },
+
+  // Remove token
+  removeToken: () => {
+    localStorage.removeItem("token");
+  },
+
+  // Login with email and password
+  login: async (credentials) => {
+    const response = await API.post("/auth/login", credentials);
+    return response;
+  },
+
+  // Register new user
+  register: async (userData) => {
+    const response = await API.post("/auth/register", userData);
+    return response;
+  },
+
+  // Google OAuth login
+  googleLogin: async (googleToken) => {
+    const response = await API.post("/auth/google", { token: googleToken });
+    return response;
+  },
+
+  // Get current user profile
+  getProfile: async () => {
+    const response = await API.get("/auth/profile");
+    return response;
+  },
+
+  // Update user profile
+  updateProfile: async (profileData) => {
+    const response = await API.put("/auth/profile", profileData);
+    return response;
+  },
+
+  // Logout (optional API call for server-side logout)
+  logout: async () => {
+    try {
+      await API.post("/auth/logout");
+    } catch (error) {
+      // Ignore errors on logout
+      console.log("Logout error (ignored):", error.message);
+    }
+  },
+
+  // Request password reset
+  requestPasswordReset: async (email) => {
+    const response = await API.post("/auth/forgot-password", { email });
+    return response;
+  },
+
+  // Reset password with token
+  resetPassword: async (token, newPassword) => {
+    const response = await API.post("/auth/reset-password", {
+      token,
+      password: newPassword,
+    });
+    return response;
+  },
+
+  // Verify email
+  verifyEmail: async (token) => {
+    const response = await API.post("/auth/verify-email", { token });
+    return response;
+  },
+
+  // Resend verification email
+  resendVerification: async (email) => {
+    const response = await API.post("/auth/resend-verification", { email });
+    return response;
+  },
+};
+
+export default API;

@@ -1,0 +1,48 @@
+/* App Component Styles */
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-white);
+}
+
+.main {
+  flex: 1;
+  padding-top: var(--spacing-16); /* Account for fixed header */
+}
+
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: var(--spacing-4);
+  background-color: var(--color-gray-50);
+  color: var(--color-gray-600);
+}
+
+.loadingContainer .spinner {
+  width: 3rem;
+  height: 3rem;
+  border-width: 3px;
+}
+
+.loadingContainer p {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-medium);
+  margin: 0;
+}
+
+/* Responsive adjustments */
+@media (min-width: 768px) {
+  .main {
+    padding-top: var(--spacing-20);
+  }
+}
+
+@media (min-width: 1024px) {
+  .main {
+    padding-top: 5rem;
+  }
+}
