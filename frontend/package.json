@@ -42,10 +42,15 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:staging": "vite build --mode staging",
+    "build:production": "vite build --mode production",
     "preview": "vite preview",
+    "preview:staging": "vite preview --mode staging",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext js,jsx --fix",
-    "format": "prettier --write \"src/**/*.{js,jsx,css,md}\""
+    "format": "prettier --write \"src/**/*.{js,jsx,css,md}\"",
+    "format:check": "prettier --check \"src/**/*.{js,jsx,css,md}\"",
+    "setup": "npm install"
   },
   "browserslist": {
     "production": [
