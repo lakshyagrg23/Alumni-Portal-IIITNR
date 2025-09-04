@@ -9,14 +9,13 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "migrate": "node src/config/migrate.js",
-    "seed": "node src/config/seed.js",
-    "reset-db": "node src/config/reset.js",
-    "backup-db": "node src/scripts/backup.js",
+    "migrate": "node src/config/migrate.js migrate",
+    "seed": "node src/config/migrate.js seed",
+    "reset-db": "node src/config/migrate.js reset",
+    "db:setup": "node src/config/migrate.js setup",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
-    "setup": "npm install && npm run migrate && npm run seed",
-    "db:reset": "npm run reset-db && npm run migrate && npm run seed"
+    "setup": "npm install && npm run db:setup"
   },
   "keywords": [
     "alumni",
@@ -35,8 +34,6 @@
     "helmet": "^7.0.0",
     "dotenv": "^16.3.1",
     "pg": "^8.11.3",
-    "pg-hstore": "^2.3.4",
-    "sequelize": "^6.32.1",
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
     "passport": "^0.6.0",
