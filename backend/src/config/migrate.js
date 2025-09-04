@@ -1,10 +1,11 @@
 const { query, testConnection } = require("./database");
 const fs = require("fs");
 const path = require("path");
+const { spawn } = require("child_process");
 
 /**
  * Database Migration Runner
- * Executes SQL schema files for database setup
+ * Uses psql to execute SQL schema files directly
  */
 
 const runMigrations = async () => {
@@ -14,47 +15,107 @@ const runMigrations = async () => {
     // Test connection first
     await testConnection();
 
-    // Read and execute the main schema file
-    const schemaPath = path.join(__dirname, "../../database/schema.sql");
-
+    // Check if schema file exists
+    const schemaPath = path.join(__dirname, "../../../database/schema.sql");
     if (!fs.existsSync(schemaPath)) {
       throw new Error(`Schema file not found: ${schemaPath}`);
     }
 
-    const schemaSql = fs.readFileSync(schemaPath, "utf8");
+    console.log("📋 Executing schema.sql using psql...");
 
-    // Split by semicolons and execute each statement
-    const statements = schemaSql
-      .split(";")
-      .map((stmt) => stmt.trim())
-      .filter((stmt) => stmt.length > 0 && !stmt.startsWith("--"));
-
-    console.log(`📋 Found ${statements.length} SQL statements to execute`);
-
-    for (let i = 0; i < statements.length; i++) {
-      const statement = statements[i];
-      console.log(`   Executing statement ${i + 1}/${statements.length}...`);
-
-      try {
-        await query(statement);
-      } catch (error) {
-        // Ignore errors for statements that might already exist (like CREATE EXTENSION)
-        if (error.message.includes("already exists")) {
-          console.log(`   ⚠️  Skipped (already exists): ${error.message}`);
-          continue;
-        }
-        throw error;
-      }
-    }
+    // Execute schema file using psql
+    await executePsqlFile(schemaPath);
 
     console.log("✅ Database migrations completed successfully!");
 
-    // Run additional setup queries
+    // Run additional setup queries if needed
     await runPostMigrationSetup();
   } catch (error) {
     console.error("❌ Migration failed:", error.message);
     throw error;
   }
+};
+
+/**
+ * Execute SQL file using psql command
+ */
+const executePsqlFile = (filePath) => {
+  return new Promise((resolve, reject) => {
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      reject(new Error("DATABASE_URL environment variable is required"));
+      return;
+    }
+
+    // Parse DATABASE_URL to get connection parameters
+    let psqlCommand, args;
+    
+    try {
+      const url = new URL(dbUrl);
+      const hostname = url.hostname;
+      const port = url.port || 5432;
+      const database = url.pathname.substring(1); // Remove leading slash
+      const username = url.username;
+      const password = url.password;
+
+      // Build psql command
+      args = [
+        '-h', hostname,
+        '-p', port.toString(),
+        '-U', username,
+        '-d', database,
+        '-f', filePath,
+        '-v', 'ON_ERROR_STOP=1' // Stop on first error
+      ];
+
+      // Set password via environment variable if provided
+      const env = { ...process.env };
+      if (password) {
+        env.PGPASSWORD = password;
+      }
+
+      console.log(`   Executing: psql -h ${hostname} -p ${port} -U ${username} -d ${database} -f ${filePath}`);
+
+      const psql = spawn('psql', args, { 
+        env,
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      psql.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      psql.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      psql.on('close', (code) => {
+        if (code === 0) {
+          console.log("   ✅ Schema executed successfully");
+          if (stdout.trim()) {
+            console.log("   📝 Output:", stdout.trim());
+          }
+          resolve();
+        } else {
+          console.error("   ❌ psql execution failed");
+          if (stderr.trim()) {
+            console.error("   Error:", stderr.trim());
+          }
+          reject(new Error(`psql exited with code ${code}: ${stderr}`));
+        }
+      });
+
+      psql.on('error', (error) => {
+        reject(new Error(`Failed to start psql: ${error.message}`));
+      });
+
+    } catch (error) {
+      reject(new Error(`Invalid DATABASE_URL: ${error.message}`));
+    }
+  });
 };
 
 /**
@@ -64,33 +125,19 @@ const runPostMigrationSetup = async () => {
   try {
     console.log("🔧 Running post-migration setup...");
 
-    // Create indexes for better performance
-    const indexes = [
-      "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);",
-      "CREATE INDEX IF NOT EXISTS idx_users_provider_id ON users(provider_id);",
-      "CREATE INDEX IF NOT EXISTS idx_alumni_profiles_user_id ON alumni_profiles(user_id);",
-      "CREATE INDEX IF NOT EXISTS idx_alumni_profiles_graduation_year ON alumni_profiles(graduation_year);",
-      "CREATE INDEX IF NOT EXISTS idx_alumni_profiles_branch ON alumni_profiles(branch);",
-      "CREATE INDEX IF NOT EXISTS idx_alumni_profiles_location ON alumni_profiles(current_city, current_state);",
-      "CREATE INDEX IF NOT EXISTS idx_alumni_profiles_public ON alumni_profiles(is_profile_public);",
-      "CREATE INDEX IF NOT EXISTS idx_work_experiences_alumni_id ON work_experiences(alumni_id);",
-      "CREATE INDEX IF NOT EXISTS idx_education_alumni_id ON education(alumni_id);",
-    ];
+    // Check if tables were created successfully
+    const tablesCheck = await query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      AND table_type = 'BASE TABLE'
+      ORDER BY table_name
+    `);
 
-    for (const indexQuery of indexes) {
-      try {
-        await query(indexQuery);
-        console.log(`   ✅ Index created: ${indexQuery.split(" ")[5]}`);
-      } catch (error) {
-        if (error.message.includes("already exists")) {
-          console.log(
-            `   ⚠️  Index already exists: ${indexQuery.split(" ")[5]}`
-          );
-        } else {
-          console.error(`   ❌ Index creation failed: ${error.message}`);
-        }
-      }
-    }
+    console.log(`   ✅ Found ${tablesCheck.rows.length} tables:`);
+    tablesCheck.rows.forEach(row => {
+      console.log(`      - ${row.table_name}`);
+    });
 
     console.log("✅ Post-migration setup completed!");
   } catch (error) {
