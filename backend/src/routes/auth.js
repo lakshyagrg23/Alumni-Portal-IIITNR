@@ -11,7 +11,7 @@ const jwt = require("jsonwebtoken");
  */
 router.post("/register", async (req, res) => {
   try {
-    const { email, password, firstName, lastName } = req.body;
+    const { email, password, firstName, lastName, provider } = req.body;
 
     // Validate required fields
     if (!email || !password || !firstName || !lastName) {
@@ -30,11 +30,20 @@ router.post("/register", async (req, res) => {
       });
     }
 
+    // Determine provider
+    let providerName = 'local';
+    if (provider === 'google') {
+      providerName = 'google';
+    } else if (provider === 'linkedin') {
+      providerName = 'linkedin';
+    }
+
     // Create new user
     const userData = {
       email: email.toLowerCase(),
       password,
       role: "alumni",
+      provider: providerName,
     };
 
     const user = await User.create(userData);
@@ -102,7 +111,7 @@ router.post("/login", async (req, res) => {
     }
 
     // Verify password
-    const isValidPassword = await User.verifyPassword(user.id, password);
+    const isValidPassword = await User.verifyPassword(password, user.password_hash);
     if (!isValidPassword) {
       return res.status(401).json({
         success: false,
@@ -134,6 +143,120 @@ router.post("/login", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error during login",
+    });
+  }
+});
+
+/**
+ * @route   POST /api/auth/google
+ * @desc    Google OAuth login
+ * @access  Public
+ */
+router.post("/google", async (req, res) => {
+  try {
+    const { email, googleId, name } = req.body;
+    if (!email || !googleId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Google login failed: missing email or googleId.' 
+      });
+    }
+
+    let user = await User.findByEmail(email);
+    if (!user) {
+      // Register new user with Google provider
+      const userData = {
+        email: email.toLowerCase(),
+        provider: 'google',
+        providerId: googleId,
+        role: 'alumni',
+        isApproved: true
+      };
+      user = await User.create(userData);
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+    );
+
+    res.json({
+      success: true,
+      message: 'Google login successful',
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        isApproved: user.is_approved,
+        isActive: user.is_active,
+        provider: user.provider
+      },
+    });
+  } catch (error) {
+    console.error('Google login error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error. Please try again.' 
+    });
+  }
+});
+
+/**
+ * @route   POST /api/auth/linkedin
+ * @desc    LinkedIn OAuth login
+ * @access  Public
+ */
+router.post("/linkedin", async (req, res) => {
+  try {
+    const { email, linkedinId, name } = req.body;
+    if (!email || !linkedinId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'LinkedIn login failed: missing email or linkedinId.' 
+      });
+    }
+
+    let user = await User.findByEmail(email);
+    if (!user) {
+      // Register new user with LinkedIn provider
+      const userData = {
+        email: email.toLowerCase(),
+        provider: 'linkedin',
+        providerId: linkedinId,
+        role: 'alumni',
+        isApproved: true
+      };
+      user = await User.create(userData);
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+    );
+
+    res.json({
+      success: true,
+      message: 'LinkedIn login successful',
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        isApproved: user.is_approved,
+        isActive: user.is_active,
+        provider: user.provider
+      },
+    });
+  } catch (error) {
+    console.error('LinkedIn login error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error. Please try again.' 
     });
   }
 });

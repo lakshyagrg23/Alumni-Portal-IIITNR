@@ -1,16 +1,105 @@
-import React from 'react'
-import { Helmet } from 'react-helmet-async'
+import React from 'react';
+import { Helmet } from 'react-helmet-async';
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
+import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
+import styles from './Register.module.css';
+import GoogleLogin from '../../services/google_login';
+import LinkedInLogin from '../../services/linked_in';
+import { useAuth } from '../../context/AuthContext';
 
-const Login = () => (
-  <>
-    <Helmet>
-      <title>Login - IIIT Naya Raipur Alumni Portal</title>
-    </Helmet>
-    <div style={{ padding: '2rem', textAlign: 'center' }}>
-      <h1>Login</h1>
-      <p><em>Login page under development</em></p>
-    </div>
-  </>
-)
+const schema = yup.object().shape({
+  email: yup.string().required('Email is required').email('Enter a valid email'),
+  password: yup.string().required('Password is required'),
+});
 
-export default Login
+
+const Login = () => {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: yupResolver(schema),
+    mode: 'onChange',
+  });
+  const navigate = useNavigate();
+  const { login } = useAuth();
+
+  const onSubmit = async (data) => {
+    try {
+      await login(data);
+      toast.success('Login successful!');
+      navigate('/dashboard');
+    } catch (error) {
+      toast.error(error?.response?.data?.message || error?.message || 'Login failed. Please try again.');
+    }
+  };
+
+  return (
+    <>
+      <Helmet>
+        <title>Login - IIIT Naya Raipur Alumni Portal</title>
+      </Helmet>
+      <div className={styles.registerContainer}>
+        <div className={styles.registerCard}>
+          <div className={styles.headerSection}>
+            <img src="/iiit-logo.png" alt="IIIT-NR Logo" className={styles.logo} />
+            <h1 className={styles.title}>Sign In</h1>
+            <p className={styles.subtitle}>Welcome back to IIIT-NR Alumni Portal</p>
+          </div>
+          <form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
+            <div className={styles.inputGroup}>
+              <label htmlFor="email">Email Address</label>
+              <input
+                type="email"
+                id="email"
+                {...register('email')}
+                className={errors.email ? styles.errorInput : ''}
+              />
+              {errors.email && (
+                <span className={styles.errorMessage}>{errors.email.message}</span>
+              )}
+            </div>
+            <div className={styles.inputGroup}>
+              <label htmlFor="password">Password</label>
+              <input
+                type="password"
+                id="password"
+                {...register('password')}
+                className={errors.password ? styles.errorInput : ''}
+              />
+              {errors.password && (
+                <span className={styles.errorMessage}>{errors.password.message}</span>
+              )}
+            </div>
+            <button
+              type="submit"
+              className={styles.submitButton}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Signing In...' : 'Sign In'}
+            </button>
+          </form>
+          <div className={styles.footerText}>
+            Don't have an account?{' '}
+            <Link to="/register" className={styles.link}>
+              Register
+            </Link>
+          </div>
+          <div className={styles.socialLoginContainer}>
+            <div className={styles.socialLoginTitle}>Or sign in with</div>
+            <div className={styles.socialLoginButtons}>
+              <GoogleLogin />
+              <LinkedInLogin />
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default Login;
