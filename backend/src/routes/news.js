@@ -1,9 +1,10 @@
 const express = require("express");
 const router = express.Router();
+const News = require("../models/News");
 
 /**
  * @route   GET /api/news
- * @desc    Get all news articles
+ * @desc    Get all news articles with filtering and pagination
  * @access  Public
  */
 router.get("/", async (req, res) => {
@@ -11,37 +12,134 @@ router.get("/", async (req, res) => {
     const {
       category,
       featured,
+      author_id,
+      search,
       page = 1,
       limit = 10,
       sortBy = "published_at",
       sortOrder = "DESC",
     } = req.query;
 
-    // Build filter object for published news only
-    const filters = { is_published: true };
+    const options = {
+      category,
+      featured,
+      author_id,
+      search,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      sortBy,
+      sortOrder
+    };
 
-    if (category) filters.category = category;
-    if (featured === "true") filters.is_featured = true;
-
-    // TODO: Implement with actual News model when created
-    const news = [];
-    const total = 0;
+    const result = await News.findAll(options);
 
     res.json({
       success: true,
-      data: news,
-      pagination: {
-        current: parseInt(page),
-        total: Math.ceil(total / limit),
-        count: news.length,
-        totalRecords: total,
-      },
+      data: result.news,
+      pagination: result.pagination,
     });
   } catch (error) {
     console.error("Get news error:", error);
     res.status(500).json({
       success: false,
       message: "Server error while fetching news",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   GET /api/news/featured
+ * @desc    Get featured news articles
+ * @access  Public
+ */
+router.get("/featured", async (req, res) => {
+  try {
+    const { limit = 3 } = req.query;
+    
+    const featuredNews = await News.getFeatured(parseInt(limit));
+
+    res.json({
+      success: true,
+      data: featuredNews,
+    });
+  } catch (error) {
+    console.error("Get featured news error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching featured news",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   GET /api/news/latest
+ * @desc    Get latest news articles
+ * @access  Public
+ */
+router.get("/latest", async (req, res) => {
+  try {
+    const { limit = 5 } = req.query;
+    
+    const latestNews = await News.getLatest(parseInt(limit));
+
+    res.json({
+      success: true,
+      data: latestNews,
+    });
+  } catch (error) {
+    console.error("Get latest news error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching latest news",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   GET /api/news/categories
+ * @desc    Get available news categories with counts
+ * @access  Public
+ */
+router.get("/categories", async (req, res) => {
+  try {
+    const categories = await News.getCategories();
+
+    res.json({
+      success: true,
+      data: categories,
+    });
+  } catch (error) {
+    console.error("Get categories error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching categories",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   GET /api/news/stats
+ * @desc    Get news statistics
+ * @access  Public
+ */
+router.get("/stats", async (req, res) => {
+  try {
+    const stats = await News.getStats();
+
+    res.json({
+      success: true,
+      data: stats,
+    });
+  } catch (error) {
+    console.error("Get news stats error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching news statistics",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -55,8 +153,7 @@ router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
-    // TODO: Implement with actual News model
-    const newsArticle = null;
+    const newsArticle = await News.findById(id);
 
     if (!newsArticle) {
       return res.status(404).json({
@@ -65,15 +162,22 @@ router.get("/:id", async (req, res) => {
       });
     }
 
+    // Get related articles
+    const relatedArticles = await News.getRelated(id, newsArticle.category, 3);
+
     res.json({
       success: true,
-      data: newsArticle,
+      data: {
+        article: newsArticle,
+        related: relatedArticles
+      }
     });
   } catch (error) {
     console.error("Get news article error:", error);
     res.status(500).json({
       success: false,
       message: "Server error while fetching news article",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -88,17 +192,20 @@ router.post("/", async (req, res) => {
     const newsData = req.body;
 
     // This will need admin authentication middleware
-    // TODO: Implement with actual News model
+    // For now, we'll allow creation for testing
+    const newArticle = await News.create(newsData);
 
     res.status(201).json({
       success: true,
       message: "News article created successfully",
+      data: newArticle
     });
   } catch (error) {
     console.error("Create news error:", error);
     res.status(500).json({
       success: false,
       message: "Server error while creating news article",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -113,17 +220,26 @@ router.put("/:id", async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
 
-    // TODO: Implement with actual News model
+    const updatedArticle = await News.update(id, updateData);
+
+    if (!updatedArticle) {
+      return res.status(404).json({
+        success: false,
+        message: "News article not found",
+      });
+    }
 
     res.json({
       success: true,
       message: "News article updated successfully",
+      data: updatedArticle
     });
   } catch (error) {
     console.error("Update news error:", error);
     res.status(500).json({
       success: false,
       message: "Server error while updating news article",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -137,7 +253,14 @@ router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
-    // TODO: Implement with actual News model
+    const deleted = await News.delete(id);
+
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        message: "News article not found",
+      });
+    }
 
     res.json({
       success: true,
@@ -148,37 +271,7 @@ router.delete("/:id", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error while deleting news article",
-    });
-  }
-});
-
-/**
- * @route   GET /api/news/categories/list
- * @desc    Get available news categories
- * @access  Public
- */
-router.get("/categories/list", async (req, res) => {
-  try {
-    const categories = [
-      "general",
-      "achievement",
-      "news",
-      "event",
-      "announcement",
-      "placement",
-      "research",
-      "alumni-spotlight",
-    ];
-
-    res.json({
-      success: true,
-      data: categories,
-    });
-  } catch (error) {
-    console.error("Get categories error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error while fetching categories",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });

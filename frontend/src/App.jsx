@@ -15,6 +15,7 @@ import Dashboard from '@pages/Dashboard'
 import AlumniDirectory from '@pages/AlumniDirectory'
 import AlumniProfile from '@pages/AlumniProfile'
 import News from '@pages/News'
+import NewsDetail from '@pages/NewsDetail'
 import Events from '@pages/Events'
 import Connect from '@pages/Connect'
 import Messages from '@pages/Messages'
@@ -62,6 +63,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/news" element={<News />} />
+          <Route path="/news/:id" element={<NewsDetail />} />
           <Route path="/events" element={<Events />} />
           
           {/* Alumni Directory - Temporarily Public for Development */}
