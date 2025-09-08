@@ -1,3 +1,4 @@
+require("dotenv").config();
 const { query, testConnection } = require("./database");
 const fs = require("fs");
 const path = require("path");

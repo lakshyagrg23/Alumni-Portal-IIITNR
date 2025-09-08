@@ -64,6 +64,12 @@ function App() {
           <Route path="/news" element={<News />} />
           <Route path="/events" element={<Events />} />
           
+          {/* Alumni Directory - Temporarily Public for Development */}
+          <Route path="/directory" element={<AlumniDirectory />} />
+          
+          {/* Alumni Profile - Temporarily Public for Development */}
+          <Route path="/alumni/:id" element={<AlumniProfile />} />
+          
           {/* Auth Routes */}
           <Route 
             path="/login" 
@@ -84,24 +90,6 @@ function App() {
             element={
               <ProtectedRoute>
                 <Dashboard />
-              </ProtectedRoute>
-            } 
-          />
-          
-          <Route 
-            path="/directory" 
-            element={
-              <ProtectedRoute>
-                <AlumniDirectory />
-              </ProtectedRoute>
-            } 
-          />
-          
-          <Route 
-            path="/alumni/:id" 
-            element={
-              <ProtectedRoute>
-                <AlumniProfile />
               </ProtectedRoute>
             } 
           />

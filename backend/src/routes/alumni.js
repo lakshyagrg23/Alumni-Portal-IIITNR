@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const AlumniProfile = require("../models/AlumniProfile");
+const { query } = require("../config/database");
 
 /**
  * @route   GET /api/alumni
@@ -22,30 +23,61 @@ router.get("/", async (req, res) => {
       sortOrder = "DESC",
     } = req.query;
 
-    // Build filter object
-    const filters = {};
+    // Simple query for now - we'll enhance this
+    let queryText = `
+      SELECT 
+        id, first_name, last_name, graduation_year, branch, degree,
+        current_company, current_position, current_city, current_state,
+        current_country, skills, linkedin_url, bio, profile_picture_url
+      FROM alumni_profiles 
+      WHERE is_profile_public = true
+    `;
+    
+    let queryParams = [];
+    let paramIndex = 1;
 
-    if (batch) filters.graduation_year = batch;
-    if (branch) filters.branch = branch;
-    if (company) filters.current_company = company;
-    if (location) filters.current_city = location;
+    // Add search filter
+    if (search) {
+      queryText += ` AND (
+        LOWER(first_name || ' ' || last_name) LIKE LOWER($${paramIndex}) OR
+        LOWER(current_company) LIKE LOWER($${paramIndex})
+      )`;
+      queryParams.push(`%${search}%`);
+      paramIndex++;
+    }
 
-    // Only show public profiles
-    filters.is_profile_public = true;
+    // Add batch filter
+    if (batch) {
+      queryText += ` AND graduation_year = $${paramIndex}`;
+      queryParams.push(parseInt(batch));
+      paramIndex++;
+    }
 
-    const alumni = await AlumniProfile.findAll({
-      filters,
-      search,
-      skills: skills ? skills.split(",") : undefined,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-      },
-      orderBy: sortBy,
-      orderDirection: sortOrder.toUpperCase(),
-    });
+    // Add branch filter
+    if (branch) {
+      queryText += ` AND LOWER(branch) LIKE LOWER($${paramIndex})`;
+      queryParams.push(`%${branch}%`);
+      paramIndex++;
+    }
 
-    const total = await AlumniProfile.count({ filters, search });
+    // Add ordering
+    queryText += ` ORDER BY ${sortBy} ${sortOrder}`;
+    
+    // Add pagination
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    queryText += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    queryParams.push(parseInt(limit), offset);
+
+    // Execute query
+    const result = await query(queryText, queryParams);
+    const alumni = result.rows;
+
+    // Get total count for pagination
+    const countResult = await query(
+      "SELECT COUNT(*) FROM alumni_profiles WHERE is_profile_public = true",
+      []
+    );
+    const total = parseInt(countResult.rows[0].count);
 
     res.json({
       success: true,
@@ -62,20 +94,22 @@ router.get("/", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error while fetching alumni",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
 
 /**
  * @route   GET /api/alumni/:id
- * @desc    Get alumni profile by ID
+ * @desc    Get alumni profile by ID with work experience
  * @access  Public (with privacy settings)
  */
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
-    const alumni = await AlumniProfile.findById(id);
+    // Use findWithDetails to get complete profile information
+    const alumni = await AlumniProfile.findWithDetails(id);
 
     if (!alumni) {
       return res.status(404).json({
@@ -85,7 +119,7 @@ router.get("/:id", async (req, res) => {
     }
 
     // Check privacy settings
-    if (!alumni.is_profile_public) {
+    if (!alumni.isProfilePublic) {
       return res.status(403).json({
         success: false,
         message: "This profile is private",
@@ -94,13 +128,18 @@ router.get("/:id", async (req, res) => {
 
     res.json({
       success: true,
-      data: alumni,
+      data: {
+        alumni: alumni,
+        workExperiences: alumni.workExperiences || [],
+        education: alumni.education || []
+      }
     });
   } catch (error) {
     console.error("Get alumni profile error:", error);
     res.status(500).json({
       success: false,
       message: "Server error while fetching alumni profile",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });

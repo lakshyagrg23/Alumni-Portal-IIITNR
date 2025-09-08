@@ -322,7 +322,7 @@ class AlumniProfile {
       const educationQuery = `
         SELECT * FROM education 
         WHERE alumni_id = $1 
-        ORDER BY end_date DESC
+        ORDER BY end_year DESC
       `;
       const educationResult = await client.query(educationQuery, [id]);
       profile.education = educationResult.rows;
