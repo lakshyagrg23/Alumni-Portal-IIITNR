@@ -67,8 +67,14 @@ export const authService = {
   },
 
   // Google OAuth login
-  googleLogin: async (googleToken) => {
-    const response = await API.post("/auth/google", { token: googleToken });
+  googleLogin: async (googleData) => {
+    const response = await API.post("/auth/google", googleData);
+    return response;
+  },
+
+  // LinkedIn OAuth login
+  linkedinLogin: async (linkedinData) => {
+    const response = await API.post("/auth/linkedin", linkedinData);
     return response;
   },
 

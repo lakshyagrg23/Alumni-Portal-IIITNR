@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react'
-import { authService } from '@services/authService'
+import { authService } from '../services/authService'
 
 // Initial state
 const initialState = {
@@ -186,11 +186,33 @@ export const AuthProvider = ({ children }) => {
   }
 
   // Google OAuth login
-  const loginWithGoogle = async (googleToken) => {
+  const loginWithGoogle = async (googleData) => {
     try {
       dispatch({ type: authActions.LOGIN_START })
       
-      const response = await authService.googleLogin(googleToken)
+      const response = await authService.googleLogin(googleData)
+      
+      localStorage.setItem('token', response.token)
+      authService.setToken(response.token)
+      
+      dispatch({
+        type: authActions.LOGIN_SUCCESS,
+        payload: response,
+      })
+      
+      return response
+    } catch (error) {
+      dispatch({ type: authActions.LOGIN_FAILURE })
+      throw error
+    }
+  }
+
+  // LinkedIn OAuth login
+  const loginWithLinkedIn = async (linkedinData) => {
+    try {
+      dispatch({ type: authActions.LOGIN_START })
+      
+      const response = await authService.linkedinLogin(linkedinData)
       
       localStorage.setItem('token', response.token)
       authService.setToken(response.token)
@@ -214,6 +236,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateProfile,
     loginWithGoogle,
+    loginWithLinkedIn,
   }
 
   return (
