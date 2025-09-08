@@ -21,7 +21,90 @@ A comprehensive alumni portal for Dr. Shyama Prasad Mukherjee International Inst
 - **Google OAuth**: Integration with Google authentication
 - **JWT Security**: Secure token-based authentication
 
-## 🛠️ Tech Stack
+## � Quick Start
+
+### Prerequisites
+
+- Node.js 18+ and npm
+- PostgreSQL 14+
+- Git
+
+### Automated Setup (Recommended)
+
+#### Linux/macOS:
+
+```bash
+git clone https://github.com/lakshyagrg23/Alumni-Portal-IIITNR.git
+cd Alumni-Portal-IIITNR
+chmod +x setup.sh
+./setup.sh
+```
+
+#### Windows:
+
+```batch
+git clone https://github.com/lakshyagrg23/Alumni-Portal-IIITNR.git
+cd Alumni-Portal-IIITNR
+setup.bat
+```
+
+### Manual Setup
+
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/lakshyagrg23/Alumni-Portal-IIITNR.git
+   cd Alumni-Portal-IIITNR
+   ```
+
+2. **Install dependencies**
+
+   ```bash
+   # Backend
+   cd backend && npm install
+
+   # Frontend
+   cd ../frontend && npm install
+   ```
+
+3. **Environment setup**
+
+   ```bash
+   # Backend
+   cd backend && cp .env.example .env
+
+   # Frontend
+   cd ../frontend && cp .env.example .env
+   ```
+
+4. **Configure database**
+
+   ```bash
+   # Create PostgreSQL database
+   createdb alumni_portal
+
+   # Run migrations (after configuring .env)
+   cd backend && npm run migrate
+   ```
+
+5. **Start development servers**
+
+   ```bash
+   # Terminal 1: Backend
+   cd backend && npm run dev
+
+   # Terminal 2: Frontend
+   cd frontend && npm run dev
+   ```
+
+6. **Access the application**
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:5000
+
+### 📚 Documentation
+
+- **[SETUP.md](./SETUP.md)** - Comprehensive setup guide
+- **[Team Issues Guide](./.github/TEAM_ISSUES_GUIDE.md)** - Development workflow
 
 ### Frontend
 
