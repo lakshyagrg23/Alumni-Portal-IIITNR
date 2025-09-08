@@ -2,10 +2,11 @@
   "name": "iiit-nr-alumni-portal-backend",
   "version": "1.0.0",
   "description": "Backend API for IIIT Naya Raipur Alumni Portal",
+  "type": "module",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
+    "dev": "nodemon --experimental-json-modules src/server.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "migrate": "node src/config/migrate.js",

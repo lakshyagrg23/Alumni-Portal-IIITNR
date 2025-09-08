@@ -1,27 +1,33 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const compression = require('compression');
-const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
-const path = require('path');
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import compression from 'compression';
+import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Import database connection
-const { sequelize } = require('./config/database');
+import { sequelize } from './config/database.js';
 
 // Import routes
-const authRoutes = require('./routes/auth');
-const userRoutes = require('./routes/users');
-const alumniRoutes = require('./routes/alumni');
-const newsRoutes = require('./routes/news');
-const eventRoutes = require('./routes/events');
-const connectionRoutes = require('./routes/connections');
-const messageRoutes = require('./routes/messages');
+import authRoutes from "./routes/auth.js";
+// import userRoutes from './routes/users.js';
+// import alumniRoutes from './routes/alumni.js';
+// import newsRoutes from './routes/news.js';
+// import eventRoutes from './routes/events.js';
+// import connectionRoutes from './routes/connections.js';
+// import messageRoutes from './routes/messages.js';
 
 // Import middleware
-const errorHandler = require('./middleware/errorHandler');
-const notFound = require('./middleware/notFound');
+// import errorHandler from './middleware/errorHandler.js';
+// import notFound from './middleware/notFound.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -70,12 +76,12 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/alumni', alumniRoutes);
-app.use('/api/news', newsRoutes);
-app.use('/api/events', eventRoutes);
-app.use('/api/connections', connectionRoutes);
-app.use('/api/messages', messageRoutes);
+// app.use('/api/users', userRoutes);
+// app.use('/api/alumni', alumniRoutes);
+// app.use('/api/news', newsRoutes);
+// app.use('/api/events', eventRoutes);
+// app.use('/api/connections', connectionRoutes);
+// app.use('/api/messages', messageRoutes);
 
 // Welcome route
 app.get('/', (req, res) => {
@@ -88,8 +94,8 @@ app.get('/', (req, res) => {
 });
 
 // Error handling middleware
-app.use(notFound);
-app.use(errorHandler);
+// app.use(notFound);
+// app.use(errorHandler);
 
 // Database connection and server startup
 const startServer = async () => {
@@ -145,4 +151,4 @@ process.on('SIGINT', async () => {
 // Start the server
 startServer();
 
-module.exports = app;
+export default app;

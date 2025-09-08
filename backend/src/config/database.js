@@ -1,8 +1,8 @@
-const { Sequelize } = require('sequelize');
+import { Sequelize } from 'sequelize';
 
 // Database configuration
 const sequelize = new Sequelize(
-  process.env.DATABASE_URL || 'postgresql://username:password@localhost:5432/alumni_portal',
+  process.env.DATABASE_URL || `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@localhost:5432/alumni_portal`,
   {
     dialect: 'postgres',
     logging: process.env.NODE_ENV === 'development' ? console.log : false,
@@ -32,7 +32,7 @@ const testConnection = async () => {
   }
 };
 
-module.exports = {
+export {
   sequelize,
   testConnection
 };
