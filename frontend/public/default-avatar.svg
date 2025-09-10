@@ -1,0 +1,16 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle with IIIT NR colors -->
+  <circle cx="60" cy="60" r="60" fill="#1e3a8a"/>
+  
+  <!-- User Icon in white -->
+  <g fill="#ffffff">
+    <!-- Head -->
+    <circle cx="60" cy="42" r="18"/>
+    
+    <!-- Body -->
+    <path d="M28 105c0-17.67 14.33-32 32-32s32 14.33 32 32v15H28v-15z"/>
+  </g>
+  
+  <!-- Optional: Add a subtle border -->
+  <circle cx="60" cy="60" r="59" fill="none" stroke="#f97316" stroke-width="2"/>
+</svg>

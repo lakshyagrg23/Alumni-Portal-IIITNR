@@ -42,6 +42,7 @@ class AlumniProfile {
       firstName,
       lastName,
       middleName,
+      profilePictureUrl,
       phone,
       dateOfBirth,
       gender,
@@ -71,6 +72,8 @@ class AlumniProfile {
       showContactInfo = false,
       showWorkInfo = true,
       showAcademicInfo = true,
+      isOpenToWork = false,
+      isAvailableForMentorship = false,
     } = profileData;
 
     const data = {
@@ -78,6 +81,7 @@ class AlumniProfile {
       first_name: firstName,
       last_name: lastName,
       middle_name: middleName,
+      profile_picture_url: profilePictureUrl,
       phone,
       date_of_birth: dateOfBirth,
       gender,
@@ -107,6 +111,8 @@ class AlumniProfile {
       show_contact_info: showContactInfo,
       show_work_info: showWorkInfo,
       show_academic_info: showAcademicInfo,
+      is_open_to_work: isOpenToWork,
+      is_available_for_mentorship: isAvailableForMentorship,
     };
 
     // Remove undefined values
@@ -434,6 +440,8 @@ class AlumniProfile {
       showContactInfo: "show_contact_info",
       showWorkInfo: "show_work_info",
       showAcademicInfo: "show_academic_info",
+      isOpenToWork: "is_open_to_work",
+      isAvailableForMentorship: "is_available_for_mentorship",
     };
 
     Object.keys(data).forEach((key) => {
@@ -450,7 +458,9 @@ class AlumniProfile {
    * @returns {Object}
    */
   static convertFromDbFormat(data) {
-    if (!data) return null;
+    if (!data) {
+      return null;
+    }
 
     const apiData = {};
     const fieldMap = {
@@ -477,6 +487,8 @@ class AlumniProfile {
       show_contact_info: "showContactInfo",
       show_work_info: "showWorkInfo",
       show_academic_info: "showAcademicInfo",
+      is_open_to_work: "isOpenToWork",
+      is_available_for_mentorship: "isAvailableForMentorship",
       created_at: "createdAt",
       updated_at: "updatedAt",
       user_id: "userId",

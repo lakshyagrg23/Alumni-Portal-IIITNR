@@ -22,9 +22,15 @@ export default function GoogleLoginButton() {
               googleId: decoded.sub,
               name: decoded.name,
             };
-            await loginWithGoogle(payload);
+            const response = await loginWithGoogle(payload);
             toast.success('Google login successful!');
-            navigate('/dashboard');
+            
+            // Check if user has completed their profile
+            if (response.isNewUser || !response.user.hasAlumniProfile) {
+              navigate('/complete-profile');
+            } else {
+              navigate('/dashboard');
+            }
           } catch (err) {
             toast.error('Google login failed.');
           }
