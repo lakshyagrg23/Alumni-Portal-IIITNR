@@ -11,6 +11,7 @@ import Home from '@pages/Home'
 import About from '@pages/About'
 import Login from '@pages/auth/Login'
 import Register from '@pages/auth/Register'
+import ProfileCompletion from '@pages/auth/ProfileCompletion'
 import Dashboard from '@pages/Dashboard'
 import AlumniDirectory from '@pages/AlumniDirectory'
 import AlumniProfile from '@pages/AlumniProfile'
@@ -83,6 +84,16 @@ function App() {
             path="/register" 
             element={
               user ? <Dashboard /> : <Register />
+            } 
+          />
+          
+          {/* Profile Completion - Protected but allows incomplete profiles */}
+          <Route 
+            path="/complete-profile" 
+            element={
+              <ProtectedRoute>
+                <ProfileCompletion />
+              </ProtectedRoute>
             } 
           />
           

@@ -100,11 +100,11 @@ const Header = () => {
             <div className={styles.userMenu}>
               <button className={styles.userButton} onClick={toggleMenu}>
                 <img 
-                  src={user?.profilePicture || '/default-avatar.png'}
+                  src={user?.profilePicture || '/default-avatar.svg'}
                   alt={`${user?.firstName} ${user?.lastName}`}
                   className={styles.userAvatar}
                   onError={(e) => {
-                    e.target.src = '/default-avatar.png'
+                    e.target.src = '/default-avatar.svg'
                   }}
                 />
                 <span className={styles.userName}>

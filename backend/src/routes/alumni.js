@@ -153,16 +153,54 @@ router.post("/", async (req, res) => {
   try {
     const profileData = req.body;
 
-    // This will need authentication middleware to get user_id
-    // For now, we'll expect user_id in the body
-    if (!profileData.user_id) {
-      return res.status(400).json({
-        success: false,
-        message: "User ID is required",
-      });
+    // For demo purposes, if no user_id provided, get the first user
+    let userId = profileData.user_id;
+    
+    if (!userId) {
+      const { query } = require("../config/database");
+      const userResult = await query(
+        "SELECT id FROM users ORDER BY created_at LIMIT 1",
+        []
+      );
+      
+      if (userResult.rows.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "No users found. Please register first.",
+        });
+      }
+      
+      userId = userResult.rows[0].id;
+      profileData.user_id = userId;
     }
 
-    const alumni = await AlumniProfile.create(profileData);
+    // Map frontend fields to model expected format
+    const mappedData = {
+      userId: profileData.user_id,
+      firstName: profileData.first_name,
+      lastName: profileData.last_name,
+      graduationYear: profileData.graduation_year,
+      degree: profileData.degree,
+      branch: profileData.branch,
+      studentId: profileData.roll_number, // roll_number maps to student_id
+      currentCompany: profileData.current_company,
+      currentPosition: profileData.current_position,
+      currentCity: profileData.current_city,
+      currentState: profileData.current_state,
+      currentCountry: profileData.current_country,
+      bio: profileData.bio,
+      skills: profileData.skills, // Already an array from frontend
+      linkedinUrl: profileData.linkedin_url,
+      githubUrl: profileData.github_url,
+      interests: profileData.interests || [],
+      workExperienceYears: profileData.work_experience_years || 0,
+      isProfilePublic: profileData.is_profile_public !== undefined ? profileData.is_profile_public : true,
+      showContactInfo: profileData.show_contact_info !== undefined ? profileData.show_contact_info : false,
+      showWorkInfo: profileData.show_work_info !== undefined ? profileData.show_work_info : true,
+      showAcademicInfo: profileData.show_academic_info !== undefined ? profileData.show_academic_info : true,
+    };
+
+    const alumni = await AlumniProfile.create(mappedData);
 
     res.status(201).json({
       success: true,

@@ -334,3 +334,56 @@ img {
     display: none !important;
   }
 }
+
+/* Avatar Utilities */
+.avatar-initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-primary);
+  color: white;
+  font-weight: 600;
+  font-size: 0.9em;
+  border-radius: 50%;
+  user-select: none;
+}
+
+.avatar-initials:hover {
+  background: var(--color-primary-light);
+}
+
+/* Avatar container for consistent sizing */
+.avatar-container {
+  position: relative;
+  display: inline-block;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.avatar-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+/* Responsive avatar sizes */
+.avatar-sm {
+  width: 32px;
+  height: 32px;
+}
+
+.avatar-md {
+  width: 48px;
+  height: 48px;
+}
+
+.avatar-lg {
+  width: 64px;
+  height: 64px;
+}
+
+.avatar-xl {
+  width: 96px;
+  height: 96px;
+}

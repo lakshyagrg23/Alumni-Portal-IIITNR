@@ -215,12 +215,21 @@ const AlumniDirectory = () => {
                   <div className={styles.cardHeader}>
                     <div className={styles.avatar}>
                       {alum.profile_picture_url ? (
-                        <img src={alum.profile_picture_url} alt={`${alum.first_name} ${alum.last_name}`} />
-                      ) : (
-                        <div className={styles.avatarInitials}>
-                          {alum.first_name?.charAt(0)}{alum.last_name?.charAt(0)}
-                        </div>
-                      )}
+                        <img 
+                          src={alum.profile_picture_url} 
+                          alt={`${alum.first_name} ${alum.last_name}`}
+                          onError={(e) => {
+                            e.target.style.display = 'none'
+                            e.target.nextSibling.style.display = 'flex'
+                          }}
+                        />
+                      ) : null}
+                      <div 
+                        className={styles.avatarInitials}
+                        style={{ display: alum.profile_picture_url ? 'none' : 'flex' }}
+                      >
+                        {alum.first_name?.charAt(0)}{alum.last_name?.charAt(0)}
+                      </div>
                     </div>
                     <div className={styles.basicInfo}>
                       <h3 className={styles.name}>
