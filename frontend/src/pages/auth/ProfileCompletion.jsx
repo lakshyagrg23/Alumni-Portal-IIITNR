@@ -37,8 +37,6 @@ const ProfileCompletion = () => {
     
     // Privacy Settings
     is_profile_public: true,
-    is_open_to_work: false,
-    is_available_for_mentorship: false,
   })
 
   const totalSteps = 4
@@ -163,8 +161,6 @@ const ProfileCompletion = () => {
         linkedin_url: formData.linkedin_url,
         github_url: formData.github_url,
         is_profile_public: formData.is_profile_public,
-        is_open_to_work: formData.is_open_to_work,
-        is_available_for_mentorship: formData.is_available_for_mentorship,
         // Add missing fields that the backend expects
         interests: [],
         show_contact_info: false,
@@ -466,34 +462,6 @@ const ProfileCompletion = () => {
                 </label>
               </div>
 
-              {/* Temporarily disabled until database migration */}
-              {/* 
-              <div className={styles.checkboxGroup}>
-                <label className={styles.checkboxLabel}>
-                  <input
-                    type="checkbox"
-                    name="is_open_to_work"
-                    checked={formData.is_open_to_work}
-                    onChange={handleInputChange}
-                  />
-                  <span className={styles.checkmark}></span>
-                  I'm open to work opportunities
-                </label>
-              </div>
-
-              <div className={styles.checkboxGroup}>
-                <label className={styles.checkboxLabel}>
-                  <input
-                    type="checkbox"
-                    name="is_available_for_mentorship"
-                    checked={formData.is_available_for_mentorship}
-                    onChange={handleInputChange}
-                  />
-                  <span className={styles.checkmark}></span>
-                  I'm available to mentor other alumni
-                </label>
-              </div>
-              */}
             </div>
           </div>
         )

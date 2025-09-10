@@ -33,8 +33,6 @@ const Profile = () => {
     skills: '',
     achievements: '',
     is_profile_public: true,
-    is_open_to_work: false,
-    is_available_for_mentorship: false,
   })
   const [errors, setErrors] = useState({})
   const [message, setMessage] = useState('')
@@ -79,8 +77,6 @@ const Profile = () => {
             : data.alumniProfile?.skills || '',
           achievements: data.alumniProfile?.achievements || '',
           is_profile_public: data.alumniProfile?.is_profile_public ?? true,
-          is_open_to_work: data.alumniProfile?.is_open_to_work ?? false,
-          is_available_for_mentorship: data.alumniProfile?.is_available_for_mentorship ?? false,
         })
       }
     } catch (error) {
@@ -571,38 +567,6 @@ const Profile = () => {
                   </label>
                   <p className={styles.helpText}>
                     When enabled, other alumni can discover and view your profile in the directory.
-                  </p>
-                </div>
-
-                <div className={styles.checkboxGroup}>
-                  <label className={styles.checkboxLabel}>
-                    <input
-                      type="checkbox"
-                      name="is_open_to_work"
-                      checked={profileData.is_open_to_work}
-                      onChange={handleInputChange}
-                    />
-                    <span className={styles.checkmark}></span>
-                    Open to work opportunities
-                  </label>
-                  <p className={styles.helpText}>
-                    Show that you're actively looking for new job opportunities.
-                  </p>
-                </div>
-
-                <div className={styles.checkboxGroup}>
-                  <label className={styles.checkboxLabel}>
-                    <input
-                      type="checkbox"
-                      name="is_available_for_mentorship"
-                      checked={profileData.is_available_for_mentorship}
-                      onChange={handleInputChange}
-                    />
-                    <span className={styles.checkmark}></span>
-                    Available for mentorship
-                  </label>
-                  <p className={styles.helpText}>
-                    Let junior alumni know you're available to provide guidance and mentorship.
                   </p>
                 </div>
               </div>

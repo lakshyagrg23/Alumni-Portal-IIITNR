@@ -31,11 +31,11 @@ router.post("/register", async (req, res) => {
     }
 
     // Determine provider
-    let providerName = 'local';
-    if (provider === 'google') {
-      providerName = 'google';
-    } else if (provider === 'linkedin') {
-      providerName = 'linkedin';
+    let providerName = "local";
+    if (provider === "google") {
+      providerName = "google";
+    } else if (provider === "linkedin") {
+      providerName = "linkedin";
     }
 
     // Create new user with name fields
@@ -47,7 +47,7 @@ router.post("/register", async (req, res) => {
       role: "alumni",
       provider: providerName,
       is_approved: true, // Auto-approve for now
-      is_active: true
+      is_active: true,
     };
 
     const user = await User.create(userData);
@@ -71,7 +71,7 @@ router.post("/register", async (req, res) => {
         role: user.role,
         isApproved: user.is_approved,
         isActive: user.is_active,
-        provider: user.provider
+        provider: user.provider,
       },
     });
   } catch (error) {
@@ -118,7 +118,10 @@ router.post("/login", async (req, res) => {
     }
 
     // Verify password
-    const isValidPassword = await User.verifyPassword(password, user.password_hash);
+    const isValidPassword = await User.verifyPassword(
+      password,
+      user.password_hash
+    );
     if (!isValidPassword) {
       return res.status(401).json({
         success: false,
@@ -163,9 +166,9 @@ router.post("/google", async (req, res) => {
   try {
     const { email, googleId, name } = req.body;
     if (!email || !googleId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Google login failed: missing email or googleId.' 
+      return res.status(400).json({
+        success: false,
+        message: "Google login failed: missing email or googleId.",
       });
     }
 
@@ -174,10 +177,10 @@ router.post("/google", async (req, res) => {
       // Register new user with Google provider
       const userData = {
         email: email.toLowerCase(),
-        provider: 'google',
+        provider: "google",
         providerId: googleId,
-        role: 'alumni',
-        isApproved: true
+        role: "alumni",
+        isApproved: true,
       };
       user = await User.create(userData);
     }
@@ -191,7 +194,7 @@ router.post("/google", async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Google login successful',
+      message: "Google login successful",
       token,
       user: {
         id: user.id,
@@ -199,14 +202,14 @@ router.post("/google", async (req, res) => {
         role: user.role,
         isApproved: user.is_approved,
         isActive: user.is_active,
-        provider: user.provider
+        provider: user.provider,
       },
     });
   } catch (error) {
-    console.error('Google login error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Server error. Please try again.' 
+    console.error("Google login error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error. Please try again.",
     });
   }
 });
@@ -220,9 +223,9 @@ router.post("/linkedin", async (req, res) => {
   try {
     const { email, linkedinId, name } = req.body;
     if (!email || !linkedinId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'LinkedIn login failed: missing email or linkedinId.' 
+      return res.status(400).json({
+        success: false,
+        message: "LinkedIn login failed: missing email or linkedinId.",
       });
     }
 
@@ -231,10 +234,10 @@ router.post("/linkedin", async (req, res) => {
       // Register new user with LinkedIn provider
       const userData = {
         email: email.toLowerCase(),
-        provider: 'linkedin',
+        provider: "linkedin",
         providerId: linkedinId,
-        role: 'alumni',
-        isApproved: true
+        role: "alumni",
+        isApproved: true,
       };
       user = await User.create(userData);
     }
@@ -248,7 +251,7 @@ router.post("/linkedin", async (req, res) => {
 
     res.json({
       success: true,
-      message: 'LinkedIn login successful',
+      message: "LinkedIn login successful",
       token,
       user: {
         id: user.id,
@@ -256,14 +259,14 @@ router.post("/linkedin", async (req, res) => {
         role: user.role,
         isApproved: user.is_approved,
         isActive: user.is_active,
-        provider: user.provider
+        provider: user.provider,
       },
     });
   } catch (error) {
-    console.error('LinkedIn login error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Server error. Please try again.' 
+    console.error("LinkedIn login error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error. Please try again.",
     });
   }
 });
@@ -299,13 +302,13 @@ router.get("/profile", async (req, res) => {
     // For now, we'll get the first user in the database as a demo
     // In production, this would come from auth middleware: req.user.id
     const { query } = require("../config/database");
-    
+
     // Get the first user from database for testing
     let userResult = await query(
       "SELECT id FROM users ORDER BY created_at LIMIT 1",
       []
     );
-    
+
     let mockUserId;
     if (userResult.rows.length === 0) {
       // Create a test user if none exists
@@ -315,13 +318,13 @@ router.get("/profile", async (req, res) => {
         last_name: "User",
         provider: "local",
         is_approved: true,
-        is_active: true
+        is_active: true,
       });
       mockUserId = testUser.id;
     } else {
       mockUserId = userResult.rows[0].id;
     }
-    
+
     // Get user basic info (only email, role, approval status)
     const user = await User.findById(mockUserId);
     if (!user) {
@@ -358,9 +361,9 @@ router.get("/profile", async (req, res) => {
           provider: user.provider,
           createdAt: user.created_at,
           // Get name from users table as fallback
-          firstName: user.first_name || '',
-          lastName: user.last_name || '',
-          profilePicture: user.profile_picture_url || '',
+          firstName: user.first_name || "",
+          lastName: user.last_name || "",
+          profilePicture: user.profile_picture_url || "",
           alumniProfile: null,
         },
       });
@@ -378,9 +381,10 @@ router.get("/profile", async (req, res) => {
         provider: user.provider,
         createdAt: user.created_at,
         // Get primary profile data from alumni_profiles table
-        firstName: alumniProfile.first_name || user.first_name || '',
-        lastName: alumniProfile.last_name || user.last_name || '',
-        profilePicture: alumniProfile.profile_picture_url || user.profile_picture_url || '',
+        firstName: alumniProfile.first_name || user.first_name || "",
+        lastName: alumniProfile.last_name || user.last_name || "",
+        profilePicture:
+          alumniProfile.profile_picture_url || user.profile_picture_url || "",
         alumniProfile: alumniProfile,
       },
     });
@@ -403,30 +407,30 @@ router.put("/profile", async (req, res) => {
     // For now, we'll get the first user in the database as a demo
     // In production, this would come from auth middleware: req.user.id
     const { query } = require("../config/database");
-    
+
     // Get the first user from database for testing
     const userResult = await query(
       "SELECT id FROM users ORDER BY created_at LIMIT 1",
       []
     );
-    
+
     if (userResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
         message: "No users found. Please register first.",
       });
     }
-    
+
     const mockUserId = userResult.rows[0].id;
     const updateData = req.body;
-    
+
     // All profile data goes to alumni_profiles table now
     // Only keep email updates in users table
-    const userFields = ['email']; // Minimal user table updates
+    const userFields = ["email"]; // Minimal user table updates
     const userData = {};
     const alumniData = {};
-    
-    Object.keys(updateData).forEach(key => {
+
+    Object.keys(updateData).forEach((key) => {
       if (userFields.includes(key)) {
         userData[key] = updateData[key];
       } else {
@@ -434,73 +438,158 @@ router.put("/profile", async (req, res) => {
         alumniData[key] = updateData[key];
       }
     });
-    
+
     // Update user table only for email changes
     if (Object.keys(userData).length > 0) {
       await User.update(mockUserId, userData);
     }
-    
+
     // Update or create alumni profile with all profile data
     if (Object.keys(alumniData).length > 0) {
       // Handle skills array properly
-      if (alumniData.skills && typeof alumniData.skills === 'string') {
-        alumniData.skills = alumniData.skills.split(',').map(skill => skill.trim()).filter(skill => skill.length > 0);
+      if (alumniData.skills && typeof alumniData.skills === "string") {
+        if (alumniData.skills.trim() === "") {
+          alumniData.skills = [];
+        } else {
+          alumniData.skills = alumniData.skills
+            .split(",")
+            .map((skill) => skill.trim())
+            .filter((skill) => skill.length > 0);
+        }
+      } else if (!alumniData.skills) {
+        alumniData.skills = [];
       }
-      
+
+      // Handle achievements array properly
+      if (
+        alumniData.achievements &&
+        typeof alumniData.achievements === "string"
+      ) {
+        if (alumniData.achievements.trim() === "") {
+          alumniData.achievements = [];
+        } else {
+          alumniData.achievements = alumniData.achievements
+            .split(",")
+            .map((achievement) => achievement.trim())
+            .filter((achievement) => achievement.length > 0);
+        }
+      } else if (!alumniData.achievements) {
+        alumniData.achievements = [];
+      }
+
+      // Handle interests array properly
+      if (alumniData.interests && typeof alumniData.interests === "string") {
+        if (alumniData.interests.trim() === "") {
+          alumniData.interests = [];
+        } else {
+          alumniData.interests = alumniData.interests
+            .split(",")
+            .map((interest) => interest.trim())
+            .filter((interest) => interest.length > 0);
+        }
+      } else if (!alumniData.interests) {
+        alumniData.interests = [];
+      }
+
       // Check if alumni profile exists
       const existingProfile = await query(
         "SELECT id FROM alumni_profiles WHERE user_id = $1",
         [mockUserId]
       );
-      
+
       if (existingProfile.rows.length > 0) {
         // Update existing profile - manually map fields to handle special cases
         const dbFields = {};
-        
+
         // Define valid database fields to prevent errors
         const validFields = new Set([
-          'first_name', 'last_name', 'middle_name', 'profile_picture_url', 'phone',
-          'date_of_birth', 'gender', 'student_id', 'admission_year', 'graduation_year',
-          'degree', 'branch', 'cgpa', 'current_company', 'current_position', 'industry',
-          'work_experience_years', 'skills', 'linkedin_url', 'github_url', 'portfolio_url',
-          'current_city', 'current_state', 'current_country', 'hometown_city', 'hometown_state',
-          'bio', 'achievements', 'interests', 'is_profile_public', 'show_contact_info',
-          'show_work_info', 'show_academic_info', 'is_open_to_work', 'is_available_for_mentorship'
+          "first_name",
+          "last_name",
+          "middle_name",
+          "profile_picture_url",
+          "phone",
+          "date_of_birth",
+          "gender",
+          "student_id",
+          "admission_year",
+          "graduation_year",
+          "degree",
+          "branch",
+          "cgpa",
+          "current_company",
+          "current_position",
+          "industry",
+          "work_experience_years",
+          "skills",
+          "linkedin_url",
+          "github_url",
+          "portfolio_url",
+          "current_city",
+          "current_state",
+          "current_country",
+          "hometown_city",
+          "hometown_state",
+          "bio",
+          "achievements",
+          "interests",
+          "is_profile_public",
+          "show_contact_info",
+          "show_work_info",
+          "show_academic_info",
         ]);
-        
-        Object.keys(alumniData).forEach(key => {
+
+        Object.keys(alumniData).forEach((key) => {
           let dbKey;
           // Handle special field mappings
-          if (key === 'firstName') {
-            dbKey = 'first_name';
-          } else if (key === 'lastName') {
-            dbKey = 'last_name';
-          } else if (key === 'profilePicture') {
-            dbKey = 'profile_picture_url';
-          } else if (key === 'roll_number') {
-            dbKey = 'student_id'; // roll_number maps to student_id in database
+          if (key === "firstName") {
+            dbKey = "first_name";
+          } else if (key === "lastName") {
+            dbKey = "last_name";
+          } else if (key === "profilePicture") {
+            dbKey = "profile_picture_url";
+          } else if (key === "roll_number") {
+            dbKey = "student_id"; // roll_number maps to student_id in database
           } else {
             // Convert camelCase to snake_case for other fields
-            dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+            dbKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
           }
-          
+
           // Only include valid database fields
           if (validFields.has(dbKey)) {
-            dbFields[dbKey] = alumniData[key];
+            // Handle array fields properly - ensure they are arrays, not empty strings
+            if (["skills", "achievements", "interests"].includes(dbKey)) {
+              if (Array.isArray(alumniData[key])) {
+                dbFields[dbKey] = alumniData[key];
+              } else if (
+                typeof alumniData[key] === "string" &&
+                alumniData[key].trim() === ""
+              ) {
+                dbFields[dbKey] = [];
+              } else {
+                dbFields[dbKey] = alumniData[key];
+              }
+            } else {
+              dbFields[dbKey] = alumniData[key];
+            }
           }
         });
-        
+
         // Remove any undefined values
-        Object.keys(dbFields).forEach(key => {
+        Object.keys(dbFields).forEach((key) => {
           if (dbFields[key] === undefined) {
             delete dbFields[key];
           }
         });
-        
+
         if (Object.keys(dbFields).length > 0) {
-          const setClause = Object.keys(dbFields).map((key, index) => `${key} = $${index + 2}`).join(', ');
-          const values = [existingProfile.rows[0].id, ...Object.values(dbFields)];
-          
+          const setClause = Object.keys(dbFields)
+            .map((key, index) => `${key} = $${index + 2}`)
+            .join(", ");
+          const values = [
+            existingProfile.rows[0].id,
+            ...Object.values(dbFields),
+          ];
+
           await query(
             `UPDATE alumni_profiles SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
             values
@@ -509,13 +598,13 @@ router.put("/profile", async (req, res) => {
       } else {
         // Create new profile with all data in alumni_profiles table
         const AlumniProfile = require("../models/AlumniProfile");
-        
+
         // Map to camelCase for the model
         const mappedData = {
           userId: mockUserId,
-          firstName: alumniData.firstName || '',
-          lastName: alumniData.lastName || '',
-          profilePictureUrl: alumniData.profilePicture || '',
+          firstName: alumniData.firstName || "",
+          lastName: alumniData.lastName || "",
+          profilePictureUrl: alumniData.profilePicture || "",
           graduationYear: alumniData.graduation_year,
           degree: alumniData.degree,
           branch: alumniData.branch,
@@ -535,25 +624,23 @@ router.put("/profile", async (req, res) => {
           showContactInfo: alumniData.show_contact_info || false,
           showWorkInfo: alumniData.show_work_info !== false,
           showAcademicInfo: alumniData.show_academic_info !== false,
-          isOpenToWork: alumniData.is_open_to_work || false,
-          isAvailableForMentorship: alumniData.is_available_for_mentorship || false,
           interests: alumniData.interests || [],
-          workExperienceYears: alumniData.work_experience_years || 0
+          workExperienceYears: alumniData.work_experience_years || 0,
         };
-        
+
         await AlumniProfile.create(mappedData);
       }
     }
-    
+
     // Return updated profile (fetch from alumni_profiles table primarily)
     const updatedUser = await User.findById(mockUserId);
     const profileResult = await query(
       "SELECT * FROM alumni_profiles WHERE user_id = $1",
       [mockUserId]
     );
-    
+
     const alumniProfile = profileResult.rows[0] || null;
-    
+
     res.json({
       success: true,
       message: "Profile updated successfully",
@@ -562,9 +649,12 @@ router.put("/profile", async (req, res) => {
         email: updatedUser.email,
         role: updatedUser.role,
         // Get profile data from alumni_profiles table
-        firstName: alumniProfile?.first_name || updatedUser.first_name || '',
-        lastName: alumniProfile?.last_name || updatedUser.last_name || '',
-        profilePicture: alumniProfile?.profile_picture_url || updatedUser.profile_picture_url || '',
+        firstName: alumniProfile?.first_name || updatedUser.first_name || "",
+        lastName: alumniProfile?.last_name || updatedUser.last_name || "",
+        profilePicture:
+          alumniProfile?.profile_picture_url ||
+          updatedUser.profile_picture_url ||
+          "",
         alumniProfile: alumniProfile,
       },
     });

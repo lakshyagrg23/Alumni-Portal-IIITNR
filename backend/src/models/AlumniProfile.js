@@ -111,8 +111,6 @@ class AlumniProfile {
       show_contact_info: showContactInfo,
       show_work_info: showWorkInfo,
       show_academic_info: showAcademicInfo,
-      is_open_to_work: isOpenToWork,
-      is_available_for_mentorship: isAvailableForMentorship,
     };
 
     // Remove undefined values
@@ -440,8 +438,6 @@ class AlumniProfile {
       showContactInfo: "show_contact_info",
       showWorkInfo: "show_work_info",
       showAcademicInfo: "show_academic_info",
-      isOpenToWork: "is_open_to_work",
-      isAvailableForMentorship: "is_available_for_mentorship",
     };
 
     Object.keys(data).forEach((key) => {
@@ -487,8 +483,6 @@ class AlumniProfile {
       show_contact_info: "showContactInfo",
       show_work_info: "showWorkInfo",
       show_academic_info: "showAcademicInfo",
-      is_open_to_work: "isOpenToWork",
-      is_available_for_mentorship: "isAvailableForMentorship",
       created_at: "createdAt",
       updated_at: "updatedAt",
       user_id: "userId",
