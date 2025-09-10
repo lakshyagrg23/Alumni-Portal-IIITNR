@@ -21,7 +21,7 @@
     "postinstall": "echo 'Installation complete! Run npm run dev to start development servers.'"
   },
   "devDependencies": {
-    "concurrently": "^8.2.0"
+    "concurrently": "^8.2.2"
   },
   "keywords": [
     "alumni",

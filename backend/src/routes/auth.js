@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { requireAuth } = require("../middleware/auth");
 
 /**
  * @route   POST /api/auth/register
@@ -266,12 +267,19 @@ router.post("/linkedin", async (req, res) => {
  * @desc    Get current user
  * @access  Private
  */
-router.get("/me", async (req, res) => {
+router.get("/me", requireAuth, async (req, res) => {
   try {
-    // This route will need authentication middleware
     res.json({
       success: true,
-      message: "Get current user endpoint - requires auth middleware",
+      data: {
+        id: req.user.id,
+        email: req.user.email,
+        role: req.user.role,
+        isApproved: req.user.is_approved,
+        isActive: req.user.is_active,
+        provider: req.user.provider,
+        createdAt: req.user.created_at,
+      },
     });
   } catch (error) {
     console.error("Get user error:", error);

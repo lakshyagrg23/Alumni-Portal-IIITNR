@@ -18,6 +18,7 @@ const newsRoutes = require("./routes/news");
 const eventRoutes = require("./routes/events");
 const connectionRoutes = require("./routes/connections");
 const messageRoutes = require("./routes/messages");
+const adminRoutes = require("./routes/admin");
 
 // Import middleware
 const errorHandler = require("./middleware/errorHandler");
@@ -77,6 +78,7 @@ app.use("/api/news", newsRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/connections", connectionRoutes);
 app.use("/api/messages", messageRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Welcome route
 app.get("/", (req, res) => {

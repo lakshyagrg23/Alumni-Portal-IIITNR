@@ -5,6 +5,15 @@ import { useAuth } from '@hooks/useAuth'
 const AdminRoute = ({ children }) => {
   const { user, isAuthenticated, loading } = useAuth()
 
+  // Debug logging
+  console.log('AdminRoute Debug:', {
+    user,
+    isAuthenticated,
+    loading,
+    userRole: user?.role,
+    userType: typeof user,
+  })
+
   if (loading) {
     return (
       <div style={{ 
@@ -19,13 +28,16 @@ const AdminRoute = ({ children }) => {
   }
 
   if (!isAuthenticated) {
+    console.log('AdminRoute: Not authenticated, redirecting to /login')
     return <Navigate to="/login" replace />
   }
 
   if (user?.role !== 'admin') {
+    console.log('AdminRoute: User role is not admin, role:', user?.role, 'redirecting to /dashboard')
     return <Navigate to="/dashboard" replace />
   }
 
+  console.log('AdminRoute: Admin access granted')
   return children
 }
 

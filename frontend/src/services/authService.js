@@ -80,8 +80,8 @@ export const authService = {
 
   // Get current user profile
   getProfile: async () => {
-    const response = await API.get("/auth/profile");
-    return response;
+    const response = await API.get("/auth/me");
+    return response.data; // Extract user data from the response
   },
 
   // Update user profile
