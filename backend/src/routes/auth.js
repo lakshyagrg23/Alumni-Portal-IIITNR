@@ -184,7 +184,7 @@ router.post("/google", async (req, res) => {
     }
 
     let user = await User.findByEmail(email);
-    
+
     if (!user) {
       // Register new user with Google provider
       const userData = {
@@ -195,13 +195,21 @@ router.post("/google", async (req, res) => {
         isApproved: true,
       };
       user = await User.create(userData);
+    }
 
-      // Create alumni profile for OAuth user
-      const AlumniProfile = require("../models/AlumniProfile");
-      const nameParts = name ? name.split(' ') : ['', ''];
-      const firstName = nameParts[0] || '';
-      const lastName = nameParts.slice(1).join(' ') || '';
-      
+    // Check if alumni profile exists for this user (regardless of whether user is new or existing)
+    const AlumniProfile = require("../models/AlumniProfile");
+    const existingProfile = await AlumniProfile.findByUserId(user.id);
+
+    let isNewUser = false;
+    let alumniProfile = existingProfile;
+
+    if (!existingProfile) {
+      // Create alumni profile only if it doesn't exist
+      const nameParts = name ? name.split(" ") : ["", ""];
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
       const profileData = {
         userId: user.id,
         firstName,
@@ -209,8 +217,17 @@ router.post("/google", async (req, res) => {
         isProfilePublic: true,
       };
 
-      await AlumniProfile.create(profileData);
+      alumniProfile = await AlumniProfile.create(profileData);
+      isNewUser = true;
     }
+
+    // Check if the profile is complete (has essential alumni info)
+    const hasAlumniProfile = alumniProfile && 
+      alumniProfile.graduation_year && 
+      alumniProfile.branch && 
+      alumniProfile.degree && 
+      alumniProfile.bio && 
+      alumniProfile.bio.trim().length > 0;
 
     // Generate JWT token
     const token = jwt.sign(
@@ -223,6 +240,7 @@ router.post("/google", async (req, res) => {
       success: true,
       message: "Google login successful",
       token,
+      isNewUser,
       user: {
         id: user.id,
         email: user.email,
@@ -230,6 +248,7 @@ router.post("/google", async (req, res) => {
         isApproved: user.is_approved,
         isActive: user.is_active,
         provider: user.provider,
+        hasAlumniProfile,
       },
     });
   } catch (error) {
@@ -257,7 +276,7 @@ router.post("/linkedin", async (req, res) => {
     }
 
     let user = await User.findByEmail(email);
-    
+
     if (!user) {
       // Register new user with LinkedIn provider
       const userData = {
@@ -268,13 +287,21 @@ router.post("/linkedin", async (req, res) => {
         isApproved: true,
       };
       user = await User.create(userData);
+    }
 
-      // Create alumni profile for OAuth user
-      const AlumniProfile = require("../models/AlumniProfile");
-      const nameParts = name ? name.split(' ') : ['', ''];
-      const firstName = nameParts[0] || '';
-      const lastName = nameParts.slice(1).join(' ') || '';
-      
+    // Check if alumni profile exists for this user (regardless of whether user is new or existing)
+    const AlumniProfile = require("../models/AlumniProfile");
+    const existingProfile = await AlumniProfile.findByUserId(user.id);
+
+    let isNewUser = false;
+    let alumniProfile = existingProfile;
+
+    if (!existingProfile) {
+      // Create alumni profile only if it doesn't exist
+      const nameParts = name ? name.split(" ") : ["", ""];
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
       const profileData = {
         userId: user.id,
         firstName,
@@ -282,8 +309,17 @@ router.post("/linkedin", async (req, res) => {
         isProfilePublic: true,
       };
 
-      await AlumniProfile.create(profileData);
+      alumniProfile = await AlumniProfile.create(profileData);
+      isNewUser = true;
     }
+
+    // Check if the profile is complete (has essential alumni info)
+    const hasAlumniProfile = alumniProfile && 
+      alumniProfile.graduation_year && 
+      alumniProfile.branch && 
+      alumniProfile.degree && 
+      alumniProfile.bio && 
+      alumniProfile.bio.trim().length > 0;
 
     // Generate JWT token
     const token = jwt.sign(
@@ -296,6 +332,7 @@ router.post("/linkedin", async (req, res) => {
       success: true,
       message: "LinkedIn login successful",
       token,
+      isNewUser,
       user: {
         id: user.id,
         email: user.email,
@@ -303,6 +340,7 @@ router.post("/linkedin", async (req, res) => {
         isApproved: user.is_approved,
         isActive: user.is_active,
         provider: user.provider,
+        hasAlumniProfile,
       },
     });
   } catch (error) {
@@ -322,7 +360,7 @@ router.post("/linkedin", async (req, res) => {
 router.get("/me", authenticate, async (req, res) => {
   try {
     const user = req.user;
-    
+
     res.json({
       success: true,
       data: {
@@ -447,16 +485,42 @@ router.put("/profile", authenticate, async (req, res) => {
 
     // All other data goes to alumni profile (using camelCase)
     const alumniFields = [
-      'firstName', 'lastName', 'middleName', 'profilePicture', 'phone', 
-      'dateOfBirth', 'gender', 'studentId', 'admissionYear', 'graduationYear',
-      'degree', 'branch', 'cgpa', 'currentCompany', 'currentPosition', 
-      'industry', 'workExperienceYears', 'skills', 'linkedinUrl', 'githubUrl', 
-      'portfolioUrl', 'currentCity', 'currentState', 'currentCountry', 
-      'hometownCity', 'hometownState', 'bio', 'achievements', 'interests',
-      'isProfilePublic', 'showContactInfo', 'showWorkInfo', 'showAcademicInfo'
+      "firstName",
+      "lastName",
+      "middleName",
+      "profilePicture",
+      "phone",
+      "dateOfBirth",
+      "gender",
+      "studentId",
+      "admissionYear",
+      "graduationYear",
+      "degree",
+      "branch",
+      "cgpa",
+      "currentCompany",
+      "currentPosition",
+      "industry",
+      "workExperienceYears",
+      "skills",
+      "linkedinUrl",
+      "githubUrl",
+      "portfolioUrl",
+      "currentCity",
+      "currentState",
+      "currentCountry",
+      "hometownCity",
+      "hometownState",
+      "bio",
+      "achievements",
+      "interests",
+      "isProfilePublic",
+      "showContactInfo",
+      "showWorkInfo",
+      "showAcademicInfo",
     ];
 
-    alumniFields.forEach(field => {
+    alumniFields.forEach((field) => {
       if (updateData.hasOwnProperty(field)) {
         alumniData[field] = updateData[field];
       }
@@ -475,20 +539,24 @@ router.put("/profile", authenticate, async (req, res) => {
     // Update or create alumni profile
     if (Object.keys(alumniData).length > 0) {
       // Handle array fields properly
-      const arrayFields = ['skills', 'achievements', 'interests'];
-      arrayFields.forEach(field => {
+      const arrayFields = ["skills", "achievements", "interests"];
+      arrayFields.forEach((field) => {
         if (alumniData.hasOwnProperty(field)) {
-          if (!alumniData[field] || alumniData[field] === '' || alumniData[field] === null) {
+          if (
+            !alumniData[field] ||
+            alumniData[field] === "" ||
+            alumniData[field] === null
+          ) {
             // Convert empty/null/undefined values to empty arrays
             alumniData[field] = [];
-          } else if (typeof alumniData[field] === 'string') {
-            if (alumniData[field].trim() === '') {
+          } else if (typeof alumniData[field] === "string") {
+            if (alumniData[field].trim() === "") {
               alumniData[field] = [];
             } else {
               alumniData[field] = alumniData[field]
-                .split(',')
-                .map(item => item.trim())
-                .filter(item => item.length > 0);
+                .split(",")
+                .map((item) => item.trim())
+                .filter((item) => item.length > 0);
             }
           } else if (!Array.isArray(alumniData[field])) {
             alumniData[field] = [];

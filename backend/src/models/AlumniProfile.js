@@ -121,21 +121,25 @@ class AlumniProfile {
     });
 
     // Handle array fields properly for PostgreSQL
-    const arrayFields = ['skills', 'achievements', 'interests'];
-    arrayFields.forEach(field => {
+    const arrayFields = ["skills", "achievements", "interests"];
+    arrayFields.forEach((field) => {
       if (data.hasOwnProperty(field)) {
-        if (data[field] === '' || data[field] === null || data[field] === undefined) {
+        if (
+          data[field] === "" ||
+          data[field] === null ||
+          data[field] === undefined
+        ) {
           // Convert empty/null values to empty arrays
           data[field] = [];
-        } else if (typeof data[field] === 'string') {
+        } else if (typeof data[field] === "string") {
           // Convert comma-separated string to array
-          if (data[field].trim() === '') {
+          if (data[field].trim() === "") {
             data[field] = [];
           } else {
             data[field] = data[field]
-              .split(',')
-              .map(item => item.trim())
-              .filter(item => item.length > 0);
+              .split(",")
+              .map((item) => item.trim())
+              .filter((item) => item.length > 0);
           }
         } else if (!Array.isArray(data[field])) {
           // Ensure it's an array
@@ -158,21 +162,25 @@ class AlumniProfile {
     const dbData = this.convertToDbFormat(updateData);
 
     // Handle array fields properly for PostgreSQL
-    const arrayFields = ['skills', 'achievements', 'interests'];
-    arrayFields.forEach(field => {
+    const arrayFields = ["skills", "achievements", "interests"];
+    arrayFields.forEach((field) => {
       if (dbData.hasOwnProperty(field)) {
-        if (dbData[field] === '' || dbData[field] === null || dbData[field] === undefined) {
+        if (
+          dbData[field] === "" ||
+          dbData[field] === null ||
+          dbData[field] === undefined
+        ) {
           // Convert empty/null values to empty arrays
           dbData[field] = [];
-        } else if (typeof dbData[field] === 'string') {
+        } else if (typeof dbData[field] === "string") {
           // Convert comma-separated string to array
-          if (dbData[field].trim() === '') {
+          if (dbData[field].trim() === "") {
             dbData[field] = [];
           } else {
             dbData[field] = dbData[field]
-              .split(',')
-              .map(item => item.trim())
-              .filter(item => item.length > 0);
+              .split(",")
+              .map((item) => item.trim())
+              .filter((item) => item.length > 0);
           }
         } else if (!Array.isArray(dbData[field])) {
           // Ensure it's an array
@@ -305,17 +313,17 @@ class AlumniProfile {
 
     // Validate and sanitize ORDER BY clause to prevent SQL injection
     const allowedOrderBy = {
-      'created_at DESC': 'ap.created_at DESC',
-      'created_at ASC': 'ap.created_at ASC',
-      'graduation_year DESC': 'ap.graduation_year DESC',
-      'graduation_year ASC': 'ap.graduation_year ASC',
-      'first_name ASC': 'ap.first_name ASC',
-      'first_name DESC': 'ap.first_name DESC',
-      'last_name ASC': 'ap.last_name ASC',
-      'last_name DESC': 'ap.last_name DESC',
+      "created_at DESC": "ap.created_at DESC",
+      "created_at ASC": "ap.created_at ASC",
+      "graduation_year DESC": "ap.graduation_year DESC",
+      "graduation_year ASC": "ap.graduation_year ASC",
+      "first_name ASC": "ap.first_name ASC",
+      "first_name DESC": "ap.first_name DESC",
+      "last_name ASC": "ap.last_name ASC",
+      "last_name DESC": "ap.last_name DESC",
     };
 
-    const safeOrderBy = allowedOrderBy[orderBy] || 'ap.created_at DESC';
+    const safeOrderBy = allowedOrderBy[orderBy] || "ap.created_at DESC";
 
     // Get profiles
     const profilesQuery = `
