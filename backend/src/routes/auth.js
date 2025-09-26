@@ -222,11 +222,12 @@ router.post("/google", async (req, res) => {
     }
 
     // Check if the profile is complete (has essential alumni info)
-    const hasAlumniProfile = alumniProfile && 
-      alumniProfile.graduation_year && 
-      alumniProfile.branch && 
-      alumniProfile.degree && 
-      alumniProfile.bio && 
+    const hasAlumniProfile =
+      alumniProfile &&
+      alumniProfile.graduation_year &&
+      alumniProfile.branch &&
+      alumniProfile.degree &&
+      alumniProfile.bio &&
       alumniProfile.bio.trim().length > 0;
 
     // Generate JWT token
@@ -314,11 +315,12 @@ router.post("/linkedin", async (req, res) => {
     }
 
     // Check if the profile is complete (has essential alumni info)
-    const hasAlumniProfile = alumniProfile && 
-      alumniProfile.graduation_year && 
-      alumniProfile.branch && 
-      alumniProfile.degree && 
-      alumniProfile.bio && 
+    const hasAlumniProfile =
+      alumniProfile &&
+      alumniProfile.graduation_year &&
+      alumniProfile.branch &&
+      alumniProfile.degree &&
+      alumniProfile.bio &&
       alumniProfile.bio.trim().length > 0;
 
     // Generate JWT token
@@ -474,6 +476,9 @@ router.put("/profile", authenticate, async (req, res) => {
     const userId = req.user.id;
     const updateData = req.body;
 
+    console.log("PUT /auth/profile - User ID:", userId);
+    console.log("PUT /auth/profile - Request body:", updateData);
+
     // Only email updates go to users table
     const userData = {};
     const alumniData = {};
@@ -531,13 +536,31 @@ router.put("/profile", authenticate, async (req, res) => {
       alumniData.studentId = updateData.rollNumber;
     }
 
+    // Handle snake_case field names that might be sent by frontend
+    if (updateData.linkedin_url) {
+      alumniData.linkedinUrl = updateData.linkedin_url;
+    }
+    if (updateData.github_url) {
+      alumniData.githubUrl = updateData.github_url;
+    }
+    if (updateData.portfolio_url) {
+      alumniData.portfolioUrl = updateData.portfolio_url;
+    }
+    if (updateData.profile_picture) {
+      alumniData.profilePicture = updateData.profile_picture;
+    }
+
+    console.log("Final alumniData to be updated:", alumniData);
+
     // Update user table if needed
     if (Object.keys(userData).length > 0) {
+      console.log("Updating user table with:", userData);
       await User.update(userId, userData);
     }
 
     // Update or create alumni profile
     if (Object.keys(alumniData).length > 0) {
+      console.log("Processing alumni data:", alumniData);
       // Handle array fields properly
       const arrayFields = ["skills", "achievements", "interests"];
       arrayFields.forEach((field) => {
@@ -572,13 +595,20 @@ router.put("/profile", authenticate, async (req, res) => {
 
       if (existingProfile.rows.length > 0) {
         // Update existing profile using the model
+        console.log(
+          "Updating existing profile with ID:",
+          existingProfile.rows[0].id
+        );
         const AlumniProfile = require("../models/AlumniProfile");
         await AlumniProfile.update(existingProfile.rows[0].id, alumniData);
+        console.log("Profile updated successfully");
       } else {
         // Create new profile
+        console.log("Creating new profile");
         const AlumniProfile = require("../models/AlumniProfile");
         alumniData.userId = userId;
         await AlumniProfile.create(alumniData);
+        console.log("New profile created");
       }
     }
 

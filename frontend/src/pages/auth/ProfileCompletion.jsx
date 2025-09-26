@@ -145,11 +145,9 @@ const ProfileCompletion = () => {
       // Get current user's alumni profile first
       const profileResponse = await API.get('/auth/profile')
       
-      if (!profileResponse.success || !profileResponse.data.alumniProfile) {
-        throw new Error('Alumni profile not found. Please contact support.')
+      if (!profileResponse.success) {
+        throw new Error('Could not load your profile. Please contact support.')
       }
-      
-      const alumniProfile = profileResponse.data.alumniProfile
       
       // Create alumni profile update data - use camelCase as expected by the model
       const profileData = {
@@ -177,8 +175,8 @@ const ProfileCompletion = () => {
         workExperienceYears: 0
       }
       
-      // Update the existing profile instead of creating a new one
-      await API.put(`/alumni/${alumniProfile.id}`, profileData)
+      // Update the profile using the auth profile endpoint
+      await API.put('/auth/profile', profileData)
       
       // Update auth context
       await updateProfile(formData)

@@ -6,9 +6,10 @@ import { authService } from '../services/authService'
 import styles from './Profile.module.css'
 
 const Profile = () => {
-  const { user, updateProfile } = useAuth()
+  const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [formKey, setFormKey] = useState(0) // Add form key for forced re-renders
   const [profileData, setProfileData] = useState({
     // Basic user info
     firstName: '',
@@ -48,12 +49,26 @@ const Profile = () => {
   const loadProfileData = async () => {
     try {
       setLoading(true)
+      console.log('Loading profile data...')
       const response = await authService.getProfile()
+      console.log('Profile response:', response)
       
       if (response.success) {
         const { data } = response
-        setHasAlumniProfile(!!data.alumniProfile)
-        setProfileData({
+        console.log('Profile data:', data)
+        
+        // Check if profile is complete (has essential alumni information)
+        const profileComplete = data.alumniProfile && 
+          data.alumniProfile.graduation_year && 
+          data.alumniProfile.branch && 
+          data.alumniProfile.degree && 
+          data.alumniProfile.bio && 
+          data.alumniProfile.bio.trim().length > 0;
+        
+        console.log('Profile complete:', profileComplete)
+        setHasAlumniProfile(profileComplete)
+        
+        const newProfileData = {
           firstName: data.firstName || '',
           lastName: data.lastName || '',
           email: data.email || '',
@@ -81,11 +96,17 @@ const Profile = () => {
             ? data.alumniProfile.interests.join(', ') 
             : data.alumniProfile?.interests || '',
           isProfilePublic: data.alumniProfile?.is_profile_public ?? true,
-        })
+        }
+        
+        console.log('Setting new profile data:', newProfileData)
+        setProfileData(newProfileData)
+      } else {
+        console.error('Profile response not successful:', response)
+        setMessage('Failed to load profile data')
       }
     } catch (error) {
       console.error('Error loading profile:', error)
-      setMessage('Error loading profile data')
+      setMessage(`Error loading profile data: ${error.message}`)
     } finally {
       setLoading(false)
     }
@@ -154,6 +175,13 @@ const Profile = () => {
       
       // Prepare the data with proper array handling
       const updateData = { ...profileData }
+      console.log('Original profile data:', profileData)
+      
+      // Remove any snake_case duplicates to avoid confusion
+      delete updateData.linkedin_url;
+      delete updateData.github_url;
+      delete updateData.portfolio_url;
+      delete updateData.profile_picture;
       
       // Convert array fields (skills, achievements, interests) from strings to arrays
       const arrayFields = ['skills', 'achievements', 'interests'];
@@ -172,14 +200,27 @@ const Profile = () => {
         }
       });
       
-      await updateProfile(updateData)
+      console.log('Data being sent to API:', updateData)
+      
+      // Call the API directly instead of using AuthContext
+      const result = await authService.updateProfile(updateData)
+      console.log('Update result:', result)
+      
       setMessage('Profile updated successfully!')
+      
+      // Immediately reload the profile data
+      console.log('Reloading profile data after update...')
+      setLoading(true)
+      await loadProfileData()
+      setLoading(false)
+      setFormKey(prev => prev + 1) // Force form re-render
+      console.log('Profile data reloaded')
       
       // Clear message after 3 seconds
       setTimeout(() => setMessage(''), 3000)
     } catch (error) {
       console.error('Error updating profile:', error)
-      setMessage('Error updating profile. Please try again.')
+      setMessage(`Error updating profile: ${error.message}`)
     } finally {
       setSaving(false)
     }
@@ -219,8 +260,8 @@ const Profile = () => {
             <div className={styles.noticeContent}>
               <h3>Complete Your Alumni Profile</h3>
               <p>
-                It looks like you haven't completed your alumni profile yet. 
-                Complete your profile to connect with other alumni and showcase your journey.
+                Complete your essential alumni information (graduation year, branch, degree, and bio) 
+                to fully unlock all portal features and connect with other alumni.
               </p>
               <Link to="/complete-profile" className={styles.completeProfileButton}>
                 Complete Profile
@@ -244,9 +285,9 @@ const Profile = () => {
               <div className={styles.userInfo}>
                 <h2>{profileData.firstName} {profileData.lastName}</h2>
                 <p className={styles.email}>{profileData.email}</p>
-                {profileData.current_position && profileData.current_company && (
+                {profileData.currentPosition && profileData.currentCompany && (
                   <p className={styles.position}>
-                    {profileData.current_position} at {profileData.current_company}
+                    {profileData.currentPosition} at {profileData.currentCompany}
                   </p>
                 )}
               </div>
@@ -288,7 +329,7 @@ const Profile = () => {
           </div>
 
           {/* Profile Form */}
-          <form onSubmit={handleSubmit} className={styles.form}>
+          <form key={formKey} onSubmit={handleSubmit} className={styles.form}>
             {/* Basic Info Tab */}
             {activeTab === 'basic' && (
               <div className={styles.tabContent}>
@@ -520,45 +561,45 @@ const Profile = () => {
                 <h3>Social Media & Links</h3>
                 
                 <div className={styles.formGroup}>
-                  <label htmlFor="linkedin_url">LinkedIn Profile</label>
+                  <label htmlFor="linkedinUrl">LinkedIn Profile</label>
                   <input
                     type="url"
-                    id="linkedin_url"
-                    name="linkedin_url"
-                    value={profileData.linkedin_url}
+                    id="linkedinUrl"
+                    name="linkedinUrl"
+                    value={profileData.linkedinUrl}
                     onChange={handleInputChange}
                     placeholder="https://linkedin.com/in/yourprofile"
-                    className={errors.linkedin_url ? styles.error : ''}
+                    className={errors.linkedinUrl ? styles.error : ''}
                   />
-                  {errors.linkedin_url && <span className={styles.errorText}>{errors.linkedin_url}</span>}
+                  {errors.linkedinUrl && <span className={styles.errorText}>{errors.linkedinUrl}</span>}
                 </div>
 
                 <div className={styles.formGroup}>
-                  <label htmlFor="github_url">GitHub Profile</label>
+                  <label htmlFor="githubUrl">GitHub Profile</label>
                   <input
                     type="url"
-                    id="github_url"
-                    name="github_url"
-                    value={profileData.github_url}
+                    id="githubUrl"
+                    name="githubUrl"
+                    value={profileData.githubUrl}
                     onChange={handleInputChange}
                     placeholder="https://github.com/yourusername"
-                    className={errors.github_url ? styles.error : ''}
+                    className={errors.githubUrl ? styles.error : ''}
                   />
-                  {errors.github_url && <span className={styles.errorText}>{errors.github_url}</span>}
+                  {errors.githubUrl && <span className={styles.errorText}>{errors.githubUrl}</span>}
                 </div>
 
                 <div className={styles.formGroup}>
-                  <label htmlFor="portfolio_url">Portfolio Website</label>
+                  <label htmlFor="portfolioUrl">Portfolio Website</label>
                   <input
                     type="url"
-                    id="portfolio_url"
-                    name="portfolio_url"
-                    value={profileData.portfolio_url}
+                    id="portfolioUrl"
+                    name="portfolioUrl"
+                    value={profileData.portfolioUrl}
                     onChange={handleInputChange}
                     placeholder="https://yourportfolio.com"
-                    className={errors.portfolio_url ? styles.error : ''}
+                    className={errors.portfolioUrl ? styles.error : ''}
                   />
-                  {errors.portfolio_url && <span className={styles.errorText}>{errors.portfolio_url}</span>}
+                  {errors.portfolioUrl && <span className={styles.errorText}>{errors.portfolioUrl}</span>}
                 </div>
               </div>
             )}
@@ -572,8 +613,8 @@ const Profile = () => {
                   <label className={styles.checkboxLabel}>
                     <input
                       type="checkbox"
-                      name="is_profile_public"
-                      checked={profileData.is_profile_public}
+                      name="isProfilePublic"
+                      checked={profileData.isProfilePublic}
                       onChange={handleInputChange}
                     />
                     <span className={styles.checkmark}></span>
