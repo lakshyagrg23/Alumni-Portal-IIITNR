@@ -62,7 +62,7 @@ const AlumniDirectory = () => {
 
   // Extract unique batches and branches for filters
   useEffect(() => {
-    const uniqueBatches = [...new Set(alumni.map(a => a.graduation_year))].sort((a, b) => b - a)
+    const uniqueBatches = [...new Set(alumni.map(a => a.graduationYear))].sort((a, b) => b - a)
     const uniqueBranches = [...new Set(alumni.map(a => a.branch))].sort()
     setBatches(uniqueBatches)
     setBranches(uniqueBranches)
@@ -214,10 +214,10 @@ const AlumniDirectory = () => {
                 <div key={alum.id} className={styles.alumniCard}>
                   <div className={styles.cardHeader}>
                     <div className={styles.avatar}>
-                      {alum.profile_picture_url ? (
+                      {alum.profilePictureUrl ? (
                         <img 
-                          src={alum.profile_picture_url} 
-                          alt={`${alum.first_name} ${alum.last_name}`}
+                          src={alum.profilePictureUrl} 
+                          alt={`${alum.firstName} ${alum.lastName}`}
                           onError={(e) => {
                             e.target.style.display = 'none'
                             e.target.nextSibling.style.display = 'flex'
@@ -226,32 +226,32 @@ const AlumniDirectory = () => {
                       ) : null}
                       <div 
                         className={styles.avatarInitials}
-                        style={{ display: alum.profile_picture_url ? 'none' : 'flex' }}
+                        style={{ display: alum.profilePictureUrl ? 'none' : 'flex' }}
                       >
-                        {alum.first_name?.charAt(0)}{alum.last_name?.charAt(0)}
+                        {alum.firstName?.charAt(0)}{alum.lastName?.charAt(0)}
                       </div>
                     </div>
                     <div className={styles.basicInfo}>
                       <h3 className={styles.name}>
-                        {alum.first_name} {alum.last_name}
+                        {alum.firstName} {alum.lastName}
                       </h3>
                       <p className={styles.batch}>
-                        {alum.degree} {alum.branch} • {alum.graduation_year}
+                        {alum.degree} {alum.branch} • {alum.graduationYear}
                       </p>
                     </div>
                   </div>
 
                   <div className={styles.cardBody}>
-                    {alum.current_company && (
+                    {alum.currentCompany && (
                       <div className={styles.workInfo}>
-                        <p className={styles.position}>{alum.current_position}</p>
-                        <p className={styles.company}>at {alum.current_company}</p>
+                        <p className={styles.position}>{alum.currentPosition}</p>
+                        <p className={styles.company}>at {alum.currentCompany}</p>
                       </div>
                     )}
 
-                    {alum.current_city && (
+                    {alum.currentCity && (
                       <p className={styles.location}>
-                        📍 {alum.current_city}, {alum.current_state}
+                        📍 {alum.currentCity}, {alum.currentState}
                       </p>
                     )}
 
@@ -276,9 +276,9 @@ const AlumniDirectory = () => {
                     >
                       View Profile
                     </button>
-                    {alum.linkedin_url && (
+                    {alum.linkedinUrl && (
                       <a
-                        href={alum.linkedin_url}
+                        href={alum.linkedinUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className={styles.linkedinButton}

@@ -91,12 +91,12 @@ export const AuthProvider = ({ children }) => {
           // Set token in auth service
           authService.setToken(token)
           
-          // Get user profile
-          const user = await authService.getProfile()
+          // Get user profile - the service returns response.data
+          const response = await authService.getProfile()
           
           dispatch({
             type: authActions.LOAD_USER,
-            payload: user,
+            payload: response, // response already contains the user data
           })
         } catch (error) {
           console.error('Error loading user:', error)

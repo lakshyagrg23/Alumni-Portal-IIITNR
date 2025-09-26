@@ -16,23 +16,24 @@ const Profile = () => {
     email: '',
     profilePicture: '',
     
-    // Alumni profile info
-    graduation_year: '',
+    // Alumni profile info - using camelCase
+    graduationYear: '',
     branch: '',
     degree: '',
-    roll_number: '',
+    studentId: '',  // Changed from roll_number to studentId
     bio: '',
-    current_company: '',
-    current_position: '',
-    current_city: '',
-    current_state: '',
-    current_country: '',
-    linkedin_url: '',
-    github_url: '',
-    portfolio_url: '',
+    currentCompany: '',
+    currentPosition: '',
+    currentCity: '',
+    currentState: '',
+    currentCountry: '',
+    linkedinUrl: '',
+    githubUrl: '',
+    portfolioUrl: '',
     skills: '',
     achievements: '',
-    is_profile_public: true,
+    interests: '',  // Added missing interests field
+    isProfilePublic: true,
   })
   const [errors, setErrors] = useState({})
   const [message, setMessage] = useState('')
@@ -58,25 +59,28 @@ const Profile = () => {
           email: data.email || '',
           profilePicture: data.profilePicture || '',
           
-          // Alumni profile data
-          graduation_year: data.alumniProfile?.graduation_year || '',
+          // Alumni profile data - convert to camelCase
+          graduationYear: data.alumniProfile?.graduation_year || '',
           branch: data.alumniProfile?.branch || '',
           degree: data.alumniProfile?.degree || '',
-          roll_number: data.alumniProfile?.student_id || '', // student_id from DB maps to roll_number in frontend
+          studentId: data.alumniProfile?.student_id || '',
           bio: data.alumniProfile?.bio || '',
-          current_company: data.alumniProfile?.current_company || '',
-          current_position: data.alumniProfile?.current_position || '',
-          current_city: data.alumniProfile?.current_city || '',
-          current_state: data.alumniProfile?.current_state || '',
-          current_country: data.alumniProfile?.current_country || '',
-          linkedin_url: data.alumniProfile?.linkedin_url || '',
-          github_url: data.alumniProfile?.github_url || '',
-          portfolio_url: data.alumniProfile?.portfolio_url || '',
+          currentCompany: data.alumniProfile?.current_company || '',
+          currentPosition: data.alumniProfile?.current_position || '',
+          currentCity: data.alumniProfile?.current_city || '',
+          currentState: data.alumniProfile?.current_state || '',
+          currentCountry: data.alumniProfile?.current_country || '',
+          linkedinUrl: data.alumniProfile?.linkedin_url || '',
+          githubUrl: data.alumniProfile?.github_url || '',
+          portfolioUrl: data.alumniProfile?.portfolio_url || '',
           skills: Array.isArray(data.alumniProfile?.skills) 
             ? data.alumniProfile.skills.join(', ') 
             : data.alumniProfile?.skills || '',
           achievements: data.alumniProfile?.achievements || '',
-          is_profile_public: data.alumniProfile?.is_profile_public ?? true,
+          interests: Array.isArray(data.alumniProfile?.interests) 
+            ? data.alumniProfile.interests.join(', ') 
+            : data.alumniProfile?.interests || '',
+          isProfilePublic: data.alumniProfile?.is_profile_public ?? true,
         })
       }
     } catch (error) {
@@ -111,13 +115,13 @@ const Profile = () => {
       newErrors.lastName = 'Last name is required'
     }
     
-    if (profileData.graduation_year && 
-        (profileData.graduation_year < 2000 || profileData.graduation_year > new Date().getFullYear() + 5)) {
-      newErrors.graduation_year = 'Please enter a valid graduation year'
+    if (profileData.graduationYear && 
+        (profileData.graduationYear < 2000 || profileData.graduationYear > new Date().getFullYear() + 5)) {
+      newErrors.graduationYear = 'Please enter a valid graduation year'
     }
     
     // Validate URLs if provided
-    const urlFields = ['linkedin_url', 'github_url', 'portfolio_url']
+    const urlFields = ['linkedinUrl', 'githubUrl', 'portfolioUrl']
     urlFields.forEach(field => {
       if (profileData[field] && !isValidUrl(profileData[field])) {
         newErrors[field] = 'Please enter a valid URL'
@@ -151,12 +155,22 @@ const Profile = () => {
       // Prepare the data with proper array handling
       const updateData = { ...profileData }
       
-      // Convert skills string to array if it's a string
-      if (typeof updateData.skills === 'string' && updateData.skills.trim()) {
-        updateData.skills = updateData.skills.split(',').map(skill => skill.trim()).filter(skill => skill.length > 0)
-      } else if (!updateData.skills) {
-        updateData.skills = []
-      }
+      // Convert array fields (skills, achievements, interests) from strings to arrays
+      const arrayFields = ['skills', 'achievements', 'interests'];
+      arrayFields.forEach(field => {
+        if (typeof updateData[field] === 'string') {
+          if (updateData[field].trim() === '') {
+            updateData[field] = [];
+          } else {
+            updateData[field] = updateData[field]
+              .split(',')
+              .map(item => item.trim())
+              .filter(item => item.length > 0);
+          }
+        } else if (!updateData[field] || !Array.isArray(updateData[field])) {
+          updateData[field] = [];
+        }
+      });
       
       await updateProfile(updateData)
       setMessage('Profile updated successfully!')

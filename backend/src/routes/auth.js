@@ -3,6 +3,8 @@ const router = express.Router();
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { authenticate } = require("../middleware/auth");
+const { query } = require("../config/database");
 
 /**
  * @route   POST /api/auth/register
@@ -56,7 +58,7 @@ router.post("/register", async (req, res) => {
       userId: user.id,
       firstName,
       lastName,
-      isProfilePublic: false, // Default to private
+      isProfilePublic: true, // Default to public so they appear in directory
     };
 
     const profile = await AlumniProfile.create(profileData);
@@ -182,6 +184,7 @@ router.post("/google", async (req, res) => {
     }
 
     let user = await User.findByEmail(email);
+    
     if (!user) {
       // Register new user with Google provider
       const userData = {
@@ -192,6 +195,21 @@ router.post("/google", async (req, res) => {
         isApproved: true,
       };
       user = await User.create(userData);
+
+      // Create alumni profile for OAuth user
+      const AlumniProfile = require("../models/AlumniProfile");
+      const nameParts = name ? name.split(' ') : ['', ''];
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      
+      const profileData = {
+        userId: user.id,
+        firstName,
+        lastName,
+        isProfilePublic: true,
+      };
+
+      await AlumniProfile.create(profileData);
     }
 
     // Generate JWT token
@@ -239,6 +257,7 @@ router.post("/linkedin", async (req, res) => {
     }
 
     let user = await User.findByEmail(email);
+    
     if (!user) {
       // Register new user with LinkedIn provider
       const userData = {
@@ -249,6 +268,21 @@ router.post("/linkedin", async (req, res) => {
         isApproved: true,
       };
       user = await User.create(userData);
+
+      // Create alumni profile for OAuth user
+      const AlumniProfile = require("../models/AlumniProfile");
+      const nameParts = name ? name.split(' ') : ['', ''];
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      
+      const profileData = {
+        userId: user.id,
+        firstName,
+        lastName,
+        isProfilePublic: true,
+      };
+
+      await AlumniProfile.create(profileData);
     }
 
     // Generate JWT token
@@ -285,12 +319,21 @@ router.post("/linkedin", async (req, res) => {
  * @desc    Get current user
  * @access  Private
  */
-router.get("/me", async (req, res) => {
+router.get("/me", authenticate, async (req, res) => {
   try {
-    // This route will need authentication middleware
+    const user = req.user;
+    
     res.json({
       success: true,
-      message: "Get current user endpoint - requires auth middleware",
+      data: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        isApproved: user.is_approved,
+        isActive: user.is_active,
+        provider: user.provider,
+        createdAt: user.created_at,
+      },
     });
   } catch (error) {
     console.error("Get user error:", error);
@@ -306,43 +349,13 @@ router.get("/me", async (req, res) => {
  * @desc    Get current user profile with alumni data
  * @access  Private
  */
-router.get("/profile", async (req, res) => {
+router.get("/profile", authenticate, async (req, res) => {
   try {
-    // For now, we'll get the first user in the database as a demo
-    // In production, this would come from auth middleware: req.user.id
-    const { query } = require("../config/database");
-
-    // Get the first user from database for testing
-    let userResult = await query(
-      "SELECT id FROM users ORDER BY created_at LIMIT 1",
-      []
-    );
-
-    let mockUserId;
-    if (userResult.rows.length === 0) {
-      // Create a test user if none exists
-      const testUser = await User.create({
-        email: "test@iiitnr.edu.in",
-        provider: "local",
-        is_approved: true,
-        is_active: true,
-      });
-      mockUserId = testUser.id;
-
-      // Create alumni profile for test user
-      const AlumniProfile = require("../models/AlumniProfile");
-      await AlumniProfile.create({
-        userId: testUser.id,
-        firstName: "Test",
-        lastName: "User",
-        isProfilePublic: true,
-      });
-    } else {
-      mockUserId = userResult.rows[0].id;
-    }
+    // Get the actual authenticated user's ID from the auth middleware
+    const userId = req.user.id;
 
     // Get user basic info (only email, role, approval status)
-    const user = await User.findById(mockUserId);
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -355,13 +368,13 @@ router.get("/profile", async (req, res) => {
     try {
       const result = await query(
         "SELECT * FROM alumni_profiles WHERE user_id = $1",
-        [mockUserId]
+        [userId]
       );
       if (result.rows.length > 0) {
         alumniProfile = result.rows[0];
       }
     } catch (error) {
-      console.log("No alumni profile found for user:", mockUserId);
+      console.log("No alumni profile found for user:", userId);
     }
 
     // If no alumni profile exists, return basic user data with empty alumni profile
@@ -418,241 +431,94 @@ router.get("/profile", async (req, res) => {
  * @desc    Update current user profile
  * @access  Private
  */
-router.put("/profile", async (req, res) => {
+router.put("/profile", authenticate, async (req, res) => {
   try {
-    // For now, we'll get the first user in the database as a demo
-    // In production, this would come from auth middleware: req.user.id
-    const { query } = require("../config/database");
-
-    // Get the first user from database for testing
-    const userResult = await query(
-      "SELECT id FROM users ORDER BY created_at LIMIT 1",
-      []
-    );
-
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No users found. Please register first.",
-      });
-    }
-
-    const mockUserId = userResult.rows[0].id;
+    const userId = req.user.id;
     const updateData = req.body;
 
-    // All profile data goes to alumni_profiles table now
-    // Only keep email updates in users table
-    const userFields = ["email"]; // Minimal user table updates
+    // Only email updates go to users table
     const userData = {};
     const alumniData = {};
 
-    Object.keys(updateData).forEach((key) => {
-      if (userFields.includes(key)) {
-        userData[key] = updateData[key];
-      } else {
-        // Everything else goes to alumni profile (including firstName, lastName, profilePicture)
-        alumniData[key] = updateData[key];
+    // Separate user data from alumni profile data
+    if (updateData.email) {
+      userData.email = updateData.email;
+    }
+
+    // All other data goes to alumni profile (using camelCase)
+    const alumniFields = [
+      'firstName', 'lastName', 'middleName', 'profilePicture', 'phone', 
+      'dateOfBirth', 'gender', 'studentId', 'admissionYear', 'graduationYear',
+      'degree', 'branch', 'cgpa', 'currentCompany', 'currentPosition', 
+      'industry', 'workExperienceYears', 'skills', 'linkedinUrl', 'githubUrl', 
+      'portfolioUrl', 'currentCity', 'currentState', 'currentCountry', 
+      'hometownCity', 'hometownState', 'bio', 'achievements', 'interests',
+      'isProfilePublic', 'showContactInfo', 'showWorkInfo', 'showAcademicInfo'
+    ];
+
+    alumniFields.forEach(field => {
+      if (updateData.hasOwnProperty(field)) {
+        alumniData[field] = updateData[field];
       }
     });
 
-    // Update user table only for email changes
-    if (Object.keys(userData).length > 0) {
-      await User.update(mockUserId, userData);
+    // Handle legacy field names from frontend
+    if (updateData.rollNumber) {
+      alumniData.studentId = updateData.rollNumber;
     }
 
-    // Update or create alumni profile with all profile data
+    // Update user table if needed
+    if (Object.keys(userData).length > 0) {
+      await User.update(userId, userData);
+    }
+
+    // Update or create alumni profile
     if (Object.keys(alumniData).length > 0) {
-      // Handle skills array properly
-      if (alumniData.skills && typeof alumniData.skills === "string") {
-        if (alumniData.skills.trim() === "") {
-          alumniData.skills = [];
-        } else {
-          alumniData.skills = alumniData.skills
-            .split(",")
-            .map((skill) => skill.trim())
-            .filter((skill) => skill.length > 0);
+      // Handle array fields properly
+      const arrayFields = ['skills', 'achievements', 'interests'];
+      arrayFields.forEach(field => {
+        if (alumniData.hasOwnProperty(field)) {
+          if (!alumniData[field] || alumniData[field] === '' || alumniData[field] === null) {
+            // Convert empty/null/undefined values to empty arrays
+            alumniData[field] = [];
+          } else if (typeof alumniData[field] === 'string') {
+            if (alumniData[field].trim() === '') {
+              alumniData[field] = [];
+            } else {
+              alumniData[field] = alumniData[field]
+                .split(',')
+                .map(item => item.trim())
+                .filter(item => item.length > 0);
+            }
+          } else if (!Array.isArray(alumniData[field])) {
+            alumniData[field] = [];
+          }
         }
-      } else if (!alumniData.skills) {
-        alumniData.skills = [];
-      }
-
-      // Handle achievements array properly
-      if (
-        alumniData.achievements &&
-        typeof alumniData.achievements === "string"
-      ) {
-        if (alumniData.achievements.trim() === "") {
-          alumniData.achievements = [];
-        } else {
-          alumniData.achievements = alumniData.achievements
-            .split(",")
-            .map((achievement) => achievement.trim())
-            .filter((achievement) => achievement.length > 0);
-        }
-      } else if (!alumniData.achievements) {
-        alumniData.achievements = [];
-      }
-
-      // Handle interests array properly
-      if (alumniData.interests && typeof alumniData.interests === "string") {
-        if (alumniData.interests.trim() === "") {
-          alumniData.interests = [];
-        } else {
-          alumniData.interests = alumniData.interests
-            .split(",")
-            .map((interest) => interest.trim())
-            .filter((interest) => interest.length > 0);
-        }
-      } else if (!alumniData.interests) {
-        alumniData.interests = [];
-      }
+      });
 
       // Check if alumni profile exists
       const existingProfile = await query(
         "SELECT id FROM alumni_profiles WHERE user_id = $1",
-        [mockUserId]
+        [userId]
       );
 
       if (existingProfile.rows.length > 0) {
-        // Update existing profile - manually map fields to handle special cases
-        const dbFields = {};
-
-        // Define valid database fields to prevent errors
-        const validFields = new Set([
-          "first_name",
-          "last_name",
-          "middle_name",
-          "profile_picture_url",
-          "phone",
-          "date_of_birth",
-          "gender",
-          "student_id",
-          "admission_year",
-          "graduation_year",
-          "degree",
-          "branch",
-          "cgpa",
-          "current_company",
-          "current_position",
-          "industry",
-          "work_experience_years",
-          "skills",
-          "linkedin_url",
-          "github_url",
-          "portfolio_url",
-          "current_city",
-          "current_state",
-          "current_country",
-          "hometown_city",
-          "hometown_state",
-          "bio",
-          "achievements",
-          "interests",
-          "is_profile_public",
-          "show_contact_info",
-          "show_work_info",
-          "show_academic_info",
-        ]);
-
-        Object.keys(alumniData).forEach((key) => {
-          let dbKey;
-          // Handle special field mappings
-          if (key === "firstName") {
-            dbKey = "first_name";
-          } else if (key === "lastName") {
-            dbKey = "last_name";
-          } else if (key === "profilePicture") {
-            dbKey = "profile_picture_url";
-          } else if (key === "roll_number") {
-            dbKey = "student_id"; // roll_number maps to student_id in database
-          } else {
-            // Convert camelCase to snake_case for other fields
-            dbKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
-          }
-
-          // Only include valid database fields
-          if (validFields.has(dbKey)) {
-            // Handle array fields properly - ensure they are arrays, not empty strings
-            if (["skills", "achievements", "interests"].includes(dbKey)) {
-              if (Array.isArray(alumniData[key])) {
-                dbFields[dbKey] = alumniData[key];
-              } else if (
-                typeof alumniData[key] === "string" &&
-                alumniData[key].trim() === ""
-              ) {
-                dbFields[dbKey] = [];
-              } else {
-                dbFields[dbKey] = alumniData[key];
-              }
-            } else {
-              dbFields[dbKey] = alumniData[key];
-            }
-          }
-        });
-
-        // Remove any undefined values
-        Object.keys(dbFields).forEach((key) => {
-          if (dbFields[key] === undefined) {
-            delete dbFields[key];
-          }
-        });
-
-        if (Object.keys(dbFields).length > 0) {
-          const setClause = Object.keys(dbFields)
-            .map((key, index) => `${key} = $${index + 2}`)
-            .join(", ");
-          const values = [
-            existingProfile.rows[0].id,
-            ...Object.values(dbFields),
-          ];
-
-          await query(
-            `UPDATE alumni_profiles SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
-            values
-          );
-        }
-      } else {
-        // Create new profile with all data in alumni_profiles table
+        // Update existing profile using the model
         const AlumniProfile = require("../models/AlumniProfile");
-
-        // Map to camelCase for the model
-        const mappedData = {
-          userId: mockUserId,
-          firstName: alumniData.firstName || "",
-          lastName: alumniData.lastName || "",
-          profilePictureUrl: alumniData.profilePicture || "",
-          graduationYear: alumniData.graduation_year,
-          degree: alumniData.degree,
-          branch: alumniData.branch,
-          studentId: alumniData.roll_number || alumniData.student_id, // Handle both field names
-          currentCompany: alumniData.current_company,
-          currentPosition: alumniData.current_position,
-          currentCity: alumniData.current_city,
-          currentState: alumniData.current_state,
-          currentCountry: alumniData.current_country,
-          bio: alumniData.bio,
-          skills: alumniData.skills || [],
-          linkedinUrl: alumniData.linkedin_url,
-          githubUrl: alumniData.github_url,
-          portfolioUrl: alumniData.portfolio_url,
-          achievements: alumniData.achievements,
-          isProfilePublic: alumniData.is_profile_public,
-          showContactInfo: alumniData.show_contact_info || false,
-          showWorkInfo: alumniData.show_work_info !== false,
-          showAcademicInfo: alumniData.show_academic_info !== false,
-          interests: alumniData.interests || [],
-          workExperienceYears: alumniData.work_experience_years || 0,
-        };
-
-        await AlumniProfile.create(mappedData);
+        await AlumniProfile.update(existingProfile.rows[0].id, alumniData);
+      } else {
+        // Create new profile
+        const AlumniProfile = require("../models/AlumniProfile");
+        alumniData.userId = userId;
+        await AlumniProfile.create(alumniData);
       }
     }
 
-    // Return updated profile (fetch from alumni_profiles table primarily)
-    const updatedUser = await User.findById(mockUserId);
+    // Return updated profile
+    const updatedUser = await User.findById(userId);
     const profileResult = await query(
       "SELECT * FROM alumni_profiles WHERE user_id = $1",
-      [mockUserId]
+      [userId]
     );
 
     const alumniProfile = profileResult.rows[0] || null;
@@ -664,13 +530,9 @@ router.put("/profile", async (req, res) => {
         id: updatedUser.id,
         email: updatedUser.email,
         role: updatedUser.role,
-        // Get profile data from alumni_profiles table
         firstName: alumniProfile?.first_name || "",
         lastName: alumniProfile?.last_name || "",
-        profilePicture:
-          alumniProfile?.profile_picture_url ||
-          updatedUser.profile_picture_url ||
-          "",
+        profilePicture: alumniProfile?.profile_picture_url || "",
         alumniProfile: alumniProfile,
       },
     });

@@ -142,35 +142,43 @@ const ProfileCompletion = () => {
         ? formData.skills.split(',').map(skill => skill.trim()).filter(skill => skill.length > 0)
         : []
       
-      // Create alumni profile
-      const profileData = {
-        // user_id will be determined by backend from auth
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        graduation_year: parseInt(formData.graduation_year),
-        branch: formData.branch,
-        degree: formData.degree,
-        roll_number: formData.roll_number, // This maps to student_id in the backend
-        current_company: formData.current_company,
-        current_position: formData.current_position,
-        current_city: formData.current_city,
-        current_state: formData.current_state,
-        current_country: formData.current_country,
-        bio: formData.bio,
-        skills: skillsArray, // Send as array
-        linkedin_url: formData.linkedin_url,
-        github_url: formData.github_url,
-        is_profile_public: formData.is_profile_public,
-        // Add missing fields that the backend expects
-        interests: [],
-        show_contact_info: false,
-        show_work_info: true,
-        show_academic_info: true,
-        work_experience_years: 0
+      // Get current user's alumni profile first
+      const profileResponse = await API.get('/auth/profile')
+      
+      if (!profileResponse.success || !profileResponse.data.alumniProfile) {
+        throw new Error('Alumni profile not found. Please contact support.')
       }
       
-      // Submit to backend
-      await API.post('/alumni', profileData)
+      const alumniProfile = profileResponse.data.alumniProfile
+      
+      // Create alumni profile update data - use camelCase as expected by the model
+      const profileData = {
+        firstName: formData.first_name,
+        lastName: formData.last_name,
+        graduationYear: parseInt(formData.graduation_year),
+        branch: formData.branch,
+        degree: formData.degree,
+        studentId: formData.roll_number, // This maps to student_id in the database
+        currentCompany: formData.current_company,
+        currentPosition: formData.current_position,
+        currentCity: formData.current_city,
+        currentState: formData.current_state,
+        currentCountry: formData.current_country,
+        bio: formData.bio,
+        skills: skillsArray, // Send as array
+        linkedinUrl: formData.linkedin_url,
+        githubUrl: formData.github_url,
+        isProfilePublic: formData.is_profile_public, // This is the key field!
+        // Add missing fields that the backend expects
+        interests: [],
+        showContactInfo: false,
+        showWorkInfo: true,
+        showAcademicInfo: true,
+        workExperienceYears: 0
+      }
+      
+      // Update the existing profile instead of creating a new one
+      await API.put(`/alumni/${alumniProfile.id}`, profileData)
       
       // Update auth context
       await updateProfile(formData)

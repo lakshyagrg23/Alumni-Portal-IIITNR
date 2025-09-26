@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const AlumniProfile = require("../models/AlumniProfile");
-const { query } = require("../config/database");
 
 /**
  * @route   GET /api/alumni
@@ -23,70 +22,27 @@ router.get("/", async (req, res) => {
       sortOrder = "DESC",
     } = req.query;
 
-    // Simple query for now - we'll enhance this
-    let queryText = `
-      SELECT 
-        id, first_name, last_name, graduation_year, branch, degree,
-        current_company, current_position, current_city, current_state,
-        current_country, skills, linkedin_url, bio, profile_picture_url
-      FROM alumni_profiles 
-      WHERE is_profile_public = true
-    `;
-    
-    let queryParams = [];
-    let paramIndex = 1;
-
-    // Add search filter
-    if (search) {
-      queryText += ` AND (
-        LOWER(first_name || ' ' || last_name) LIKE LOWER($${paramIndex}) OR
-        LOWER(current_company) LIKE LOWER($${paramIndex})
-      )`;
-      queryParams.push(`%${search}%`);
-      paramIndex++;
-    }
-
-    // Add batch filter
-    if (batch) {
-      queryText += ` AND graduation_year = $${paramIndex}`;
-      queryParams.push(parseInt(batch));
-      paramIndex++;
-    }
-
-    // Add branch filter
-    if (branch) {
-      queryText += ` AND LOWER(branch) LIKE LOWER($${paramIndex})`;
-      queryParams.push(`%${branch}%`);
-      paramIndex++;
-    }
-
-    // Add ordering
-    queryText += ` ORDER BY ${sortBy} ${sortOrder}`;
-    
-    // Add pagination
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-    queryText += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-    queryParams.push(parseInt(limit), offset);
-
-    // Execute query
-    const result = await query(queryText, queryParams);
-    const alumni = result.rows;
-
-    // Get total count for pagination
-    const countResult = await query(
-      "SELECT COUNT(*) FROM alumni_profiles WHERE is_profile_public = true",
-      []
-    );
-    const total = parseInt(countResult.rows[0].count);
+    // Use AlumniProfile.findAll to get only alumni (not admin) users
+    const result = await AlumniProfile.findAll({
+      page: parseInt(page),
+      limit: parseInt(limit),
+      search,
+      graduationYear: batch ? parseInt(batch) : undefined,
+      branch,
+      company,
+      currentCity: location, // Map location to currentCity
+      orderBy: `ap.${sortBy} ${sortOrder}`,
+      publicOnly: true, // Only show public profiles for privacy
+    });
 
     res.json({
       success: true,
-      data: alumni,
+      data: result.profiles,
       pagination: {
-        current: parseInt(page),
-        total: Math.ceil(total / limit),
-        count: alumni.length,
-        totalRecords: total,
+        current: result.pagination.page,
+        total: result.pagination.pages,
+        count: result.profiles.length,
+        totalRecords: result.pagination.total,
       },
     });
   } catch (error) {
@@ -94,7 +50,7 @@ router.get("/", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error while fetching alumni",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 });
@@ -131,15 +87,15 @@ router.get("/:id", async (req, res) => {
       data: {
         alumni: alumni,
         workExperiences: alumni.workExperiences || [],
-        education: alumni.education || []
-      }
+        education: alumni.education || [],
+      },
     });
   } catch (error) {
     console.error("Get alumni profile error:", error);
     res.status(500).json({
       success: false,
       message: "Server error while fetching alumni profile",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 });
@@ -155,21 +111,21 @@ router.post("/", async (req, res) => {
 
     // For demo purposes, if no user_id provided, get the first user
     let userId = profileData.user_id;
-    
+
     if (!userId) {
       const { query } = require("../config/database");
       const userResult = await query(
         "SELECT id FROM users ORDER BY created_at LIMIT 1",
         []
       );
-      
+
       if (userResult.rows.length === 0) {
         return res.status(400).json({
           success: false,
           message: "No users found. Please register first.",
         });
       }
-      
+
       userId = userResult.rows[0].id;
       profileData.user_id = userId;
     }
@@ -194,10 +150,22 @@ router.post("/", async (req, res) => {
       githubUrl: profileData.github_url,
       interests: profileData.interests || [],
       workExperienceYears: profileData.work_experience_years || 0,
-      isProfilePublic: profileData.is_profile_public !== undefined ? profileData.is_profile_public : true,
-      showContactInfo: profileData.show_contact_info !== undefined ? profileData.show_contact_info : false,
-      showWorkInfo: profileData.show_work_info !== undefined ? profileData.show_work_info : true,
-      showAcademicInfo: profileData.show_academic_info !== undefined ? profileData.show_academic_info : true,
+      isProfilePublic:
+        profileData.is_profile_public !== undefined
+          ? profileData.is_profile_public
+          : true,
+      showContactInfo:
+        profileData.show_contact_info !== undefined
+          ? profileData.show_contact_info
+          : false,
+      showWorkInfo:
+        profileData.show_work_info !== undefined
+          ? profileData.show_work_info
+          : true,
+      showAcademicInfo:
+        profileData.show_academic_info !== undefined
+          ? profileData.show_academic_info
+          : true,
     };
 
     const alumni = await AlumniProfile.create(mappedData);
