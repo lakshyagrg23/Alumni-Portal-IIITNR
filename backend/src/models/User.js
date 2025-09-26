@@ -51,8 +51,6 @@ class User {
     const {
       email,
       password,
-      first_name,
-      last_name,
       provider = "local",
       providerId,
       role = "alumni",
@@ -66,20 +64,14 @@ class User {
       provider,
       role,
       is_approved:
-        isApproved !== undefined ? isApproved : 
-        is_approved !== undefined ? is_approved : 
-        this.isInstituteEmail(email),
+        isApproved !== undefined
+          ? isApproved
+          : is_approved !== undefined
+            ? is_approved
+            : this.isInstituteEmail(email),
       is_active,
       email_verified: provider !== "local", // OAuth users are pre-verified
     };
-
-    // Add name fields if provided
-    if (first_name) {
-      data.first_name = first_name;
-    }
-    if (last_name) {
-      data.last_name = last_name;
-    }
 
     // Add provider ID for OAuth users
     if (providerId) {

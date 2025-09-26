@@ -38,12 +38,10 @@ router.post("/register", async (req, res) => {
       providerName = "linkedin";
     }
 
-    // Create new user with name fields
+    // Create new user (authentication data only)
     const userData = {
       email: email.toLowerCase(),
       password,
-      first_name: firstName,
-      last_name: lastName,
       role: "alumni",
       provider: providerName,
       is_approved: true, // Auto-approve for now
@@ -51,6 +49,17 @@ router.post("/register", async (req, res) => {
     };
 
     const user = await User.create(userData);
+
+    // Create alumni profile with personal information
+    const AlumniProfile = require("../models/AlumniProfile");
+    const profileData = {
+      userId: user.id,
+      firstName,
+      lastName,
+      isProfilePublic: false, // Default to private
+    };
+
+    const profile = await AlumniProfile.create(profileData);
 
     // Generate JWT token
     const token = jwt.sign(
@@ -66,8 +75,8 @@ router.post("/register", async (req, res) => {
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name,
+        firstName: profile.first_name,
+        lastName: profile.last_name,
         role: user.role,
         isApproved: user.is_approved,
         isActive: user.is_active,
@@ -314,13 +323,20 @@ router.get("/profile", async (req, res) => {
       // Create a test user if none exists
       const testUser = await User.create({
         email: "test@iiitnr.edu.in",
-        first_name: "Test",
-        last_name: "User",
         provider: "local",
         is_approved: true,
         is_active: true,
       });
       mockUserId = testUser.id;
+
+      // Create alumni profile for test user
+      const AlumniProfile = require("../models/AlumniProfile");
+      await AlumniProfile.create({
+        userId: testUser.id,
+        firstName: "Test",
+        lastName: "User",
+        isProfilePublic: true,
+      });
     } else {
       mockUserId = userResult.rows[0].id;
     }
@@ -360,9 +376,9 @@ router.get("/profile", async (req, res) => {
           isActive: user.is_active,
           provider: user.provider,
           createdAt: user.created_at,
-          // Get name from users table as fallback
-          firstName: user.first_name || "",
-          lastName: user.last_name || "",
+          // Name comes from alumni_profiles, empty if no profile
+          firstName: "",
+          lastName: "",
           profilePicture: user.profile_picture_url || "",
           alumniProfile: null,
         },
@@ -381,8 +397,8 @@ router.get("/profile", async (req, res) => {
         provider: user.provider,
         createdAt: user.created_at,
         // Get primary profile data from alumni_profiles table
-        firstName: alumniProfile.first_name || user.first_name || "",
-        lastName: alumniProfile.last_name || user.last_name || "",
+        firstName: alumniProfile.first_name || "",
+        lastName: alumniProfile.last_name || "",
         profilePicture:
           alumniProfile.profile_picture_url || user.profile_picture_url || "",
         alumniProfile: alumniProfile,
@@ -649,8 +665,8 @@ router.put("/profile", async (req, res) => {
         email: updatedUser.email,
         role: updatedUser.role,
         // Get profile data from alumni_profiles table
-        firstName: alumniProfile?.first_name || updatedUser.first_name || "",
-        lastName: alumniProfile?.last_name || updatedUser.last_name || "",
+        firstName: alumniProfile?.first_name || "",
+        lastName: alumniProfile?.last_name || "",
         profilePicture:
           alumniProfile?.profile_picture_url ||
           updatedUser.profile_picture_url ||
