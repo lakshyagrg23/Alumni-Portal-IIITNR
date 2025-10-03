@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const axios = require("axios");
 const { authenticate } = require("../middleware/auth");
 const { query } = require("../config/database");
 
@@ -350,6 +351,85 @@ router.post("/linkedin", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error. Please try again.",
+    });
+  }
+});
+
+/**
+ * @route   POST /api/auth/linkedin/callback
+ * @desc    Exchange LinkedIn authorization code for user data (handles CORS)
+ * @access  Public
+ */
+router.post("/linkedin/callback", async (req, res) => {
+  try {
+    const { code, redirectUri } = req.body;
+
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        message: "Authorization code is required",
+      });
+    }
+
+    // Use the EXACT redirect URI from frontend (must match authorization request)
+    const finalRedirectUri = redirectUri || "http://localhost:3000/linkedin";
+    
+    console.log('LinkedIn token exchange:', {
+      code: code.substring(0, 10) + '...',
+      redirectUri: finalRedirectUri,
+      clientId: process.env.LINKEDIN_CLIENT_ID
+    });
+
+    // Exchange authorization code for access token
+    const tokenResponse = await axios.post(
+      "https://www.linkedin.com/oauth/v2/accessToken",
+      new URLSearchParams({
+        grant_type: "authorization_code",
+        code: code,
+        redirect_uri: finalRedirectUri,
+        client_id: process.env.LINKEDIN_CLIENT_ID,
+        client_secret: process.env.LINKEDIN_CLIENT_SECRET,
+      }),
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
+
+    const accessToken = tokenResponse.data.access_token;
+
+    // Get user info using OpenID Connect userinfo endpoint
+    const userinfoResponse = await axios.get(
+      "https://api.linkedin.com/v2/userinfo",
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    const userinfo = userinfoResponse.data;
+
+    // Extract user data
+    const userData = {
+      email: userinfo.email,
+      linkedinId: userinfo.sub,
+      name: userinfo.name || `${userinfo.given_name || ""} ${userinfo.family_name || ""}`.trim(),
+      picture: userinfo.picture,
+    };
+
+    // Return user data to frontend (frontend will call /api/auth/linkedin to login)
+    res.json({
+      success: true,
+      data: userData,
+    });
+  } catch (error) {
+    console.error("LinkedIn callback error:", error.response?.data || error.message);
+    res.status(500).json({
+      success: false,
+      message: error.response?.data?.error_description || "Failed to exchange LinkedIn authorization code",
+      error: error.response?.data || error.message,
     });
   }
 });

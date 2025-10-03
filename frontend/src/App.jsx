@@ -12,6 +12,7 @@ import About from '@pages/About'
 import Login from '@pages/auth/Login'
 import Register from '@pages/auth/Register'
 import ProfileCompletion from '@pages/auth/ProfileCompletion'
+import LinkedInCallback from '@pages/auth/LinkedInCallback'
 import Dashboard from '@pages/Dashboard'
 import AlumniDirectory from '@pages/AlumniDirectory'
 import AlumniProfile from '@pages/AlumniProfile'
@@ -86,6 +87,9 @@ function App() {
               user ? <Dashboard /> : <Register />
             } 
           />
+          
+          {/* LinkedIn OAuth Callback */}
+          <Route path="/linkedin" element={<LinkedInCallback />} />
           
           {/* Profile Completion - Protected but allows incomplete profiles */}
           <Route 
