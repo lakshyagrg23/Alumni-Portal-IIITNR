@@ -4,7 +4,8 @@ import { useAuth } from '@hooks/useAuth'
 import styles from './Header.module.css'
 
 const Header = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false)
   const { user, logout, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -12,15 +13,30 @@ const Header = () => {
   const handleLogout = () => {
     logout()
     navigate('/')
-    setIsMenuOpen(false)
+    setIsMobileMenuOpen(false)
+    setIsUserDropdownOpen(false)
   }
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen)
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen)
+    setIsUserDropdownOpen(false) // Close user dropdown when opening mobile menu
   }
 
-  const closeMenu = () => {
-    setIsMenuOpen(false)
+  const toggleUserDropdown = () => {
+    setIsUserDropdownOpen(!isUserDropdownOpen)
+  }
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false)
+  }
+
+  const closeUserDropdown = () => {
+    setIsUserDropdownOpen(false)
+  }
+
+  const closeAllMenus = () => {
+    setIsMobileMenuOpen(false)
+    setIsUserDropdownOpen(false)
   }
 
   const isActiveLink = (path) => {
@@ -32,7 +48,7 @@ const Header = () => {
       <div className={styles.container}>
         {/* Logo and Institute Name */}
         <div className={styles.logo}>
-          <Link to="/" className={styles.logoLink} onClick={closeMenu}>
+          <Link to="/" className={styles.logoLink} onClick={closeAllMenus}>
             <img 
               src="/iiit-logo.png" 
               alt="IIIT Naya Raipur Logo" 
@@ -85,10 +101,10 @@ const Header = () => {
                 Directory
               </Link>
               <Link 
-                to="/connect" 
-                className={`${styles.navLink} ${isActiveLink('/connect') ? styles.active : ''}`}
+                to="/dashboard" 
+                className={`${styles.navLink} ${isActiveLink('/dashboard') ? styles.active : ''}`}
               >
-                Connect
+                Dashboard
               </Link>
             </>
           )}
@@ -120,7 +136,7 @@ const Header = () => {
               </Link>
 
               <div className={styles.userMenu}>
-                <button className={styles.userButton} onClick={toggleMenu}>
+                <button className={styles.userButton} onClick={toggleUserDropdown}>
                 <img 
                   src={user?.profilePicture || '/default-avatar.svg'}
                   alt={`${user?.firstName} ${user?.lastName}`}
@@ -142,19 +158,13 @@ const Header = () => {
                 </svg>
               </button>
               
-              {isMenuOpen && (
+              {isUserDropdownOpen && (
                 <div className={styles.dropdown}>
-                  <Link to="/dashboard" className={styles.dropdownItem} onClick={closeMenu}>
-                    Dashboard
-                  </Link>
-                  <Link to="/profile" className={styles.dropdownItem} onClick={closeMenu}>
+                  <Link to="/profile" className={styles.dropdownItem} onClick={closeAllMenus}>
                     My Profile
                   </Link>
-                  <Link to="/messages" className={styles.dropdownItem} onClick={closeMenu}>
-                    Messages
-                  </Link>
                   {user?.role === 'admin' && (
-                    <Link to="/admin" className={styles.dropdownItem} onClick={closeMenu}>
+                    <Link to="/admin" className={styles.dropdownItem} onClick={closeAllMenus}>
                       Admin Panel
                     </Link>
                   )}
@@ -181,7 +191,7 @@ const Header = () => {
         {/* Mobile Menu Button */}
         <button 
           className={styles.mobileMenuButton}
-          onClick={toggleMenu}
+          onClick={toggleMobileMenu}
           aria-label="Toggle mobile menu"
         >
           <span className={styles.hamburger}></span>
@@ -191,41 +201,38 @@ const Header = () => {
       </div>
 
       {/* Mobile Navigation */}
-      {isMenuOpen && (
+      {isMobileMenuOpen && (
         <div className={styles.mobileNav}>
           <div className={styles.mobileNavContent}>
-            <Link to="/" className={styles.mobileNavLink} onClick={closeMenu}>
+            <Link to="/" className={styles.mobileNavLink} onClick={closeAllMenus}>
               Home
             </Link>
-            <Link to="/about" className={styles.mobileNavLink} onClick={closeMenu}>
+            <Link to="/about" className={styles.mobileNavLink} onClick={closeAllMenus}>
               About
             </Link>
-            <Link to="/news" className={styles.mobileNavLink} onClick={closeMenu}>
+            <Link to="/news" className={styles.mobileNavLink} onClick={closeAllMenus}>
               News
             </Link>
-            <Link to="/events" className={styles.mobileNavLink} onClick={closeMenu}>
+            <Link to="/events" className={styles.mobileNavLink} onClick={closeAllMenus}>
               Events
             </Link>
             
             {isAuthenticated ? (
               <>
-                <Link to="/directory" className={styles.mobileNavLink} onClick={closeMenu}>
+                <Link to="/directory" className={styles.mobileNavLink} onClick={closeAllMenus}>
                   Directory
                 </Link>
-                <Link to="/connect" className={styles.mobileNavLink} onClick={closeMenu}>
-                  Connect
-                </Link>
-                <Link to="/dashboard" className={styles.mobileNavLink} onClick={closeMenu}>
+                <Link to="/dashboard" className={styles.mobileNavLink} onClick={closeAllMenus}>
                   Dashboard
                 </Link>
-                <Link to="/profile" className={styles.mobileNavLink} onClick={closeMenu}>
+                <Link to="/profile" className={styles.mobileNavLink} onClick={closeAllMenus}>
                   My Profile
                 </Link>
-                <Link to="/messages" className={styles.mobileNavLink} onClick={closeMenu}>
+                <Link to="/messages" className={styles.mobileNavLink} onClick={closeAllMenus}>
                   Messages
                 </Link>
                 {user?.role === 'admin' && (
-                  <Link to="/admin" className={styles.mobileNavLink} onClick={closeMenu}>
+                  <Link to="/admin" className={styles.mobileNavLink} onClick={closeAllMenus}>
                     Admin Panel
                   </Link>
                 )}
@@ -235,10 +242,10 @@ const Header = () => {
               </>
             ) : (
               <div className={styles.mobileAuthButtons}>
-                <Link to="/login" className={styles.mobileLoginButton} onClick={closeMenu}>
+                <Link to="/login" className={styles.mobileLoginButton} onClick={closeAllMenus}>
                   Login
                 </Link>
-                <Link to="/register" className={styles.mobileRegisterButton} onClick={closeMenu}>
+                <Link to="/register" className={styles.mobileRegisterButton} onClick={closeAllMenus}>
                   Register
                 </Link>
               </div>
