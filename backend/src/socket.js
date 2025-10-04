@@ -10,7 +10,9 @@ module.exports = function (io) {
   io.use((socket, next) => {
     try {
       const token = socket.handshake.auth?.token || socket.handshake.query?.token;
-      if (!token) return next(new Error('Authentication error'));
+      if (!token) {
+        return next(new Error('Authentication error'));
+      }
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       socket.user = { id: decoded.userId };
       return next();
@@ -31,7 +33,9 @@ module.exports = function (io) {
       // payload: { toUserId, ciphertext, metadata }
       try {
         const { toUserId, ciphertext, metadata } = payload;
-        if (!toUserId || !ciphertext) return;
+        if (!toUserId || !ciphertext) {
+          return;
+        }
 
         // Persist the message (server stores ciphertext only)
         const saved = await MessageModel.create({
@@ -61,7 +65,9 @@ module.exports = function (io) {
     // Save public key for E2E
     socket.on('publickey:publish', async ({ publicKey }) => {
       try {
-        if (!publicKey) return;
+        if (!publicKey) {
+          return;
+        }
         await PublicKeyModel.upsert(socket.user.id, publicKey);
         socket.emit('publickey:published', { success: true });
       } catch (err) {

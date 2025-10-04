@@ -27,6 +27,12 @@ const notFound = require("./middleware/notFound");
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// We'll create an HTTP server and attach socket.io after configuring Express
+const http = require('http');
+const server = http.createServer(app);
+const { Server: IOServer } = require('socket.io');
+let io;
+
 // Security middleware
 app.use(helmet());
 app.use(compression());
@@ -101,12 +107,26 @@ const startServer = async () => {
     await testConnection();
     console.log("✅ Database connection has been established successfully.");
 
-    // Start server
-    app.listen(PORT, () => {
-      console.log(`🚀 Server is running on port ${PORT}`);
-      console.log(`🌐 Environment: ${process.env.NODE_ENV || "development"}`);
-      console.log(`📝 API Documentation: http://localhost:${PORT}/api/docs`);
-      console.log(`❤️  Health Check: http://localhost:${PORT}/health`);
+    // Start server (HTTP server used for socket.io)
+    await new Promise((resolve) => {
+      // Initialize socket.io
+      io = new IOServer(server, {
+        cors: {
+          origin: process.env.NODE_ENV === 'production' ? ["https://alumni.iiitnr.ac.in"] : ["http://localhost:3000"],
+          methods: ["GET", "POST"],
+        },
+      });
+
+      // Attach socket handlers
+      require('./socket')(io);
+
+      server.listen(PORT, () => {
+        console.log(`🚀 Server is running on port ${PORT}`);
+        console.log(`🌐 Environment: ${process.env.NODE_ENV || "development"}`);
+        console.log(`📝 API Documentation: http://localhost:${PORT}/api/docs`);
+        console.log(`❤️  Health Check: http://localhost:${PORT}/health`);
+        resolve();
+      });
     });
   } catch (error) {
     console.error("❌ Unable to start server:", error);
@@ -142,4 +162,5 @@ process.on("SIGINT", async () => {
 // Start the server
 startServer();
 
-module.exports = app;
+// Export server and io for tests or external usage
+module.exports = { app, server, getIo: () => io };

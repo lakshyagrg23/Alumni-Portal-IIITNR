@@ -31,6 +31,16 @@ const runMigrations = async () => {
 
     // Run additional setup queries if needed
     await runPostMigrationSetup();
+
+    // Execute additional SQL files (public keys table)
+    const publicKeysPath = path.join(__dirname, "../../../database/create_public_keys.sql");
+    if (fs.existsSync(publicKeysPath)) {
+      console.log('📋 Executing create_public_keys.sql...');
+      await executePsqlFile(publicKeysPath);
+      console.log('   ✅ create_public_keys.sql executed');
+    } else {
+      console.log('   ⚠ create_public_keys.sql not found, skipping');
+    }
   } catch (error) {
     console.error("❌ Migration failed:", error.message);
     throw error;

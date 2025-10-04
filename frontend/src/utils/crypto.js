@@ -1,15 +1,10 @@
 // Browser-side ECDH + AES-GCM helpers for simple E2E
 // Uses Web Crypto API
 
-const subtle = window.crypto.subtle;
+const { subtle } = window.crypto;
 
 export async function generateKeyPair() {
-  const keyPair = await subtle.generateKey(
-    { name: 'ECDH', namedCurve: 'P-256' },
-    true,
-    ['deriveKey', 'deriveBits']
-  );
-  return keyPair;
+  return await subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey', 'deriveBits']);
 }
 
 export async function exportPublicKey(key) {
@@ -23,8 +18,7 @@ export async function importPublicKey(base64) {
 }
 
 export async function deriveSharedSecret(privateKey, publicKey) {
-  const derivedBits = await subtle.deriveBits({ name: 'ECDH', public: publicKey }, privateKey, 256);
-  return derivedBits; // ArrayBuffer
+  return await subtle.deriveBits({ name: 'ECDH', public: publicKey }, privateKey, 256);
 }
 
 export async function deriveAESGCMKey(sharedSecret) {
