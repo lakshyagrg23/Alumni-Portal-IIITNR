@@ -66,7 +66,6 @@ class AlumniProfile {
       hometownCity,
       hometownState,
       bio,
-      achievements,
       interests = [],
       isProfilePublic = true,
       showContactInfo = false,
@@ -105,7 +104,6 @@ class AlumniProfile {
       hometown_city: hometownCity,
       hometown_state: hometownState,
       bio,
-      achievements,
       interests,
       is_profile_public: isProfilePublic,
       show_contact_info: showContactInfo,
@@ -121,7 +119,7 @@ class AlumniProfile {
     });
 
     // Handle array fields properly for PostgreSQL
-    const arrayFields = ["skills", "achievements", "interests"];
+    const arrayFields = ["skills", "interests"];
     arrayFields.forEach((field) => {
       if (data.hasOwnProperty(field)) {
         if (
@@ -162,7 +160,7 @@ class AlumniProfile {
     const dbData = this.convertToDbFormat(updateData);
 
     // Handle array fields properly for PostgreSQL
-    const arrayFields = ["skills", "achievements", "interests"];
+    const arrayFields = ["skills", "interests"];
     arrayFields.forEach((field) => {
       if (dbData.hasOwnProperty(field)) {
         if (

@@ -35,17 +35,18 @@ const Dashboard = () => {
   const calculateProfileCompletion = () => {
     const profile = user.alumniProfile
     const fields = [
-      profile.firstName,
-      profile.lastName,
-      profile.graduationYear,
+      profile.firstName || profile.first_name,
+      profile.lastName || profile.last_name,
+      profile.graduationYear || profile.graduation_year,
       profile.branch,
       profile.degree,
       profile.bio,
-      profile.currentCompany,
-      profile.currentPosition,
-      profile.currentCity,
-      profile.skills && profile.skills.length > 0,
-      profile.linkedinUrl,
+      profile.currentCompany || profile.current_company,
+      profile.currentPosition || profile.current_position,
+      profile.currentCity || profile.current_city,
+      (profile.skills && profile.skills.length > 0) || 
+        (typeof profile.skills === 'string' && profile.skills.trim().length > 0),
+      profile.linkedinUrl || profile.linkedin_url,
     ]
     
     const filledFields = fields.filter(field => field).length
@@ -84,6 +85,21 @@ const Dashboard = () => {
   const fetchRecommendations = async () => {
     try {
       const profile = user.alumniProfile
+      
+      // Support both camelCase and snake_case field names
+      const currentCompany = profile.currentCompany || profile.current_company
+      const currentCity = profile.currentCity || profile.current_city
+      const graduationYear = profile.graduationYear || profile.graduation_year
+      const branch = profile.branch
+      
+      console.log('📊 Fetching recommendations for profile:', {
+        currentCompany,
+        currentCity,
+        graduationYear,
+        branch,
+        profileId: profile.id
+      })
+
       const recommendations = {
         sameCompany: [],
         sameCity: [],
@@ -91,44 +107,62 @@ const Dashboard = () => {
       }
 
       // Fetch alumni from same company
-      if (profile.currentCompany) {
+      if (currentCompany) {
+        console.log('🔍 Searching for alumni at:', currentCompany)
         const companyResponse = await axios.get(
-          `${API_URL}/alumni?company=${encodeURIComponent(profile.currentCompany)}&limit=3`
+          `${API_URL}/alumni?company=${encodeURIComponent(currentCompany)}&limit=3`
         )
         if (companyResponse.data.success) {
           recommendations.sameCompany = companyResponse.data.data.filter(
             alum => alum.id !== profile.id
           ).slice(0, 3)
+          console.log('✅ Found', recommendations.sameCompany.length, 'alumni at same company')
         }
+      } else {
+        console.log('⚠️ No company information in profile')
       }
 
       // Fetch alumni from same city
-      if (profile.currentCity) {
+      if (currentCity) {
+        console.log('🔍 Searching for alumni in:', currentCity)
         const cityResponse = await axios.get(
-          `${API_URL}/alumni?location=${encodeURIComponent(profile.currentCity)}&limit=3`
+          `${API_URL}/alumni?location=${encodeURIComponent(currentCity)}&limit=3`
         )
         if (cityResponse.data.success) {
           recommendations.sameCity = cityResponse.data.data.filter(
             alum => alum.id !== profile.id
           ).slice(0, 3)
+          console.log('✅ Found', recommendations.sameCity.length, 'alumni in same city')
         }
+      } else {
+        console.log('⚠️ No city information in profile')
       }
 
       // Fetch alumni from same batch and branch
-      if (profile.graduationYear && profile.branch) {
+      if (graduationYear && branch) {
+        console.log('🔍 Searching for batchmates:', branch, graduationYear)
         const batchResponse = await axios.get(
-          `${API_URL}/alumni?batch=${profile.graduationYear}&branch=${encodeURIComponent(profile.branch)}&limit=4`
+          `${API_URL}/alumni?batch=${graduationYear}&branch=${encodeURIComponent(branch)}&limit=4`
         )
         if (batchResponse.data.success) {
           recommendations.sameBatch = batchResponse.data.data.filter(
             alum => alum.id !== profile.id
           ).slice(0, 3)
+          console.log('✅ Found', recommendations.sameBatch.length, 'batchmates')
         }
+      } else {
+        console.log('⚠️ No graduation year or branch in profile')
       }
+
+      console.log('📋 Total recommendations:', {
+        sameCompany: recommendations.sameCompany.length,
+        sameCity: recommendations.sameCity.length,
+        sameBatch: recommendations.sameBatch.length
+      })
 
       setRecommendations(recommendations)
     } catch (error) {
-      console.error('Error fetching recommendations:', error)
+      console.error('❌ Error fetching recommendations:', error)
     }
   }
 
@@ -285,116 +319,133 @@ const Dashboard = () => {
               </section>
             </div>
 
-            {/* Recommendations Section */}
-            {(recommendations.sameCompany.length > 0 || 
-              recommendations.sameCity.length > 0 || 
-              recommendations.sameBatch.length > 0) && (
+            {/* Recommendations Section - Always show if user has alumni profile */}
+            {user.alumniProfile && (
               <section className={styles.recommendationsSection}>
                 <h2 className={styles.sectionTitle}>💼 Recommended Connections</h2>
                 
-                {/* Same Company */}
-                {recommendations.sameCompany.length > 0 && (
-                  <div className={styles.recommendationGroup}>
-                    <h3 className={styles.recommendationTitle}>
-                      Alumni at {user.alumniProfile?.currentCompany}
-                    </h3>
-                    <div className={styles.alumniGrid}>
-                      {recommendations.sameCompany.map(alum => (
-                        <div key={alum.id} className={styles.alumniCard}>
-                          <img 
-                            src={alum.profilePicture || '/default-avatar.svg'} 
-                            alt={`${alum.firstName} ${alum.lastName}`}
-                            className={styles.alumniAvatar}
-                          />
-                          <h4 className={styles.alumniName}>
-                            {alum.firstName} {alum.lastName}
-                          </h4>
-                          <p className={styles.alumniPosition}>
-                            {alum.currentPosition}
-                          </p>
-                          <p className={styles.alumniBatch}>
-                            {alum.branch} • {alum.graduationYear}
-                          </p>
-                          <Link 
-                            to={`/alumni/${alum.id}`}
-                            className={styles.alumniButton}
-                          >
-                            View Profile
-                          </Link>
-                        </div>
-                      ))}
-                    </div>
+                {/* Check if we have ANY recommendations */}
+                {(recommendations.sameCompany.length === 0 && 
+                  recommendations.sameCity.length === 0 && 
+                  recommendations.sameBatch.length === 0) ? (
+                  <div className={styles.emptyRecommendations}>
+                    <p className={styles.emptyRecommendationsText}>
+                      Complete your profile to get personalized alumni recommendations!
+                    </p>
+                    <p className={styles.emptyRecommendationsHint}>
+                      Add your current company, location, graduation year, and branch to see alumni with similar backgrounds.
+                    </p>
+                    <Link to="/profile" className={styles.completeProfileButton}>
+                      Complete Your Profile
+                    </Link>
                   </div>
-                )}
+                ) : (
+                  <>
+                    {/* Same Company */}
+                    {recommendations.sameCompany.length > 0 && (
+                      <div className={styles.recommendationGroup}>
+                        <h3 className={styles.recommendationTitle}>
+                          Alumni at {user.alumniProfile?.currentCompany || user.alumniProfile?.current_company}
+                        </h3>
+                        <div className={styles.alumniGrid}>
+                          {recommendations.sameCompany.map(alum => (
+                            <div key={alum.id} className={styles.alumniCard}>
+                              <img 
+                                src={alum.profilePicture || '/default-avatar.svg'} 
+                                alt={`${alum.firstName} ${alum.lastName}`}
+                                className={styles.alumniAvatar}
+                              />
+                              <h4 className={styles.alumniName}>
+                                {alum.firstName} {alum.lastName}
+                              </h4>
+                              <p className={styles.alumniPosition}>
+                                {alum.currentPosition}
+                              </p>
+                              <p className={styles.alumniBatch}>
+                                {alum.branch} • {alum.graduationYear}
+                              </p>
+                              <Link 
+                                to={`/alumni/${alum.id}`}
+                                className={styles.alumniButton}
+                              >
+                                View Profile
+                              </Link>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
-                {/* Same City */}
-                {recommendations.sameCity.length > 0 && (
-                  <div className={styles.recommendationGroup}>
-                    <h3 className={styles.recommendationTitle}>
-                      Alumni in {user.alumniProfile?.currentCity}
-                    </h3>
-                    <div className={styles.alumniGrid}>
-                      {recommendations.sameCity.map(alum => (
-                        <div key={alum.id} className={styles.alumniCard}>
-                          <img 
-                            src={alum.profilePicture || '/default-avatar.svg'} 
-                            alt={`${alum.firstName} ${alum.lastName}`}
-                            className={styles.alumniAvatar}
-                          />
-                          <h4 className={styles.alumniName}>
-                            {alum.firstName} {alum.lastName}
-                          </h4>
-                          <p className={styles.alumniPosition}>
-                            {alum.currentPosition || alum.currentCompany}
-                          </p>
-                          <p className={styles.alumniBatch}>
-                            {alum.branch} • {alum.graduationYear}
-                          </p>
-                          <Link 
-                            to={`/alumni/${alum.id}`}
-                            className={styles.alumniButton}
-                          >
-                            View Profile
-                          </Link>
+                    {/* Same City */}
+                    {recommendations.sameCity.length > 0 && (
+                      <div className={styles.recommendationGroup}>
+                        <h3 className={styles.recommendationTitle}>
+                          Alumni in {user.alumniProfile?.currentCity || user.alumniProfile?.current_city}
+                        </h3>
+                        <div className={styles.alumniGrid}>
+                          {recommendations.sameCity.map(alum => (
+                            <div key={alum.id} className={styles.alumniCard}>
+                              <img 
+                                src={alum.profilePicture || '/default-avatar.svg'} 
+                                alt={`${alum.firstName} ${alum.lastName}`}
+                                className={styles.alumniAvatar}
+                              />
+                              <h4 className={styles.alumniName}>
+                                {alum.firstName} {alum.lastName}
+                              </h4>
+                              <p className={styles.alumniPosition}>
+                                {alum.currentPosition || alum.currentCompany}
+                              </p>
+                              <p className={styles.alumniBatch}>
+                                {alum.branch} • {alum.graduationYear}
+                              </p>
+                              <Link 
+                                to={`/alumni/${alum.id}`}
+                                className={styles.alumniButton}
+                              >
+                                View Profile
+                              </Link>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                      </div>
+                    )}
 
-                {/* Same Batch */}
-                {recommendations.sameBatch.length > 0 && (
-                  <div className={styles.recommendationGroup}>
-                    <h3 className={styles.recommendationTitle}>
-                      Your Batchmates ({user.alumniProfile?.branch} {user.alumniProfile?.graduationYear})
-                    </h3>
-                    <div className={styles.alumniGrid}>
-                      {recommendations.sameBatch.map(alum => (
-                        <div key={alum.id} className={styles.alumniCard}>
-                          <img 
-                            src={alum.profilePicture || '/default-avatar.svg'} 
-                            alt={`${alum.firstName} ${alum.lastName}`}
-                            className={styles.alumniAvatar}
-                          />
-                          <h4 className={styles.alumniName}>
-                            {alum.firstName} {alum.lastName}
-                          </h4>
-                          <p className={styles.alumniPosition}>
-                            {alum.currentPosition || alum.currentCompany}
-                          </p>
-                          <p className={styles.alumniLocation}>
-                            {alum.currentCity}, {alum.currentState}
-                          </p>
-                          <Link 
-                            to={`/alumni/${alum.id}`}
-                            className={styles.alumniButton}
-                          >
-                            View Profile
-                          </Link>
+                    {/* Same Batch */}
+                    {recommendations.sameBatch.length > 0 && (
+                      <div className={styles.recommendationGroup}>
+                        <h3 className={styles.recommendationTitle}>
+                          Your Batchmates ({user.alumniProfile?.branch} {user.alumniProfile?.graduationYear || user.alumniProfile?.graduation_year})
+                        </h3>
+                        <div className={styles.alumniGrid}>
+                          {recommendations.sameBatch.map(alum => (
+                            <div key={alum.id} className={styles.alumniCard}>
+                              <img 
+                                src={alum.profilePicture || '/default-avatar.svg'} 
+                                alt={`${alum.firstName} ${alum.lastName}`}
+                                className={styles.alumniAvatar}
+                              />
+                              <h4 className={styles.alumniName}>
+                                {alum.firstName} {alum.lastName}
+                              </h4>
+                              <p className={styles.alumniPosition}>
+                                {alum.currentPosition || alum.currentCompany}
+                              </p>
+                              <p className={styles.alumniLocation}>
+                                {alum.currentCity}, {alum.currentState}
+                              </p>
+                              <Link 
+                                to={`/alumni/${alum.id}`}
+                                className={styles.alumniButton}
+                              >
+                                View Profile
+                              </Link>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </section>
             )}
