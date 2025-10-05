@@ -1,6 +1,7 @@
 # Login Implementation & Profile Creation Flow
 
 ## Overview
+
 The Alumni Portal uses a dual-table architecture separating **authentication** (users table) and **profile data** (alumni_profiles table), with support for local authentication and OAuth (Google & LinkedIn).
 
 ---
@@ -8,6 +9,7 @@ The Alumni Portal uses a dual-table architecture separating **authentication** (
 ## 🏗️ Database Architecture
 
 ### 1. **Users Table** (Authentication Layer)
+
 ```sql
 users {
     id UUID PRIMARY KEY
@@ -22,14 +24,16 @@ users {
     created_at, updated_at TIMESTAMP
 }
 ```
+
 **Purpose**: Stores authentication credentials and authorization data only.
 
 ### 2. **Alumni Profiles Table** (Profile Data Layer)
+
 ```sql
 alumni_profiles {
     id UUID PRIMARY KEY
     user_id UUID REFERENCES users(id)
-    
+
     -- Personal: first_name, last_name, middle_name, phone, dob, gender
     -- Academic: student_id, admission_year, graduation_year, degree, branch, cgpa
     -- Professional: current_company, position, industry, work_experience_years, skills[]
@@ -37,10 +41,11 @@ alumni_profiles {
     -- Social: linkedin_url, github_url, portfolio_url
     -- Other: bio, interests[], profile_picture_url
     -- Privacy: is_profile_public, show_contact_info, show_work_info, show_academic_info
-    
+
     created_at, updated_at TIMESTAMP
 }
 ```
+
 **Purpose**: Stores all profile information and personal data.
 
 ---
@@ -50,6 +55,7 @@ alumni_profiles {
 ### **1. Local Registration** (`POST /api/auth/register`)
 
 #### Backend Flow (`backend/src/routes/auth.js`):
+
 ```javascript
 1. Validate required fields (email, password, firstName, lastName)
 2. Check if user exists → User.findByEmail(email)
@@ -67,6 +73,7 @@ alumni_profiles {
 ```
 
 #### Frontend Flow:
+
 ```javascript
 AuthContext.register() → authService.register()
 → Store token in localStorage
@@ -80,6 +87,7 @@ AuthContext.register() → authService.register()
 ### **2. Local Login** (`POST /api/auth/login`)
 
 #### Backend Flow:
+
 ```javascript
 1. Validate email & password
 2. Find user → User.findByEmail(email)
@@ -90,6 +98,7 @@ AuthContext.register() → authService.register()
 ```
 
 #### JWT Token Structure:
+
 ```javascript
 {
   userId: user.id,
@@ -104,6 +113,7 @@ AuthContext.register() → authService.register()
 ### **3. Google OAuth Login** (`POST /api/auth/google`)
 
 #### Frontend Flow:
+
 ```javascript
 1. User clicks "Login with Google"
 2. Google OAuth popup opens (frontend/src/services/google_login.jsx)
@@ -113,6 +123,7 @@ AuthContext.register() → authService.register()
 ```
 
 #### Backend Flow:
+
 ```javascript
 1. Receive { email, googleId, name } from frontend
 2. Check if user exists → User.findByEmail(email)
@@ -144,6 +155,7 @@ AuthContext.register() → authService.register()
 #### Two-Step Process:
 
 **Step 1**: Exchange Authorization Code (`POST /api/auth/linkedin/callback`)
+
 ```javascript
 Frontend receives authorization code from LinkedIn
 → Send to backend with redirectUri
@@ -153,6 +165,7 @@ Frontend receives authorization code from LinkedIn
 ```
 
 **Step 2**: Login with LinkedIn Data (`POST /api/auth/linkedin`)
+
 ```javascript
 Same flow as Google OAuth:
 1. Check/create user (provider = 'linkedin')
@@ -167,6 +180,7 @@ Same flow as Google OAuth:
 ### **Get Current Profile** (`GET /api/auth/profile`)
 
 #### Backend Flow:
+
 ```javascript
 1. Authenticate user via JWT middleware
 2. Get user from users table → User.findById(userId)
@@ -179,13 +193,14 @@ Same flow as Google OAuth:
 ```
 
 #### Response Structure:
+
 ```javascript
 {
   success: true,
   data: {
     // From users table
     id, email, role, isApproved, isActive, provider, createdAt,
-    
+
     // From alumni_profiles table
     firstName, lastName, profilePicture,
     alumniProfile: { /* all profile fields */ }
@@ -198,6 +213,7 @@ Same flow as Google OAuth:
 ### **Update Profile** (`PUT /api/auth/profile`)
 
 #### Backend Flow (`backend/src/routes/auth.js`):
+
 ```javascript
 1. Authenticate user
 2. Separate incoming data:
@@ -214,6 +230,7 @@ Same flow as Google OAuth:
 ```
 
 #### Field Mapping (camelCase → snake_case):
+
 ```javascript
 Frontend sends:        Backend converts to:
 firstName           → first_name
@@ -228,6 +245,7 @@ skills: "JS,Python" → skills: ['JS', 'Python']
 ## 🔒 Authentication Middleware
 
 ### **JWT Verification** (`backend/src/middleware/auth.js`):
+
 ```javascript
 authenticate middleware:
 1. Extract token from Authorization header
@@ -240,6 +258,7 @@ authenticate middleware:
 ```
 
 ### **Admin Authorization**:
+
 ```javascript
 requireAdmin middleware:
 1. Check if user is authenticated
@@ -254,6 +273,7 @@ requireAdmin middleware:
 ### **AuthContext** (`frontend/src/context/AuthContext.jsx`)
 
 #### State:
+
 ```javascript
 {
   user: null,           // Current user profile data
@@ -264,6 +284,7 @@ requireAdmin middleware:
 ```
 
 #### Actions:
+
 - `LOGIN_START` - Set loading true
 - `LOGIN_SUCCESS` - Store user & token, set authenticated
 - `LOGIN_FAILURE` - Clear user & token
@@ -272,6 +293,7 @@ requireAdmin middleware:
 - `UPDATE_PROFILE` - Merge updated profile data
 
 #### Methods:
+
 ```javascript
 login(credentials)           → Call authService.login()
 register(userData)           → Call authService.register()
@@ -286,6 +308,7 @@ logout()                     → Clear token & state
 ### **Auth Service** (`frontend/src/services/authService.js`)
 
 #### Axios Setup:
+
 ```javascript
 - Base URL: http://localhost:5000/api
 - Request interceptor: Adds Authorization header
@@ -293,6 +316,7 @@ logout()                     → Clear token & state
 ```
 
 #### Methods:
+
 ```javascript
 setToken(token)          → Store in localStorage
 removeToken()            → Remove from localStorage
@@ -396,11 +420,13 @@ logout()                 → POST /auth/logout
 ## 🛡️ Security Features
 
 ### **Password Security**:
+
 - bcrypt hashing with 12 salt rounds
 - No passwords stored for OAuth users
 - Password reset tokens with expiration
 
 ### **Token Security**:
+
 - JWT with 7-day expiration
 - Signed with JWT_SECRET
 - Stored in localStorage
@@ -408,11 +434,13 @@ logout()                 → POST /auth/logout
 - Server validates on every protected route
 
 ### **Authorization**:
+
 - Middleware checks token validity
 - Role-based access (admin vs alumni)
 - Active status check (is_active)
 
 ### **Data Validation**:
+
 - Required field validation
 - Email format validation
 - Duplicate email prevention
@@ -432,6 +460,7 @@ logout()                 → POST /auth/logout
 6. **Scalability**: Can add more profile types without touching users table
 
 ### **When Profiles Are Created**:
+
 - ✅ Local registration: Profile created immediately
 - ✅ Google OAuth: Profile created on first login
 - ✅ LinkedIn OAuth: Profile created on first login
@@ -442,6 +471,7 @@ logout()                 → POST /auth/logout
 ## 🔍 Key Model Methods
 
 ### **User Model** (`backend/src/models/User.js`):
+
 ```javascript
 findById(id)              → Get user by UUID
 findByEmail(email)        → Get user by email (case-insensitive)
@@ -453,6 +483,7 @@ verifyPassword(pass, hash)→ Compare password with hash
 ```
 
 ### **AlumniProfile Model** (`backend/src/models/AlumniProfile.js`):
+
 ```javascript
 findById(id)              → Get profile by UUID
 findByUserId(userId)      → Get profile by user_id FK
@@ -465,6 +496,7 @@ update(id, data)          → Update profile (handles array fields)
 ## 🚀 Profile Completion Flow
 
 ### **Determining Profile Completeness**:
+
 ```javascript
 hasAlumniProfile = !!(
   alumniProfile.graduation_year &&
@@ -472,7 +504,7 @@ hasAlumniProfile = !!(
   alumniProfile.degree &&
   alumniProfile.bio &&
   alumniProfile.bio.trim().length > 0
-)
+);
 ```
 
 If `hasAlumniProfile = false`, frontend should redirect to profile completion page.
@@ -482,37 +514,44 @@ If `hasAlumniProfile = false`, frontend should redirect to profile completion pa
 ## 📝 Common Operations
 
 ### **Check if User Exists**:
+
 ```javascript
-const user = await User.findByEmail(email)
+const user = await User.findByEmail(email);
 if (user) {
   // User exists
 }
 ```
 
 ### **Create Complete User + Profile**:
+
 ```javascript
 // 1. Create user
 const user = await User.create({
-  email, password, role: 'alumni'
-})
+  email,
+  password,
+  role: "alumni",
+});
 
 // 2. Create profile
 const profile = await AlumniProfile.create({
   userId: user.id,
-  firstName, lastName, ...otherData
-})
+  firstName,
+  lastName,
+  ...otherData,
+});
 ```
 
 ### **Load Full Profile**:
+
 ```javascript
 // 1. Get user
-const user = await User.findById(userId)
+const user = await User.findById(userId);
 
 // 2. Get profile
-const profile = await AlumniProfile.findByUserId(userId)
+const profile = await AlumniProfile.findByUserId(userId);
 
 // 3. Merge data
-const fullProfile = { ...user, ...profile }
+const fullProfile = { ...user, ...profile };
 ```
 
 ---
@@ -528,16 +567,17 @@ const fullProfile = { ...user, ...profile }
 5. **OAuth user can't login** → Check provider and provider_id match
 
 ### **Logging Points**:
+
 ```javascript
 // Backend
-console.log('User ID:', userId)
-console.log('Request data:', req.body)
-console.log('Alumni data:', alumniData)
+console.log("User ID:", userId);
+console.log("Request data:", req.body);
+console.log("Alumni data:", alumniData);
 
 // Frontend
-console.log('Auth state:', state)
-console.log('Token:', localStorage.getItem('token'))
-console.log('API response:', response)
+console.log("Auth state:", state);
+console.log("Token:", localStorage.getItem("token"));
+console.log("API response:", response);
 ```
 
 ---
@@ -545,6 +585,7 @@ console.log('API response:', response)
 ## 📚 Related Files
 
 ### Backend:
+
 - `backend/src/routes/auth.js` - Auth endpoints
 - `backend/src/models/User.js` - User model
 - `backend/src/models/AlumniProfile.js` - Profile model
@@ -552,6 +593,7 @@ console.log('API response:', response)
 - `database/schema.sql` - Database schema
 
 ### Frontend:
+
 - `frontend/src/context/AuthContext.jsx` - Auth state management
 - `frontend/src/services/authService.js` - API calls
 - `frontend/src/services/google_login.jsx` - Google OAuth
@@ -564,6 +606,7 @@ console.log('API response:', response)
 ## ✅ Summary
 
 The Alumni Portal implements a **robust, secure authentication system** with:
+
 - ✅ Dual-table architecture (users + alumni_profiles)
 - ✅ Multiple auth providers (local, Google, LinkedIn)
 - ✅ JWT-based stateless authentication

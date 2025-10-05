@@ -211,21 +211,6 @@ class User {
   }
 
   /**
-   * Verify email
-   * @param {string} token - Verification token
-   * @returns {Promise<Object|null>}
-   */
-  static async verifyEmail(token) {
-    const user = await findOne("users", { email_verification_token: token });
-    if (!user) return null;
-
-    return await this.update(user.id, {
-      email_verified: true,
-      email_verification_token: null,
-    });
-  }
-
-  /**
    * Set password reset token
    * @param {string} email - User email
    * @param {string} token - Reset token
@@ -349,6 +334,70 @@ class User {
 
     const result = await query(queryText, [id]);
     return result.rows[0] || null;
+  }
+
+  /**
+   * Generate and save email verification token
+   * @param {string} userId - User ID
+   * @returns {Promise<string>} - Verification token
+   */
+  static async generateVerificationToken(userId) {
+    const { generateToken, generateTokenExpiry } = require('../utils/tokenUtils');
+    
+    const token = generateToken(32);
+    const expires = generateTokenExpiry(24); // 24 hours
+    
+    await this.update(userId, {
+      email_verification_token: token,
+      email_verification_token_expires: expires,
+    });
+    
+    return token;
+  }
+
+  /**
+   * Verify email with token
+   * @param {string} token - Verification token
+   * @returns {Promise<Object>} - Result object with success status
+   */
+  static async verifyEmail(token) {
+    const { isTokenExpired } = require('../utils/tokenUtils');
+    
+    // Find user with this token
+    const result = await query(
+      'SELECT * FROM users WHERE email_verification_token = $1',
+      [token]
+    );
+    
+    if (result.rows.length === 0) {
+      return { success: false, message: 'Invalid verification token' };
+    }
+    
+    const user = result.rows[0];
+    
+    // Check if token expired
+    if (isTokenExpired(user.email_verification_token_expires)) {
+      return { success: false, message: 'Verification token has expired' };
+    }
+    
+    // Check if already verified
+    if (user.email_verified) {
+      return { success: false, message: 'Email already verified', alreadyVerified: true };
+    }
+    
+    // Mark as verified and approved
+    await query(
+      `UPDATE users 
+       SET email_verified = TRUE, 
+           is_approved = TRUE,
+           email_verification_token = NULL,
+           email_verification_token_expires = NULL,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1`,
+      [user.id]
+    );
+    
+    return { success: true, user };
   }
 }
 

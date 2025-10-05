@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Email Verification</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+    }
+    .output {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f5f5f5;
+      border-radius: 5px;
+      white-space: pre-wrap;
+    }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+  </style>
+</head>
+<body>
+  <h1>🧪 Email Verification API Tester</h1>
+  
+  <div>
+    <h3>Step 1: Get a fresh token</h3>
+    <button onclick="registerUser()">Register Test User</button>
+  </div>
+  
+  <div>
+    <h3>Step 2: Test verification endpoint</h3>
+    <input type="text" id="tokenInput" placeholder="Paste token here" style="width: 400px; padding: 8px;" />
+    <button onclick="testVerification()">Test Verification</button>
+  </div>
+  
+  <div id="output" class="output"></div>
+
+  <script>
+    const API_URL = 'http://localhost:5000/api';
+    
+    async function registerUser() {
+      const output = document.getElementById('output');
+      output.className = 'output';
+      output.textContent = 'Registering user...';
+      
+      try {
+        const timestamp = Date.now();
+        const email = `test${timestamp}@example.com`;
+        
+        const response = await fetch(`${API_URL}/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: email,
+            password: 'TestPass123!',
+            firstName: 'Test',
+            lastName: 'User'
+          })
+        });
+        
+        const data = await response.json();
+        
+        output.className = 'output success';
+        output.textContent = `✅ Registration Response:\n\nStatus: ${response.status} ${response.statusText}\n\nData:\n${JSON.stringify(data, null, 2)}\n\n⚠️ Now get the token from database:\nSELECT email_verification_token FROM users WHERE email = '${email}';`;
+        
+      } catch (error) {
+        output.className = 'output error';
+        output.textContent = `❌ Error:\n${error.message}`;
+      }
+    }
+    
+    async function testVerification() {
+      const token = document.getElementById('tokenInput').value.trim();
+      const output = document.getElementById('output');
+      
+      if (!token) {
+        output.className = 'output error';
+        output.textContent = '❌ Please enter a token';
+        return;
+      }
+      
+      output.className = 'output';
+      output.textContent = 'Testing verification...';
+      
+      try {
+        const response = await fetch(`${API_URL}/auth/verify-email?token=${token}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const data = await response.json();
+        
+        output.className = response.ok ? 'output success' : 'output error';
+        output.textContent = `${response.ok ? '✅' : '❌'} Verification Response:\n\nStatus: ${response.status} ${response.statusText}\n\nHeaders:\nContent-Type: ${response.headers.get('content-type')}\n\nData:\n${JSON.stringify(data, null, 2)}`;
+        
+      } catch (error) {
+        output.className = 'output error';
+        output.textContent = `❌ Error:\n${error.message}`;
+      }
+    }
+  </script>
+</body>
+</html>

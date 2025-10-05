@@ -6,10 +6,11 @@ const jwt = require("jsonwebtoken");
 const axios = require("axios");
 const { authenticate } = require("../middleware/auth");
 const { query } = require("../config/database");
+const emailService = require("../services/emailService");
 
 /**
  * @route   POST /api/auth/register
- * @desc    Register a new user
+ * @desc    Register a new user with email verification
  * @access  Public
  */
 router.post("/register", async (req, res) => {
@@ -24,67 +25,89 @@ router.post("/register", async (req, res) => {
       });
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid email address",
+      });
+    }
+
+    // Validate password strength
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters long",
+      });
+    }
+
     // Check if user already exists
     const existingUser = await User.findByEmail(email);
     if (existingUser) {
+      // If user exists but email not verified, allow resending
+      if (!existingUser.email_verified) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "An account with this email already exists but is not verified. Please check your email for the verification link or request a new one.",
+          canResendVerification: true,
+          email: email,
+        });
+      }
+
       return res.status(400).json({
         success: false,
         message: "User already exists with this email",
       });
     }
 
-    // Determine provider
-    let providerName = "local";
-    if (provider === "google") {
-      providerName = "google";
-    } else if (provider === "linkedin") {
-      providerName = "linkedin";
-    }
+    // Determine provider (should be 'local' for email/password registration)
+    const providerName = provider === "google" ? "google" : "local";
 
-    // Create new user (authentication data only)
+    // Create new user WITHOUT auto-approval
     const userData = {
       email: email.toLowerCase(),
       password,
       role: "alumni",
       provider: providerName,
-      is_approved: true, // Auto-approve for now
+      is_approved: false, // ❌ Not approved until verified
       is_active: true,
+      email_verified: false, // ❌ Not verified yet
     };
 
     const user = await User.create(userData);
 
-    // Create alumni profile with personal information
-    const AlumniProfile = require("../models/AlumniProfile");
-    const profileData = {
-      userId: user.id,
-      firstName,
-      lastName,
-      isProfilePublic: true, // Default to public so they appear in directory
-    };
+    // Generate verification token
+    const verificationToken = await User.generateVerificationToken(user.id);
 
-    const profile = await AlumniProfile.create(profileData);
+    // Send verification email
+    try {
+      await emailService.sendVerificationEmail(
+        email,
+        verificationToken,
+        firstName
+      );
+    } catch (emailError) {
+      console.error("Error sending verification email:", emailError);
+      // Delete the created user if email fails
+      await query('DELETE FROM users WHERE id = $1', [user.id]);
 
-    // Generate JWT token
-    const token = jwt.sign(
-      { userId: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
-    );
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send verification email. Please try again.",
+      });
+    }
+
+    // DO NOT create alumni profile yet - wait for verification
+    // DO NOT auto-login - require verification first
 
     res.status(201).json({
       success: true,
-      message: "User registered successfully",
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: profile.first_name,
-        lastName: profile.last_name,
-        role: user.role,
-        isApproved: user.is_approved,
-        isActive: user.is_active,
-        provider: user.provider,
-      },
+      message:
+        "Registration successful! Please check your email to verify your account.",
+      requiresVerification: true,
+      email: email,
     });
   } catch (error) {
     console.error("Registration error:", error);
@@ -118,6 +141,17 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({
         success: false,
         message: "Invalid credentials",
+      });
+    }
+
+    // Check if email is verified (only for local provider)
+    if (user.provider === "local" && !user.email_verified) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Please verify your email before logging in. Check your inbox for the verification link.",
+        requiresVerification: true,
+        email: user.email,
       });
     }
 
@@ -165,6 +199,137 @@ router.post("/login", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error during login",
+    });
+  }
+});
+
+/**
+ * @route   GET /api/auth/verify-email
+ * @desc    Verify email with token
+ * @access  Public
+ */
+router.get("/verify-email", async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "Verification token is required",
+      });
+    }
+
+    // Verify the email
+    const result = await User.verifyEmail(token);
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: result.message,
+        alreadyVerified: result.alreadyVerified || false,
+      });
+    }
+
+    // Email verified successfully - now create alumni profile
+    const AlumniProfile = require("../models/AlumniProfile");
+
+    // Get user data to extract name
+    const user = await User.findById(result.user.id);
+
+    // Check if profile already exists
+    const existingProfile = await AlumniProfile.findByUserId(user.id);
+
+    if (!existingProfile) {
+      // Create basic alumni profile
+      const profileData = {
+        userId: user.id,
+        firstName: "", // Will be updated by user
+        lastName: "",
+        isProfilePublic: true,
+      };
+
+      await AlumniProfile.create(profileData);
+    }
+
+    // Send welcome email
+    try {
+      await emailService.sendWelcomeEmail(
+        user.email,
+        user.email.split("@")[0]
+      );
+    } catch (error) {
+      console.error("Error sending welcome email:", error);
+      // Don't fail verification if welcome email fails
+    }
+
+    res.json({
+      success: true,
+      message:
+        "Email verified successfully! You can now login to your account.",
+      verified: true,
+    });
+  } catch (error) {
+    console.error("Email verification error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error during email verification",
+    });
+  }
+});
+
+/**
+ * @route   POST /api/auth/resend-verification
+ * @desc    Resend verification email
+ * @access  Public
+ */
+router.post("/resend-verification", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    // Find user
+    const user = await User.findByEmail(email);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "No account found with this email",
+      });
+    }
+
+    // Check if already verified
+    if (user.email_verified) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is already verified. You can login now.",
+      });
+    }
+
+    // Generate new token
+    const verificationToken = await User.generateVerificationToken(user.id);
+
+    // Send verification email
+    await emailService.sendVerificationEmail(
+      email,
+      verificationToken,
+      email.split("@")[0] // Use email prefix as name
+    );
+
+    res.json({
+      success: true,
+      message: "Verification email sent! Please check your inbox.",
+    });
+  } catch (error) {
+    console.error("Resend verification error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to resend verification email",
     });
   }
 });

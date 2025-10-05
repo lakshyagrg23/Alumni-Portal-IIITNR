@@ -9,11 +9,13 @@ This guide explains how to implement email verification for local (email/passwor
 ## 📋 What We're Building
 
 ### Current Flow (Without Verification):
+
 ```
 Register → Create user → Create profile → Auto-login → Access granted
 ```
 
 ### New Flow (With Verification):
+
 ```
 Register → Create user (unverified) → Send verification email
    ↓
@@ -27,22 +29,27 @@ Login → Access granted
 ## 🔧 Required Components
 
 ### 1. **Email Service** (Nodemailer)
+
 - Send verification emails
 - Send password reset emails (future)
 
 ### 2. **Token Generation**
+
 - Crypto library for secure random tokens
 - Token storage in database
 
 ### 3. **Database Changes**
+
 - Use existing `email_verification_token` column
 - Add `token_expires_at` column for security
 
 ### 4. **Backend Routes**
+
 - Verification endpoint
 - Resend verification endpoint
 
 ### 5. **Frontend Pages**
+
 - Verification success/error page
 - Email sent confirmation page
 
@@ -58,6 +65,7 @@ npm install nodemailer
 ```
 
 **What is Nodemailer?**
+
 - Most popular Node.js email sending library
 - Supports Gmail, SendGrid, Mailgun, custom SMTP
 - Free for Gmail (with app-specific password)
@@ -70,18 +78,19 @@ npm install nodemailer
 
 ```sql
 -- Add token expiration column
-ALTER TABLE users 
+ALTER TABLE users
 ADD COLUMN email_verification_token_expires TIMESTAMP;
 
 -- Update schema to ensure proper defaults
-ALTER TABLE users 
+ALTER TABLE users
 ALTER COLUMN email_verified SET DEFAULT FALSE;
 
-ALTER TABLE users 
+ALTER TABLE users
 ALTER COLUMN is_approved SET DEFAULT FALSE;
 ```
 
 **Why these changes?**
+
 - `email_verification_token_expires`: Tokens expire after 24 hours for security
 - `email_verified`: Start as FALSE, becomes TRUE after verification
 - `is_approved`: Only approve after email verification
@@ -116,6 +125,7 @@ EMAIL_VERIFICATION_TOKEN_EXPIRY=24
 6. Use this in `EMAIL_PASSWORD` (no spaces)
 
 **Alternative Email Services:**
+
 - **SendGrid**: 100 free emails/day (better for production)
 - **Mailgun**: 5000 free emails/month
 - **AWS SES**: Very cheap, scalable
@@ -127,7 +137,7 @@ EMAIL_VERIFICATION_TOKEN_EXPIRY=24
 Create `backend/src/services/emailService.js`:
 
 ```javascript
-const nodemailer = require('nodemailer');
+const nodemailer = require("nodemailer");
 
 /**
  * Email Service for sending verification and notification emails
@@ -135,7 +145,7 @@ const nodemailer = require('nodemailer');
 class EmailService {
   constructor() {
     // Create transporter based on environment
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env.NODE_ENV === "production") {
       // Production: Use SendGrid/Mailgun/AWS SES
       this.transporter = nodemailer.createTransport({
         service: process.env.EMAIL_SERVICE,
@@ -147,7 +157,7 @@ class EmailService {
     } else {
       // Development: Use Gmail or Ethereal (fake SMTP)
       this.transporter = nodemailer.createTransport({
-        service: process.env.EMAIL_SERVICE || 'gmail',
+        service: process.env.EMAIL_SERVICE || "gmail",
         auth: {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASSWORD,
@@ -162,23 +172,23 @@ class EmailService {
    * @param {string} verificationToken - Unique verification token
    * @param {string} firstName - User's first name
    */
-  async sendVerificationEmail(email, verificationToken, firstName = 'there') {
+  async sendVerificationEmail(email, verificationToken, firstName = "there") {
     const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
 
     const mailOptions = {
-      from: process.env.EMAIL_FROM || 'IIIT Naya Raipur Alumni Portal',
+      from: process.env.EMAIL_FROM || "IIIT Naya Raipur Alumni Portal",
       to: email,
-      subject: 'Verify Your Email - IIIT Naya Raipur Alumni Portal',
+      subject: "Verify Your Email - IIIT Naya Raipur Alumni Portal",
       html: this.getVerificationEmailTemplate(firstName, verificationUrl),
     };
 
     try {
       const info = await this.transporter.sendMail(mailOptions);
-      console.log('Verification email sent:', info.messageId);
+      console.log("Verification email sent:", info.messageId);
       return { success: true, messageId: info.messageId };
     } catch (error) {
-      console.error('Error sending verification email:', error);
-      throw new Error('Failed to send verification email');
+      console.error("Error sending verification email:", error);
+      throw new Error("Failed to send verification email");
     }
   }
 
@@ -293,7 +303,7 @@ class EmailService {
     const mailOptions = {
       from: process.env.EMAIL_FROM,
       to: email,
-      subject: 'Welcome to IIIT Naya Raipur Alumni Portal! 🎉',
+      subject: "Welcome to IIIT Naya Raipur Alumni Portal! 🎉",
       html: `
         <!DOCTYPE html>
         <html>
@@ -337,9 +347,9 @@ class EmailService {
 
     try {
       await this.transporter.sendMail(mailOptions);
-      console.log('Welcome email sent to:', email);
+      console.log("Welcome email sent to:", email);
     } catch (error) {
-      console.error('Error sending welcome email:', error);
+      console.error("Error sending welcome email:", error);
       // Don't throw - welcome email is not critical
     }
   }
@@ -355,7 +365,7 @@ module.exports = new EmailService();
 Create `backend/src/utils/tokenUtils.js`:
 
 ```javascript
-const crypto = require('crypto');
+const crypto = require("crypto");
 
 /**
  * Generate secure random token
@@ -363,7 +373,7 @@ const crypto = require('crypto');
  * @returns {string} - Hexadecimal token
  */
 const generateToken = (length = 32) => {
-  return crypto.randomBytes(length).toString('hex');
+  return crypto.randomBytes(length).toString("hex");
 };
 
 /**
@@ -407,15 +417,15 @@ Add these methods to the User class:
  */
 static async generateVerificationToken(userId) {
   const { generateToken, generateTokenExpiry } = require('../utils/tokenUtils');
-  
+
   const token = generateToken(32);
   const expires = generateTokenExpiry(24); // 24 hours
-  
+
   await this.update(userId, {
     email_verification_token: token,
     email_verification_token_expires: expires,
   });
-  
+
   return token;
 }
 
@@ -426,33 +436,33 @@ static async generateVerificationToken(userId) {
  */
 static async verifyEmail(token) {
   const { isTokenExpired } = require('../utils/tokenUtils');
-  
+
   // Find user with this token
   const result = await query(
     'SELECT * FROM users WHERE email_verification_token = $1',
     [token]
   );
-  
+
   if (result.rows.length === 0) {
     return { success: false, message: 'Invalid verification token' };
   }
-  
+
   const user = result.rows[0];
-  
+
   // Check if token expired
   if (isTokenExpired(user.email_verification_token_expires)) {
     return { success: false, message: 'Verification token has expired' };
   }
-  
+
   // Check if already verified
   if (user.email_verified) {
     return { success: false, message: 'Email already verified', alreadyVerified: true };
   }
-  
+
   // Mark as verified and approved
   await query(
-    `UPDATE users 
-     SET email_verified = TRUE, 
+    `UPDATE users
+     SET email_verified = TRUE,
          is_approved = TRUE,
          email_verification_token = NULL,
          email_verification_token_expires = NULL,
@@ -460,7 +470,7 @@ static async verifyEmail(token) {
      WHERE id = $1`,
     [user.id]
   );
-  
+
   return { success: true, user };
 }
 ```
@@ -472,7 +482,7 @@ static async verifyEmail(token) {
 Update `backend/src/routes/auth.js`:
 
 ```javascript
-const emailService = require('../services/emailService');
+const emailService = require("../services/emailService");
 
 /**
  * @route   POST /api/auth/register
@@ -515,12 +525,13 @@ router.post("/register", async (req, res) => {
       if (!existingUser.email_verified) {
         return res.status(400).json({
           success: false,
-          message: "An account with this email already exists but is not verified. Please check your email for the verification link or request a new one.",
+          message:
+            "An account with this email already exists but is not verified. Please check your email for the verification link or request a new one.",
           canResendVerification: true,
           email: email,
         });
       }
-      
+
       return res.status(400).json({
         success: false,
         message: "User already exists with this email",
@@ -536,9 +547,9 @@ router.post("/register", async (req, res) => {
       password,
       role: "alumni",
       provider: providerName,
-      is_approved: false,      // ❌ Not approved until verified
+      is_approved: false, // ❌ Not approved until verified
       is_active: true,
-      email_verified: false,   // ❌ Not verified yet
+      email_verified: false, // ❌ Not verified yet
     };
 
     const user = await User.create(userData);
@@ -554,10 +565,10 @@ router.post("/register", async (req, res) => {
         firstName
       );
     } catch (emailError) {
-      console.error('Error sending verification email:', emailError);
+      console.error("Error sending verification email:", emailError);
       // Delete the created user if email fails
       await User.delete(user.id);
-      
+
       return res.status(500).json({
         success: false,
         message: "Failed to send verification email. Please try again.",
@@ -569,7 +580,8 @@ router.post("/register", async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Registration successful! Please check your email to verify your account.",
+      message:
+        "Registration successful! Please check your email to verify your account.",
       requiresVerification: true,
       email: email,
     });
@@ -619,13 +631,13 @@ router.get("/verify-email", async (req, res) => {
 
     // Email verified successfully - now create alumni profile
     const AlumniProfile = require("../models/AlumniProfile");
-    
+
     // Get user data to extract name
     const user = await User.findById(result.user.id);
-    
+
     // Check if profile already exists
     const existingProfile = await AlumniProfile.findByUserId(user.id);
-    
+
     if (!existingProfile) {
       // Create basic alumni profile
       const profileData = {
@@ -634,21 +646,22 @@ router.get("/verify-email", async (req, res) => {
         lastName: "",
         isProfilePublic: true,
       };
-      
+
       await AlumniProfile.create(profileData);
     }
 
     // Send welcome email
     try {
-      await emailService.sendWelcomeEmail(user.email, user.email.split('@')[0]);
+      await emailService.sendWelcomeEmail(user.email, user.email.split("@")[0]);
     } catch (error) {
-      console.error('Error sending welcome email:', error);
+      console.error("Error sending welcome email:", error);
       // Don't fail verification if welcome email fails
     }
 
     res.json({
       success: true,
-      message: "Email verified successfully! You can now login to your account.",
+      message:
+        "Email verified successfully! You can now login to your account.",
       verified: true,
     });
   } catch (error) {
@@ -701,7 +714,7 @@ router.post("/resend-verification", async (req, res) => {
     await emailService.sendVerificationEmail(
       email,
       verificationToken,
-      email.split('@')[0] // Use email prefix as name
+      email.split("@")[0] // Use email prefix as name
     );
 
     res.json({
@@ -752,10 +765,11 @@ router.post("/login", async (req, res) => {
     }
 
     // Check if email is verified (only for local provider)
-    if (user.provider === 'local' && !user.email_verified) {
+    if (user.provider === "local" && !user.email_verified) {
       return res.status(401).json({
         success: false,
-        message: "Please verify your email before logging in. Check your inbox for the verification link.",
+        message:
+          "Please verify your email before logging in. Check your inbox for the verification link.",
         requiresVerification: true,
         email: user.email,
       });
@@ -839,44 +853,48 @@ resendVerification: async (email) => {
 Create `frontend/src/pages/auth/VerifyEmail.jsx`:
 
 ```jsx
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { authService } from '../../services/authService';
-import styles from './VerifyEmail.module.css';
+import React, { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { authService } from "../../services/authService";
+import styles from "./VerifyEmail.module.css";
 
 const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [status, setStatus] = useState('verifying'); // verifying, success, error
-  const [message, setMessage] = useState('');
+  const [status, setStatus] = useState("verifying"); // verifying, success, error
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     const verifyEmail = async () => {
-      const token = searchParams.get('token');
+      const token = searchParams.get("token");
 
       if (!token) {
-        setStatus('error');
-        setMessage('Invalid verification link. Please check your email or request a new verification link.');
+        setStatus("error");
+        setMessage(
+          "Invalid verification link. Please check your email or request a new verification link."
+        );
         return;
       }
 
       try {
         const response = await authService.verifyEmail(token);
-        
+
         if (response.success) {
-          setStatus('success');
+          setStatus("success");
           setMessage(response.message);
-          
+
           // Redirect to login after 3 seconds
           setTimeout(() => {
-            navigate('/login', { 
-              state: { message: 'Email verified! Please login to continue.' }
+            navigate("/login", {
+              state: { message: "Email verified! Please login to continue." },
             });
           }, 3000);
         }
       } catch (error) {
-        setStatus('error');
-        setMessage(error.message || 'Verification failed. The link may have expired.');
+        setStatus("error");
+        setMessage(
+          error.message || "Verification failed. The link may have expired."
+        );
       }
     };
 
@@ -886,7 +904,7 @@ const VerifyEmail = () => {
   return (
     <div className={styles.container}>
       <div className={styles.card}>
-        {status === 'verifying' && (
+        {status === "verifying" && (
           <>
             <div className={styles.spinner}></div>
             <h2>Verifying your email...</h2>
@@ -894,7 +912,7 @@ const VerifyEmail = () => {
           </>
         )}
 
-        {status === 'success' && (
+        {status === "success" && (
           <>
             <div className={styles.successIcon}>✓</div>
             <h2>Email Verified Successfully!</h2>
@@ -903,14 +921,14 @@ const VerifyEmail = () => {
           </>
         )}
 
-        {status === 'error' && (
+        {status === "error" && (
           <>
             <div className={styles.errorIcon}>✗</div>
             <h2>Verification Failed</h2>
             <p>{message}</p>
-            <button 
+            <button
               className={styles.button}
-              onClick={() => navigate('/login')}
+              onClick={() => navigate("/login")}
             >
               Go to Login
             </button>
@@ -957,8 +975,12 @@ Create `frontend/src/pages/auth/VerifyEmail.module.css`:
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .successIcon {
@@ -990,9 +1012,15 @@ Create `frontend/src/pages/auth/VerifyEmail.module.css`:
 }
 
 @keyframes scaleIn {
-  0% { transform: scale(0); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .card h2 {
@@ -1038,33 +1066,33 @@ Create `frontend/src/pages/auth/VerifyEmail.module.css`:
 Create `frontend/src/pages/auth/EmailSent.jsx`:
 
 ```jsx
-import React, { useState } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { authService } from '../../services/authService';
-import styles from './EmailSent.module.css';
+import React, { useState } from "react";
+import { useLocation, useNavigate, Link } from "react-router-dom";
+import { authService } from "../../services/authService";
+import styles from "./EmailSent.module.css";
 
 const EmailSent = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const email = location.state?.email;
   const [resending, setResending] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
 
   // Redirect if no email in state
   if (!email) {
-    navigate('/register');
+    navigate("/register");
     return null;
   }
 
   const handleResend = async () => {
     setResending(true);
-    setMessage('');
+    setMessage("");
 
     try {
       const response = await authService.resendVerification(email);
-      setMessage({ type: 'success', text: response.message });
+      setMessage({ type: "success", text: response.message });
     } catch (error) {
-      setMessage({ type: 'error', text: error.message });
+      setMessage({ type: "error", text: error.message });
     } finally {
       setResending(false);
     }
@@ -1075,11 +1103,9 @@ const EmailSent = () => {
       <div className={styles.card}>
         <div className={styles.emailIcon}>📧</div>
         <h1>Check Your Email</h1>
-        <p className={styles.mainText}>
-          We've sent a verification link to:
-        </p>
+        <p className={styles.mainText}>We've sent a verification link to:</p>
         <p className={styles.email}>{email}</p>
-        
+
         <div className={styles.instructions}>
           <h3>What's next?</h3>
           <ol>
@@ -1101,14 +1127,14 @@ const EmailSent = () => {
         )}
 
         <div className={styles.actions}>
-          <button 
-            onClick={handleResend} 
+          <button
+            onClick={handleResend}
             disabled={resending}
             className={styles.resendButton}
           >
-            {resending ? 'Sending...' : 'Resend Verification Email'}
+            {resending ? "Sending..." : "Resend Verification Email"}
           </button>
-          
+
           <Link to="/login" className={styles.loginLink}>
             Already verified? Login
           </Link>
@@ -1284,7 +1310,7 @@ Update `frontend/src/pages/auth/Register.jsx`:
 
 const handleRegister = async (e) => {
   e.preventDefault();
-  
+
   try {
     const response = await register({
       email,
@@ -1296,18 +1322,18 @@ const handleRegister = async (e) => {
     // Check if verification is required
     if (response.requiresVerification) {
       // Redirect to email sent page
-      navigate('/email-sent', { 
-        state: { email: response.email }
+      navigate("/email-sent", {
+        state: { email: response.email },
       });
     } else {
       // OAuth or other registration - redirect to dashboard
-      navigate('/dashboard');
+      navigate("/dashboard");
     }
   } catch (error) {
     // Handle error - check if can resend verification
     if (error.response?.data?.canResendVerification) {
-      navigate('/email-sent', { 
-        state: { email: error.response.data.email }
+      navigate("/email-sent", {
+        state: { email: error.response.data.email },
       });
     } else {
       setError(error.message);
@@ -1327,20 +1353,22 @@ Update `frontend/src/pages/auth/Login.jsx`:
 
 const handleLogin = async (e) => {
   e.preventDefault();
-  
+
   try {
     await login({ email, password });
-    navigate('/dashboard');
+    navigate("/dashboard");
   } catch (error) {
     // Check if user needs to verify email
     if (error.response?.data?.requiresVerification) {
       setError(
         <div>
           {error.response.data.message}
-          <button 
-            onClick={() => navigate('/email-sent', { 
-              state: { email: error.response.data.email }
-            })}
+          <button
+            onClick={() =>
+              navigate("/email-sent", {
+                state: { email: error.response.data.email },
+              })
+            }
             className={styles.linkButton}
           >
             Resend verification email
@@ -1374,12 +1402,14 @@ import EmailSent from './pages/auth/EmailSent';
 ## ✅ Step 16: Testing Checklist
 
 ### 1. **Test Registration**
+
 - [ ] Register with valid email and password
 - [ ] Verify email is sent
 - [ ] Check user is created in database (email_verified = FALSE)
 - [ ] Verify alumni_profile is NOT created yet
 
 ### 2. **Test Email Verification**
+
 - [ ] Click verification link in email
 - [ ] Verify redirect to success page
 - [ ] Check user.email_verified = TRUE in database
@@ -1387,21 +1417,25 @@ import EmailSent from './pages/auth/EmailSent';
 - [ ] Try logging in
 
 ### 3. **Test Login Before Verification**
+
 - [ ] Try logging in without verifying
 - [ ] Verify error message shows
 - [ ] Verify link to resend email works
 
 ### 4. **Test Token Expiration**
+
 - [ ] Wait 24 hours (or temporarily reduce expiry in code)
 - [ ] Try using expired link
 - [ ] Verify appropriate error message
 
 ### 5. **Test Resend Verification**
+
 - [ ] Request new verification email
 - [ ] Verify new token is generated
 - [ ] Old link should still work (or invalidate old tokens)
 
 ### 6. **Test Edge Cases**
+
 - [ ] Register with same email twice
 - [ ] Verify already verified email
 - [ ] Invalid verification token
@@ -1412,6 +1446,7 @@ import EmailSent from './pages/auth/EmailSent';
 ## 🔒 Security Best Practices
 
 ### ✅ Implemented:
+
 1. **Secure Random Tokens**: Using crypto.randomBytes (not predictable)
 2. **Token Expiration**: 24-hour limit
 3. **One-time Use**: Token cleared after verification
@@ -1422,40 +1457,42 @@ import EmailSent from './pages/auth/EmailSent';
 ### 🚀 Additional Security (Optional):
 
 #### Rate Limiting for Resend:
+
 ```javascript
 // Add to backend
-const rateLimit = require('express-rate-limit');
+const rateLimit = require("express-rate-limit");
 
 const resendLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 3, // 3 requests per 15 minutes
-  message: 'Too many verification requests. Please try again later.',
+  message: "Too many verification requests. Please try again later.",
 });
 
-router.post('/resend-verification', resendLimiter, async (req, res) => {
+router.post("/resend-verification", resendLimiter, async (req, res) => {
   // ... existing code
 });
 ```
 
 #### Invalidate Old Tokens:
+
 ```javascript
 // When generating new token, mark old as used
 static async generateVerificationToken(userId) {
   const token = generateToken(32);
   const expires = generateTokenExpiry(24);
-  
+
   // Clear old token
   await query(
     'UPDATE users SET email_verification_token = NULL WHERE id = $1',
     [userId]
   );
-  
+
   // Set new token
   await this.update(userId, {
     email_verification_token: token,
     email_verification_token_expires: expires,
   });
-  
+
   return token;
 }
 ```
@@ -1467,34 +1504,37 @@ static async generateVerificationToken(userId) {
 ### Email Not Sending?
 
 **Gmail Issues:**
+
 1. Check 2FA is enabled
 2. Use App Password, not regular password
 3. Enable "Less secure app access" (not recommended)
 
 **Better Alternative - Use Ethereal for Testing:**
+
 ```javascript
 // In emailService.js for development
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== "production") {
   // Create Ethereal test account
   const testAccount = await nodemailer.createTestAccount();
-  
+
   this.transporter = nodemailer.createTransport({
-    host: 'smtp.ethereal.email',
+    host: "smtp.ethereal.email",
     port: 587,
     auth: {
       user: testAccount.user,
       pass: testAccount.pass,
     },
   });
-  
+
   // Log preview URL
-  console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
+  console.log("Preview URL:", nodemailer.getTestMessageUrl(info));
 }
 ```
 
 ### Database Errors?
 
 Run migration:
+
 ```sql
 ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_token_expires TIMESTAMP;
 ```
@@ -1502,9 +1542,10 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_token_expires TIME
 ### Token Expired Immediately?
 
 Check server timezone:
+
 ```javascript
-console.log('Server time:', new Date());
-console.log('Token expires:', expires);
+console.log("Server time:", new Date());
+console.log("Token expires:", expires);
 ```
 
 ---
@@ -1513,26 +1554,26 @@ console.log('Token expires:', expires);
 
 ```sql
 -- Check user verification status
-SELECT id, email, email_verified, is_approved, 
+SELECT id, email, email_verified, is_approved,
        email_verification_token, email_verification_token_expires
-FROM users 
+FROM users
 WHERE email = 'test@example.com';
 
 -- Manually verify a user (for testing)
-UPDATE users 
-SET email_verified = TRUE, 
+UPDATE users
+SET email_verified = TRUE,
     is_approved = TRUE,
     email_verification_token = NULL
 WHERE email = 'test@example.com';
 
 -- Check if profile was created
-SELECT * FROM alumni_profiles 
+SELECT * FROM alumni_profiles
 WHERE user_id = (SELECT id FROM users WHERE email = 'test@example.com');
 
 -- See all unverified users
-SELECT email, created_at 
-FROM users 
-WHERE email_verified = FALSE 
+SELECT email, created_at
+FROM users
+WHERE email_verified = FALSE
 ORDER BY created_at DESC;
 ```
 
@@ -1541,20 +1582,23 @@ ORDER BY created_at DESC;
 ## 🎯 Summary
 
 ### What Changes:
+
 1. **Registration**: User receives email instead of auto-login
 2. **Database**: User created but not approved/verified
 3. **Profile**: Alumni profile created AFTER verification
 4. **Login**: Blocked until email verified
 
 ### User Flow:
+
 ```
-Register → Email sent → Check email → Click link → Email verified → 
+Register → Email sent → Check email → Click link → Email verified →
 Profile created → Login → Access granted
 ```
 
 ### Time to Implement: ~2-3 hours
 
 ### Files Created:
+
 - `backend/src/services/emailService.js`
 - `backend/src/utils/tokenUtils.js`
 - `frontend/src/pages/auth/VerifyEmail.jsx`
@@ -1562,6 +1606,7 @@ Profile created → Login → Access granted
 - CSS modules for both pages
 
 ### Files Modified:
+
 - `backend/src/routes/auth.js`
 - `backend/src/models/User.js`
 - `frontend/src/services/authService.js`
