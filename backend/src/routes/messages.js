@@ -3,6 +3,7 @@ const router = express.Router();
 const { authenticate } = require("../middleware/auth");
 const Message = require("../models/Message");
 const PublicKey = require("../models/PublicKey");
+const AlumniProfile = require("../models/AlumniProfile");
 
 /**
  * @route   GET /api/messages
@@ -11,22 +12,50 @@ const PublicKey = require("../models/PublicKey");
  */
 router.get("/", authenticate, async (req, res) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
+    const { page = 1, limit = 50 } = req.query;
+    const offset = (page - 1) * limit;
 
-  // Build a simple conversations list (other user + last message preview)
-  // Note: For now return empty array or a placeholder. Conversation model can be added later.
-  const conversations = [];
+    // Resolve authenticated user -> alumni_profiles.id
+    const authAlumni = await AlumniProfile.findByUserId(req.user.id);
+    if (!authAlumni) {
+      return res.json({ success: true, data: [], pagination: { current: parseInt(page), total: 0, count: 0, totalRecords: 0 } });
+    }
 
-    res.json({
-      success: true,
-      data: conversations,
-      pagination: {
-        current: parseInt(page),
-        total: 0,
-        count: conversations.length,
-        totalRecords: 0,
-      },
-    });
+    // Query for last message per conversation partner (simple approach)
+    const q = `
+      SELECT m.* FROM messages m
+      WHERE m.sender_id = $1 OR m.receiver_id = $1
+      ORDER BY m.sent_at DESC
+      LIMIT $2 OFFSET $3
+    `;
+    const msgsRes = await require('../config/database').query(q, [authAlumni.id, parseInt(limit), parseInt(offset)]);
+    const rows = msgsRes.rows || [];
+
+    // Build a map of partnerId -> last message
+    const convMap = new Map();
+    for (const r of rows) {
+      const partnerId = r.sender_id === authAlumni.id ? r.receiver_id : r.sender_id;
+      if (!convMap.has(partnerId)) {
+        convMap.set(partnerId, r);
+      }
+    }
+
+    // Build response entries including partner's user_id for client lookups
+    const conversations = [];
+    for (const [partnerAlumniId, lastMsg] of convMap.entries()) {
+      // fetch partner's profile to get user_id
+      const partnerProfile = await AlumniProfile.findById(partnerAlumniId);
+      const partnerName = partnerProfile ? `${partnerProfile.first_name || ''} ${partnerProfile.last_name || ''}`.trim() : null;
+      conversations.push({
+        partnerAlumniId,
+        partnerUserId: partnerProfile ? partnerProfile.user_id : null,
+        partnerName: partnerName || partnerProfile?.display_name || null,
+        partnerAvatar: partnerProfile ? partnerProfile.profile_picture_url : null,
+        lastMessage: lastMsg,
+      });
+    }
+
+    res.json({ success: true, data: conversations, pagination: { current: parseInt(page), total: conversations.length, count: conversations.length, totalRecords: conversations.length } });
   } catch (error) {
     console.error("Get messages error:", error);
     res.status(500).json({
@@ -46,15 +75,55 @@ router.get("/conversation/:userId", authenticate, async (req, res) => {
     const { userId } = req.params;
     const { page = 1, limit = 50 } = req.query;
     const offset = (page - 1) * limit;
-    const messages = await Message.findConversationBetween(req.user.id, userId, { limit: parseInt(limit), offset: parseInt(offset) });
+    // Resolve authenticated user -> alumni_profiles.id
+    const authAlumni = await AlumniProfile.findByUserId(req.user.id);
+    if (!authAlumni) {
+      return res.status(400).json({ success: false, message: 'Authenticated user has no alumni profile' });
+    }
+
+    // Resolve target: allow either alumni_profiles.id or users.id (userId param)
+    let targetAlumni = null;
+    // try as alumni_profiles.id
+    targetAlumni = await AlumniProfile.findById(userId);
+    if (!targetAlumni) {
+      // try as users.id -> find by user_id
+      targetAlumni = await AlumniProfile.findByUserId(userId);
+    }
+
+    if (!targetAlumni) {
+      // no conversation if target has no alumni profile
+      return res.json({ success: true, data: [], pagination: { current: parseInt(page), total: 0, count: 0, totalRecords: 0 } });
+    }
+
+    const messages = await Message.findConversationBetween(authAlumni.id, targetAlumni.id, { limit: parseInt(limit), offset: parseInt(offset) });
+
+    // Enrich messages with sender_user_id and receiver_user_id (users.id) to help clients fetch public keys
+    const enriched = [];
+    for (const m of messages) {
+      try {
+        const senderProfile = await AlumniProfile.findById(m.sender_id);
+        const receiverProfile = await AlumniProfile.findById(m.receiver_id);
+        enriched.push({
+          ...m,
+          sender_user_id: senderProfile ? senderProfile.user_id : null,
+          receiver_user_id: receiverProfile ? receiverProfile.user_id : null,
+          sender_name: senderProfile ? `${senderProfile.first_name || ''} ${senderProfile.last_name || ''}`.trim() : null,
+          receiver_name: receiverProfile ? `${receiverProfile.first_name || ''} ${receiverProfile.last_name || ''}`.trim() : null,
+          sender_avatar: senderProfile ? senderProfile.profile_picture_url : null,
+          receiver_avatar: receiverProfile ? receiverProfile.profile_picture_url : null,
+        });
+      } catch (e) {
+        enriched.push({ ...m, sender_user_id: null, receiver_user_id: null });
+      }
+    }
 
     res.json({
       success: true,
-      data: messages,
+      data: enriched,
       pagination: {
         current: parseInt(page),
         total: 0,
-        count: messages.length,
+        count: enriched.length,
         totalRecords: 0,
       },
     });

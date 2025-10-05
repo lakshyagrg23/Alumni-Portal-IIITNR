@@ -210,7 +210,11 @@ const AlumniDirectory = () => {
             </div>
 
             <div className={styles.alumniGrid}>
-              {alumni.map((alum) => (
+              {alumni.map((alum) => {
+                // Backend converts `user_id` -> `userId` in API responses.
+                // Use `userId` (camelCase) primarily and fall back to `user_id` if present.
+                const userId = alum.userId || alum.user_id || null;
+                return (
                 <div key={alum.id} className={styles.alumniCard}>
                   <div className={styles.cardHeader}>
                     <div className={styles.avatar}>
@@ -276,6 +280,15 @@ const AlumniDirectory = () => {
                     >
                       View Profile
                     </button>
+                    <button
+                      className={styles.messageButton}
+                      onClick={() => userId && navigate(`/messages?to=${userId}`)}
+                      data-user-id={userId}
+                      disabled={!userId}
+                      title={userId ? 'Message this alumnus' : 'Recipient has not enabled messaging (no user id)'}
+                    >
+                      Message
+                    </button>
                     {alum.linkedinUrl && (
                       <a
                         href={alum.linkedinUrl}
@@ -288,7 +301,8 @@ const AlumniDirectory = () => {
                     )}
                   </div>
                 </div>
-              ))}
+                  )
+              })}
             </div>
 
             {/* Pagination */}

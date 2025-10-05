@@ -2,8 +2,13 @@ const { insertOne, findMany, findOne, query } = require('../utils/sqlHelpers');
 
 class Message {
   static async create(data) {
-    const record = await insertOne('messages', data);
-    return record;
+    try {
+      const record = await insertOne('messages', data);
+      return record;
+    } catch (err) {
+      console.error('Message.create error. Payload:', data, 'Error:', err.message || err);
+      throw err;
+    }
   }
 
   static async findConversationBetween(userA, userB, { limit = 100, offset = 0 } = {}) {

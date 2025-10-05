@@ -60,6 +60,15 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
+// Prevent client-side caching for API routes — avoids 304 responses for dynamic data
+app.use('/api', (req, res, next) => {
+  // Strong no-cache for API endpoints
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
+
 // Logging middleware
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 

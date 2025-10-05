@@ -12,6 +12,17 @@ export async function exportPublicKey(key) {
   return btoa(String.fromCharCode(...new Uint8Array(raw)));
 }
 
+export async function exportPrivateKey(privateKey) {
+  // Export as JWK for portability
+  const jwk = await subtle.exportKey('jwk', privateKey);
+  return btoa(JSON.stringify(jwk));
+}
+
+export async function importPrivateKey(jwkB64) {
+  const jwk = JSON.parse(atob(jwkB64));
+  return await subtle.importKey('jwk', jwk, { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey', 'deriveBits']);
+}
+
 export async function importPublicKey(base64) {
   const binary = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
   return await subtle.importKey('raw', binary.buffer, { name: 'ECDH', namedCurve: 'P-256' }, true, []);
