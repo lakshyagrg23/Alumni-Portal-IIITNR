@@ -27,6 +27,12 @@ const notFound = require("./middleware/notFound");
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// We'll create an HTTP server and attach socket.io after configuring Express
+const http = require('http');
+const server = http.createServer(app);
+const { Server: IOServer } = require('socket.io');
+let io;
+
 // Security middleware
 app.use(helmet());
 app.use(compression());
@@ -53,6 +59,15 @@ app.use(cors(corsOptions));
 // Body parsing middleware
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// Prevent client-side caching for API routes — avoids 304 responses for dynamic data
+app.use('/api', (req, res, next) => {
+  // Strong no-cache for API endpoints
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
 
 // Logging middleware
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
@@ -101,12 +116,26 @@ const startServer = async () => {
     await testConnection();
     console.log("✅ Database connection has been established successfully.");
 
-    // Start server
-    app.listen(PORT, () => {
-      console.log(`🚀 Server is running on port ${PORT}`);
-      console.log(`🌐 Environment: ${process.env.NODE_ENV || "development"}`);
-      console.log(`📝 API Documentation: http://localhost:${PORT}/api/docs`);
-      console.log(`❤️  Health Check: http://localhost:${PORT}/health`);
+    // Start server (HTTP server used for socket.io)
+    await new Promise((resolve) => {
+      // Initialize socket.io
+      io = new IOServer(server, {
+        cors: {
+          origin: process.env.NODE_ENV === 'production' ? ["https://alumni.iiitnr.ac.in"] : ["http://localhost:3000"],
+          methods: ["GET", "POST"],
+        },
+      });
+
+      // Attach socket handlers
+      require('./socket')(io);
+
+      server.listen(PORT, () => {
+        console.log(`🚀 Server is running on port ${PORT}`);
+        console.log(`🌐 Environment: ${process.env.NODE_ENV || "development"}`);
+        console.log(`📝 API Documentation: http://localhost:${PORT}/api/docs`);
+        console.log(`❤️  Health Check: http://localhost:${PORT}/health`);
+        resolve();
+      });
     });
   } catch (error) {
     console.error("❌ Unable to start server:", error);
@@ -142,4 +171,5 @@ process.on("SIGINT", async () => {
 // Start the server
 startServer();
 
-module.exports = app;
+// Export server and io for tests or external usage
+module.exports = { app, server, getIo: () => io };

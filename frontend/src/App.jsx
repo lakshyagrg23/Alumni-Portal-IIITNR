@@ -123,9 +123,9 @@ function App() {
           <Route 
             path="/messages" 
             element={
-              <ProtectedRoute>
+              // <ProtectedRoute>
                 <Messages />
-              </ProtectedRoute>
+              // </ProtectedRoute>
             } 
           />
           
