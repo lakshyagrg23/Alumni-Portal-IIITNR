@@ -21,22 +21,40 @@ router.get("/", authenticate, async (req, res) => {
       return res.json({ success: true, data: [], pagination: { current: parseInt(page), total: 0, count: 0, totalRecords: 0 } });
     }
 
-    // Query for last message per conversation partner (simple approach)
+    // Query for conversations with latest message per conversation partner
     const q = `
-      SELECT m.* FROM messages m
-      WHERE m.sender_id = $1 OR m.receiver_id = $1
-      ORDER BY m.sent_at DESC
+      WITH conversation_partners AS (
+        SELECT DISTINCT 
+          CASE 
+            WHEN sender_id = $1 THEN receiver_id 
+            ELSE sender_id 
+          END as partner_id
+        FROM messages 
+        WHERE sender_id = $1 OR receiver_id = $1
+      ),
+      latest_messages AS (
+        SELECT 
+          cp.partner_id,
+          m.*,
+          ROW_NUMBER() OVER (PARTITION BY cp.partner_id ORDER BY m.sent_at DESC) as rn
+        FROM conversation_partners cp
+        JOIN messages m ON (
+          (m.sender_id = $1 AND m.receiver_id = cp.partner_id) OR 
+          (m.receiver_id = $1 AND m.sender_id = cp.partner_id)
+        )
+      )
+      SELECT * FROM latest_messages WHERE rn = 1
+      ORDER BY sent_at DESC
       LIMIT $2 OFFSET $3
     `;
     const msgsRes = await require('../config/database').query(q, [authAlumni.id, parseInt(limit), parseInt(offset)]);
     const rows = msgsRes.rows || [];
 
-    // Build a map of partnerId -> last message
+    // Build conversation map with partner info
     const convMap = new Map();
     for (const r of rows) {
-      const partnerId = r.sender_id === authAlumni.id ? r.receiver_id : r.sender_id;
-      if (!convMap.has(partnerId)) {
-        convMap.set(partnerId, r);
+      if (!convMap.has(r.partner_id)) {
+        convMap.set(r.partner_id, r);
       }
     }
 
@@ -49,9 +67,12 @@ router.get("/", authenticate, async (req, res) => {
       conversations.push({
         partnerAlumniId,
         partnerUserId: partnerProfile ? partnerProfile.user_id : null,
-        partnerName: partnerName || partnerProfile?.display_name || null,
+        partnerName: partnerName || partnerProfile?.display_name || `User ${partnerProfile?.user_id || partnerAlumniId}`,
         partnerAvatar: partnerProfile ? partnerProfile.profile_picture_url : null,
-        lastMessage: lastMsg,
+        lastMessage: {
+          ...lastMsg,
+          isOutgoing: lastMsg.sender_id === authAlumni.id
+        },
       });
     }
 
