@@ -1,0 +1,355 @@
+/* About Page Styles */
+
+.aboutContainer {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+}
+
+/* Hero Section */
+.heroSection {
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  color: white;
+  padding: 4rem 2rem;
+  text-align: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.heroContent {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.mainTitle {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.subtitle {
+  font-size: 1.3rem;
+  opacity: 0.95;
+  font-weight: 300;
+}
+
+/* Content Wrapper */
+.contentWrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+/* Sections */
+.section {
+  background: white;
+  border-radius: 12px;
+  padding: 2.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.section:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.sectionContent {
+  line-height: 1.8;
+}
+
+.sectionTitle {
+  font-size: 2rem;
+  color: #1e3a8a;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 3px solid #f97316;
+  display: inline-block;
+}
+
+.introText {
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: #374151;
+  margin-bottom: 1.5rem;
+  text-align: justify;
+}
+
+/* Highlights Grid */
+.highlightsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.highlightCard {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1.5rem;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.highlightCard:hover {
+  transform: translateY(-5px);
+  border-color: #f97316;
+  box-shadow: 0 8px 16px rgba(249, 115, 22, 0.1);
+}
+
+.highlightCard h3 {
+  font-size: 1.25rem;
+  color: #1e3a8a;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.highlightCard p {
+  font-size: 0.95rem;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+/* Campus Content */
+.campusContent p {
+  font-size: 1.05rem;
+  line-height: 1.8;
+  color: #374151;
+  margin-bottom: 1.5rem;
+  text-align: justify;
+}
+
+.campusFeatures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.feature {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border-left: 4px solid #f97316;
+  transition: all 0.3s ease;
+}
+
+.feature:hover {
+  background: #fff7ed;
+  transform: translateX(5px);
+}
+
+.feature span {
+  color: #374151;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* Vision & Mission */
+.visionMissionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 2rem;
+}
+
+.visionMissionCard {
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  color: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2);
+  transition: transform 0.3s ease;
+}
+
+.visionMissionCard:hover {
+  transform: scale(1.02);
+}
+
+.cardTitle {
+  font-size: 1.75rem;
+  margin-bottom: 1rem;
+  color: #fbbf24;
+  border-bottom: 2px solid #f97316;
+  padding-bottom: 0.5rem;
+  display: inline-block;
+}
+
+.visionMissionCard p {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  opacity: 0.95;
+}
+
+/* Contact Section */
+.contactGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.contactCard {
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.contactCard:hover {
+  border-color: #1e3a8a;
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.1);
+}
+
+.contactCard h3 {
+  font-size: 1.3rem;
+  color: #1e3a8a;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.contactCard p {
+  color: #374151;
+  line-height: 1.8;
+}
+
+.contactCard a {
+  color: #f97316;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.contactCard a:hover {
+  color: #ea580c;
+  text-decoration: underline;
+}
+
+.contactCard small {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+/* Map Links */
+.mapLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 2rem;
+  justify-content: center;
+}
+
+.mapLink {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.875rem 1.75rem;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  color: white;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(30, 58, 138, 0.2);
+}
+
+.mapLink:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+}
+
+/* Alumni Portal Info */
+.alumniPortalInfo {
+  background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%);
+  border: 2px solid #f97316;
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+}
+
+.alumniPortalInfo h2 {
+  color: #1e3a8a;
+  margin-bottom: 1rem;
+}
+
+.alumniPortalInfo p {
+  font-size: 1.05rem;
+  line-height: 1.8;
+  color: #374151;
+  margin-bottom: 1rem;
+}
+
+.alumniPortalInfo p:last-child {
+  margin-bottom: 0;
+  font-weight: 500;
+  color: #1e3a8a;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .mainTitle {
+    font-size: 2rem;
+  }
+
+  .subtitle {
+    font-size: 1.1rem;
+  }
+
+  .heroSection {
+    padding: 3rem 1.5rem;
+  }
+
+  .contentWrapper {
+    padding: 1rem;
+  }
+
+  .section {
+    padding: 1.5rem;
+  }
+
+  .sectionTitle {
+    font-size: 1.5rem;
+  }
+
+  .highlightsGrid,
+  .campusFeatures,
+  .visionMissionGrid,
+  .contactGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .mapLinks {
+    flex-direction: column;
+  }
+
+  .mapLink {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .mainTitle {
+    font-size: 1.75rem;
+  }
+
+  .subtitle {
+    font-size: 1rem;
+  }
+
+  .introText,
+  .campusContent p,
+  .visionMissionCard p,
+  .alumniPortalInfo p {
+    font-size: 1rem;
+  }
+
+  .section {
+    padding: 1.25rem;
+  }
+}

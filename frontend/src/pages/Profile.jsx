@@ -32,8 +32,7 @@ const Profile = () => {
     githubUrl: '',
     portfolioUrl: '',
     skills: '',
-    achievements: '',
-    interests: '',  // Added missing interests field
+    interests: '',
     isProfilePublic: true,
   })
   const [errors, setErrors] = useState({})
@@ -91,7 +90,6 @@ const Profile = () => {
           skills: Array.isArray(data.alumniProfile?.skills) 
             ? data.alumniProfile.skills.join(', ') 
             : data.alumniProfile?.skills || '',
-          achievements: data.alumniProfile?.achievements || '',
           interests: Array.isArray(data.alumniProfile?.interests) 
             ? data.alumniProfile.interests.join(', ') 
             : data.alumniProfile?.interests || '',
@@ -183,8 +181,8 @@ const Profile = () => {
       delete updateData.portfolio_url;
       delete updateData.profile_picture;
       
-      // Convert array fields (skills, achievements, interests) from strings to arrays
-      const arrayFields = ['skills', 'achievements', 'interests'];
+      // Convert array fields (skills, interests) from strings to arrays
+      const arrayFields = ['skills', 'interests'];
       arrayFields.forEach(field => {
         if (typeof updateData[field] === 'string') {
           if (updateData[field].trim() === '') {
@@ -398,27 +396,27 @@ const Profile = () => {
                 
                 <div className={styles.formRow}>
                   <div className={styles.formGroup}>
-                    <label htmlFor="graduation_year">Graduation Year</label>
+                    <label htmlFor="graduationYear">Graduation Year</label>
                     <input
                       type="number"
-                      id="graduation_year"
-                      name="graduation_year"
-                      value={profileData.graduation_year}
+                      id="graduationYear"
+                      name="graduationYear"
+                      value={profileData.graduationYear}
                       onChange={handleInputChange}
                       min="2000"
                       max={new Date().getFullYear() + 5}
-                      className={errors.graduation_year ? styles.error : ''}
+                      className={errors.graduationYear ? styles.error : ''}
                     />
-                    {errors.graduation_year && <span className={styles.errorText}>{errors.graduation_year}</span>}
+                    {errors.graduationYear && <span className={styles.errorText}>{errors.graduationYear}</span>}
                   </div>
                   
                   <div className={styles.formGroup}>
-                    <label htmlFor="roll_number">Roll Number</label>
+                    <label htmlFor="studentId">Roll Number</label>
                     <input
                       type="text"
-                      id="roll_number"
-                      name="roll_number"
-                      value={profileData.roll_number}
+                      id="studentId"
+                      name="studentId"
+                      value={profileData.studentId}
                       onChange={handleInputChange}
                       placeholder="e.g., 19115001"
                     />
@@ -457,18 +455,6 @@ const Profile = () => {
                     </select>
                   </div>
                 </div>
-
-                <div className={styles.formGroup}>
-                  <label htmlFor="achievements">Achievements</label>
-                  <textarea
-                    id="achievements"
-                    name="achievements"
-                    value={profileData.achievements}
-                    onChange={handleInputChange}
-                    rows="3"
-                    placeholder="Academic achievements, awards, honors..."
-                  />
-                </div>
               </div>
             )}
 
@@ -479,24 +465,24 @@ const Profile = () => {
                 
                 <div className={styles.formRow}>
                   <div className={styles.formGroup}>
-                    <label htmlFor="current_company">Current Company</label>
+                    <label htmlFor="currentCompany">Current Company</label>
                     <input
                       type="text"
-                      id="current_company"
-                      name="current_company"
-                      value={profileData.current_company}
+                      id="currentCompany"
+                      name="currentCompany"
+                      value={profileData.currentCompany}
                       onChange={handleInputChange}
                       placeholder="e.g., Google, Microsoft"
                     />
                   </div>
                   
                   <div className={styles.formGroup}>
-                    <label htmlFor="current_position">Current Position</label>
+                    <label htmlFor="currentPosition">Current Position</label>
                     <input
                       type="text"
-                      id="current_position"
-                      name="current_position"
-                      value={profileData.current_position}
+                      id="currentPosition"
+                      name="currentPosition"
+                      value={profileData.currentPosition}
                       onChange={handleInputChange}
                       placeholder="e.g., Software Engineer, Product Manager"
                     />
@@ -505,36 +491,36 @@ const Profile = () => {
 
                 <div className={styles.formRow}>
                   <div className={styles.formGroup}>
-                    <label htmlFor="current_city">City</label>
+                    <label htmlFor="currentCity">City</label>
                     <input
                       type="text"
-                      id="current_city"
-                      name="current_city"
-                      value={profileData.current_city}
+                      id="currentCity"
+                      name="currentCity"
+                      value={profileData.currentCity}
                       onChange={handleInputChange}
                       placeholder="e.g., Bangalore"
                     />
                   </div>
                   
                   <div className={styles.formGroup}>
-                    <label htmlFor="current_state">State</label>
+                    <label htmlFor="currentState">State</label>
                     <input
                       type="text"
-                      id="current_state"
-                      name="current_state"
-                      value={profileData.current_state}
+                      id="currentState"
+                      name="currentState"
+                      value={profileData.currentState}
                       onChange={handleInputChange}
                       placeholder="e.g., Karnataka"
                     />
                   </div>
                   
                   <div className={styles.formGroup}>
-                    <label htmlFor="current_country">Country</label>
+                    <label htmlFor="currentCountry">Country</label>
                     <input
                       type="text"
-                      id="current_country"
-                      name="current_country"
-                      value={profileData.current_country}
+                      id="currentCountry"
+                      name="currentCountry"
+                      value={profileData.currentCountry}
                       onChange={handleInputChange}
                       placeholder="e.g., India"
                     />

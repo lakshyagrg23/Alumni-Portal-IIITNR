@@ -4,7 +4,8 @@ import { useAuth } from '@hooks/useAuth'
 import styles from './Header.module.css'
 
 const Header = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false)
   const { user, logout, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -12,15 +13,30 @@ const Header = () => {
   const handleLogout = () => {
     logout()
     navigate('/')
-    setIsMenuOpen(false)
+    setIsMobileMenuOpen(false)
+    setIsUserDropdownOpen(false)
   }
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen)
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen)
+    setIsUserDropdownOpen(false) // Close user dropdown when opening mobile menu
   }
 
-  const closeMenu = () => {
-    setIsMenuOpen(false)
+  const toggleUserDropdown = () => {
+    setIsUserDropdownOpen(!isUserDropdownOpen)
+  }
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false)
+  }
+
+  const closeUserDropdown = () => {
+    setIsUserDropdownOpen(false)
+  }
+
+  const closeAllMenus = () => {
+    setIsMobileMenuOpen(false)
+    setIsUserDropdownOpen(false)
   }
 
   const isActiveLink = (path) => {
@@ -32,7 +48,7 @@ const Header = () => {
       <div className={styles.container}>
         {/* Logo and Institute Name */}
         <div className={styles.logo}>
-          <Link to="/" className={styles.logoLink} onClick={closeMenu}>
+          <Link to="/" className={styles.logoLink} onClick={closeAllMenus}>
             <img 
               src="/iiit-logo.png" 
               alt="IIIT Naya Raipur Logo" 
@@ -85,10 +101,10 @@ const Header = () => {
                 Directory
               </Link>
               <Link 
-                to="/connect" 
-                className={`${styles.navLink} ${isActiveLink('/connect') ? styles.active : ''}`}
+                to="/dashboard" 
+                className={`${styles.navLink} ${isActiveLink('/dashboard') ? styles.active : ''}`}
               >
-                Connect
+                Dashboard
               </Link>
             </>
           )}
@@ -97,8 +113,30 @@ const Header = () => {
         {/* User Actions */}
         <div className={styles.userActions}>
           {isAuthenticated ? (
-            <div className={styles.userMenu}>
-              <button className={styles.userButton} onClick={toggleMenu}>
+            <>
+              {/* Messages Icon with Badge */}
+              <Link to="/messages" className={styles.messagesIcon} title="Messages">
+                <svg 
+                  width="24" 
+                  height="24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                  className={styles.iconSvg}
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" 
+                  />
+                </svg>
+                {/* Notification Badge - placeholder count */}
+                <span className={styles.notificationBadge}>0</span>
+              </Link>
+
+              <div className={styles.userMenu}>
+                <button className={styles.userButton} onClick={toggleUserDropdown}>
                 <img 
                   src={user?.profilePicture || '/default-avatar.svg'}
                   alt={`${user?.firstName} ${user?.lastName}`}
@@ -120,19 +158,13 @@ const Header = () => {
                 </svg>
               </button>
               
-              {isMenuOpen && (
+              {isUserDropdownOpen && (
                 <div className={styles.dropdown}>
-                  <Link to="/dashboard" className={styles.dropdownItem} onClick={closeMenu}>
-                    Dashboard
-                  </Link>
-                  <Link to="/profile" className={styles.dropdownItem} onClick={closeMenu}>
+                  <Link to="/profile" className={styles.dropdownItem} onClick={closeAllMenus}>
                     My Profile
                   </Link>
-                  <Link to="/messages" className={styles.dropdownItem} onClick={closeMenu}>
-                    Messages
-                  </Link>
                   {user?.role === 'admin' && (
-                    <Link to="/admin" className={styles.dropdownItem} onClick={closeMenu}>
+                    <Link to="/admin" className={styles.dropdownItem} onClick={closeAllMenus}>
                       Admin Panel
                     </Link>
                   )}
@@ -143,6 +175,7 @@ const Header = () => {
                 </div>
               )}
             </div>
+            </>
           ) : (
             <div className={styles.authButtons}>
               <Link to="/login" className={styles.loginButton}>
@@ -158,7 +191,7 @@ const Header = () => {
         {/* Mobile Menu Button */}
         <button 
           className={styles.mobileMenuButton}
-          onClick={toggleMenu}
+          onClick={toggleMobileMenu}
           aria-label="Toggle mobile menu"
         >
           <span className={styles.hamburger}></span>
@@ -168,41 +201,38 @@ const Header = () => {
       </div>
 
       {/* Mobile Navigation */}
-      {isMenuOpen && (
+      {isMobileMenuOpen && (
         <div className={styles.mobileNav}>
           <div className={styles.mobileNavContent}>
-            <Link to="/" className={styles.mobileNavLink} onClick={closeMenu}>
+            <Link to="/" className={styles.mobileNavLink} onClick={closeAllMenus}>
               Home
             </Link>
-            <Link to="/about" className={styles.mobileNavLink} onClick={closeMenu}>
+            <Link to="/about" className={styles.mobileNavLink} onClick={closeAllMenus}>
               About
             </Link>
-            <Link to="/news" className={styles.mobileNavLink} onClick={closeMenu}>
+            <Link to="/news" className={styles.mobileNavLink} onClick={closeAllMenus}>
               News
             </Link>
-            <Link to="/events" className={styles.mobileNavLink} onClick={closeMenu}>
+            <Link to="/events" className={styles.mobileNavLink} onClick={closeAllMenus}>
               Events
             </Link>
             
             {isAuthenticated ? (
               <>
-                <Link to="/directory" className={styles.mobileNavLink} onClick={closeMenu}>
+                <Link to="/directory" className={styles.mobileNavLink} onClick={closeAllMenus}>
                   Directory
                 </Link>
-                <Link to="/connect" className={styles.mobileNavLink} onClick={closeMenu}>
-                  Connect
-                </Link>
-                <Link to="/dashboard" className={styles.mobileNavLink} onClick={closeMenu}>
+                <Link to="/dashboard" className={styles.mobileNavLink} onClick={closeAllMenus}>
                   Dashboard
                 </Link>
-                <Link to="/profile" className={styles.mobileNavLink} onClick={closeMenu}>
+                <Link to="/profile" className={styles.mobileNavLink} onClick={closeAllMenus}>
                   My Profile
                 </Link>
-                <Link to="/messages" className={styles.mobileNavLink} onClick={closeMenu}>
+                <Link to="/messages" className={styles.mobileNavLink} onClick={closeAllMenus}>
                   Messages
                 </Link>
                 {user?.role === 'admin' && (
-                  <Link to="/admin" className={styles.mobileNavLink} onClick={closeMenu}>
+                  <Link to="/admin" className={styles.mobileNavLink} onClick={closeAllMenus}>
                     Admin Panel
                   </Link>
                 )}
@@ -212,10 +242,10 @@ const Header = () => {
               </>
             ) : (
               <div className={styles.mobileAuthButtons}>
-                <Link to="/login" className={styles.mobileLoginButton} onClick={closeMenu}>
+                <Link to="/login" className={styles.mobileLoginButton} onClick={closeAllMenus}>
                   Login
                 </Link>
-                <Link to="/register" className={styles.mobileRegisterButton} onClick={closeMenu}>
+                <Link to="/register" className={styles.mobileRegisterButton} onClick={closeAllMenus}>
                   Register
                 </Link>
               </div>

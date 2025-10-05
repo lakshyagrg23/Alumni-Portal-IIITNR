@@ -1,0 +1,602 @@
+/* Dashboard Container */
+.dashboard {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+  padding: 2rem;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+/* Loading State */
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  gap: 1rem;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #e2e8f0;
+  border-top-color: #1e3a8a;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Welcome Section */
+.welcomeSection {
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  border-radius: 16px;
+  padding: 2.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.15);
+}
+
+.welcomeContent {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.welcomeTitle {
+  font-size: 2.25rem;
+  color: white;
+  margin-bottom: 1.5rem;
+  font-weight: 700;
+}
+
+/* Profile Status */
+.profileStatus {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.profileStatusHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.profileStatusText {
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.completeProfileLink {
+  background: #f97316;
+  color: white;
+  padding: 0.5rem 1.25rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.completeProfileLink:hover {
+  background: #ea580c;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+}
+
+/* Progress Bar */
+.progressBar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+/* Quick Actions */
+.quickActions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.actionButton,
+.actionButtonSecondary {
+  padding: 0.75rem 1.75rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  display: inline-block;
+}
+
+.actionButton {
+  background: white;
+  color: #1e3a8a;
+  border: 2px solid white;
+}
+
+.actionButton:hover {
+  background: #f8fafc;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+}
+
+.actionButtonSecondary {
+  background: transparent;
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.actionButtonSecondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: white;
+  transform: translateY(-2px);
+}
+
+/* Content Grid */
+.contentGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+/* Section Styles */
+.section {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.section:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.sectionTitle {
+  font-size: 1.5rem;
+  color: #1e3a8a;
+  font-weight: 700;
+  margin: 0;
+}
+
+.viewAllLink {
+  color: #f97316;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: color 0.3s ease;
+}
+
+.viewAllLink:hover {
+  color: #ea580c;
+  text-decoration: underline;
+}
+
+/* News Cards */
+.newsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.newsCard {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.newsCard:hover {
+  border-color: #f97316;
+  background: #fff7ed;
+  transform: translateX(5px);
+}
+
+.newsImage {
+  width: 120px;
+  height: 80px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.newsImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.newsContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.newsCategory {
+  display: inline-block;
+  background: #dbeafe;
+  color: #1e40af;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  width: fit-content;
+}
+
+.newsTitle {
+  font-size: 1rem;
+  color: #1e3a8a;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.newsExcerpt {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.newsDate {
+  font-size: 0.813rem;
+  color: #94a3b8;
+}
+
+/* Events Cards */
+.eventsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.eventCard {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.25rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.eventCard:hover {
+  border-color: #1e3a8a;
+  background: #f8fafc;
+}
+
+.eventDate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  border-radius: 8px;
+  color: white;
+  flex-shrink: 0;
+}
+
+.eventDay {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.eventMonth {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.eventContent {
+  flex: 1;
+}
+
+.eventTitle {
+  font-size: 1rem;
+  color: #1e3a8a;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.4;
+}
+
+.eventType,
+.eventMode {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0.25rem 0;
+}
+
+.eventButton {
+  background: #f97316;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.eventButton:hover {
+  background: #ea580c;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(249, 115, 22, 0.2);
+}
+
+/* Empty State */
+.emptyState {
+  text-align: center;
+  color: #94a3b8;
+  font-style: italic;
+  padding: 2rem;
+}
+
+/* Recommendations Section */
+.recommendationsSection {
+  background: white;
+  border-radius: 12px;
+  padding: 2.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Empty Recommendations State */
+.emptyRecommendations {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 12px;
+  border: 2px dashed #cbd5e1;
+}
+
+.emptyRecommendationsText {
+  font-size: 1.125rem;
+  color: #374151;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.emptyRecommendationsHint {
+  font-size: 0.95rem;
+  color: #64748b;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.completeProfileButton {
+  display: inline-block;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  color: white;
+  padding: 0.875rem 2rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2);
+}
+
+.completeProfileButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(30, 58, 138, 0.3);
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+}
+
+.recommendationGroup {
+  margin-bottom: 2.5rem;
+}
+
+.recommendationGroup:last-child {
+  margin-bottom: 0;
+}
+
+.recommendationTitle {
+  font-size: 1.25rem;
+  color: #374151;
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+/* Alumni Cards */
+.alumniGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.alumniCard {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-align: center;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.alumniCard:hover {
+  transform: translateY(-5px);
+  border-color: #f97316;
+  box-shadow: 0 8px 16px rgba(249, 115, 22, 0.15);
+}
+
+.alumniAvatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1rem;
+}
+
+.alumniName {
+  font-size: 1.1rem;
+  color: #1e3a8a;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+}
+
+.alumniPosition,
+.alumniBatch,
+.alumniLocation {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0.25rem 0;
+  line-height: 1.4;
+}
+
+.alumniButton {
+  margin-top: 1rem;
+  background: #1e3a8a;
+  color: white;
+  padding: 0.625rem 1.25rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+  width: 100%;
+}
+
+.alumniButton:hover {
+  background: #2563eb;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(30, 58, 138, 0.2);
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard {
+    padding: 1rem;
+  }
+
+  .welcomeSection {
+    padding: 1.5rem;
+  }
+
+  .welcomeTitle {
+    font-size: 1.75rem;
+  }
+
+  .profileStatusHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .contentGrid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .section {
+    padding: 1.5rem;
+  }
+
+  .sectionTitle {
+    font-size: 1.25rem;
+  }
+
+  .newsCard {
+    flex-direction: column;
+  }
+
+  .newsImage {
+    width: 100%;
+    height: 150px;
+  }
+
+  .eventCard {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .eventButton {
+    width: 100%;
+  }
+
+  .alumniGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .recommendationsSection {
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .welcomeTitle {
+    font-size: 1.5rem;
+  }
+
+  .quickActions {
+    flex-direction: column;
+  }
+
+  .actionButton,
+  .actionButtonSecondary {
+    width: 100%;
+    text-align: center;
+  }
+
+  .sectionHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}

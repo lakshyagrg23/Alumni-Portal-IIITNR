@@ -373,11 +373,11 @@ router.post("/linkedin/callback", async (req, res) => {
 
     // Use the EXACT redirect URI from frontend (must match authorization request)
     const finalRedirectUri = redirectUri || "http://localhost:3000/linkedin";
-    
-    console.log('LinkedIn token exchange:', {
-      code: code.substring(0, 10) + '...',
+
+    console.log("LinkedIn token exchange:", {
+      code: code.substring(0, 10) + "...",
       redirectUri: finalRedirectUri,
-      clientId: process.env.LINKEDIN_CLIENT_ID
+      clientId: process.env.LINKEDIN_CLIENT_ID,
     });
 
     // Exchange authorization code for access token
@@ -415,7 +415,9 @@ router.post("/linkedin/callback", async (req, res) => {
     const userData = {
       email: userinfo.email,
       linkedinId: userinfo.sub,
-      name: userinfo.name || `${userinfo.given_name || ""} ${userinfo.family_name || ""}`.trim(),
+      name:
+        userinfo.name ||
+        `${userinfo.given_name || ""} ${userinfo.family_name || ""}`.trim(),
       picture: userinfo.picture,
     };
 
@@ -425,10 +427,15 @@ router.post("/linkedin/callback", async (req, res) => {
       data: userData,
     });
   } catch (error) {
-    console.error("LinkedIn callback error:", error.response?.data || error.message);
+    console.error(
+      "LinkedIn callback error:",
+      error.response?.data || error.message
+    );
     res.status(500).json({
       success: false,
-      message: error.response?.data?.error_description || "Failed to exchange LinkedIn authorization code",
+      message:
+        error.response?.data?.error_description ||
+        "Failed to exchange LinkedIn authorization code",
       error: error.response?.data || error.message,
     });
   }
@@ -597,7 +604,6 @@ router.put("/profile", authenticate, async (req, res) => {
       "hometownCity",
       "hometownState",
       "bio",
-      "achievements",
       "interests",
       "isProfilePublic",
       "showContactInfo",
@@ -642,7 +648,7 @@ router.put("/profile", authenticate, async (req, res) => {
     if (Object.keys(alumniData).length > 0) {
       console.log("Processing alumni data:", alumniData);
       // Handle array fields properly
-      const arrayFields = ["skills", "achievements", "interests"];
+      const arrayFields = ["skills", "interests"];
       arrayFields.forEach((field) => {
         if (alumniData.hasOwnProperty(field)) {
           if (
