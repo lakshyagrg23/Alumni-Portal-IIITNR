@@ -152,7 +152,42 @@ router.post("/send", authenticate, async (req, res) => {
       });
     }
 
-    const record = await Message.create({ sender_id: req.user.id, receiver_id: receiverId, content, message_type: messageType });
+    // Resolve sender: authenticated user -> alumni_profiles.id
+    const senderAlumni = await AlumniProfile.findByUserId(req.user.id);
+    if (!senderAlumni) {
+      return res.status(400).json({
+        success: false,
+        message: "Sender has no alumni profile",
+      });
+    }
+
+    // Resolve receiver: allow either alumni_profiles.id or users.id
+    let receiverAlumni = await AlumniProfile.findById(receiverId);
+    if (!receiverAlumni) {
+      receiverAlumni = await AlumniProfile.findByUserId(receiverId);
+    }
+    
+    if (!receiverAlumni) {
+      return res.status(400).json({
+        success: false,
+        message: "Receiver not found or has no alumni profile",
+      });
+    }
+
+    // Prevent self-messaging at application level (also enforced by DB constraint)
+    if (senderAlumni.id === receiverAlumni.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot send message to yourself",
+      });
+    }
+
+    const record = await Message.create({ 
+      sender_id: senderAlumni.id, 
+      receiver_id: receiverAlumni.id, 
+      content, 
+      message_type: messageType 
+    });
 
     res.status(201).json({
       success: true,
@@ -176,14 +211,36 @@ router.post("/send", authenticate, async (req, res) => {
 router.put("/:id/read", authenticate, async (req, res) => {
   try {
     const { id } = req.params;
-    // Mark message as read only if receiver
-    // Simple update using updateMany helper
-    const { updateMany } = require('../utils/sqlHelpers');
-    const updated = await updateMany('messages', { is_read: true, read_at: new Date() }, { id, receiver_id: req.user?.id });
-    if (updated.length === 0) {
-      return res.status(404).json({ success: false, message: 'Message not found or not permitted' });
+    
+    // Resolve authenticated user -> alumni_profiles.id
+    const receiverAlumni = await AlumniProfile.findByUserId(req.user.id);
+    if (!receiverAlumni) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'User has no alumni profile' 
+      });
     }
-    res.json({ success: true, data: updated[0], message: 'Message marked as read' });
+    
+    // Mark message as read only if receiver
+    const { updateMany } = require('../utils/sqlHelpers');
+    const updated = await updateMany(
+      'messages', 
+      { is_read: true, read_at: new Date() }, 
+      { id, receiver_id: receiverAlumni.id }
+    );
+    
+    if (updated.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Message not found or not permitted' 
+      });
+    }
+    
+    res.json({ 
+      success: true, 
+      data: updated[0], 
+      message: 'Message marked as read' 
+    });
   } catch (error) {
     console.error("Mark message as read error:", error);
     res.status(500).json({
@@ -201,12 +258,33 @@ router.put("/:id/read", authenticate, async (req, res) => {
 router.delete("/:id", authenticate, async (req, res) => {
   try {
     const { id } = req.params;
-    const { deleteMany } = require('../utils/sqlHelpers');
-    const deletedCount = await deleteMany('messages', { id, sender_id: req.user?.id });
-    if (deletedCount === 0) {
-      return res.status(404).json({ success: false, message: 'Message not found or not permitted' });
+    
+    // Resolve authenticated user -> alumni_profiles.id
+    const senderAlumni = await AlumniProfile.findByUserId(req.user.id);
+    if (!senderAlumni) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'User has no alumni profile' 
+      });
     }
-    res.json({ success: true, message: 'Message deleted successfully' });
+    
+    const { deleteMany } = require('../utils/sqlHelpers');
+    const deletedCount = await deleteMany('messages', { 
+      id, 
+      sender_id: senderAlumni.id 
+    });
+    
+    if (deletedCount === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Message not found or not permitted' 
+      });
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Message deleted successfully' 
+    });
   } catch (error) {
     console.error("Delete message error:", error);
     res.status(500).json({
@@ -223,8 +301,20 @@ router.delete("/:id", authenticate, async (req, res) => {
  */
 router.get("/unread/count", authenticate, async (req, res) => {
   try {
+    // Resolve authenticated user -> alumni_profiles.id
+    const receiverAlumni = await AlumniProfile.findByUserId(req.user.id);
+    if (!receiverAlumni) {
+      return res.json({
+        success: true,
+        data: { unreadCount: 0 },
+      });
+    }
+    
     const { count } = require('../utils/sqlHelpers');
-    const unreadCount = await count('messages', { receiver_id: req.user?.id, is_read: false });
+    const unreadCount = await count('messages', { 
+      receiver_id: receiverAlumni.id, 
+      is_read: false 
+    });
 
     res.json({
       success: true,
@@ -250,11 +340,51 @@ router.post("/conversation/:userId/start", authenticate, async (req, res) => {
   try {
     const { userId } = req.params;
     const { initialMessage } = req.body;
+    
+    // Resolve sender: authenticated user -> alumni_profiles.id
+    const senderAlumni = await AlumniProfile.findByUserId(req.user.id);
+    if (!senderAlumni) {
+      return res.status(400).json({
+        success: false,
+        message: "Sender has no alumni profile",
+      });
+    }
+    
+    // Resolve receiver: allow either alumni_profiles.id or users.id
+    let receiverAlumni = await AlumniProfile.findById(userId);
+    if (!receiverAlumni) {
+      receiverAlumni = await AlumniProfile.findByUserId(userId);
+    }
+    
+    if (!receiverAlumni) {
+      return res.status(400).json({
+        success: false,
+        message: "Receiver not found or has no alumni profile",
+      });
+    }
+    
+    // Prevent self-conversation
+    if (senderAlumni.id === receiverAlumni.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot start conversation with yourself",
+      });
+    }
+    
     // Create initial message if provided
     if (initialMessage) {
-      await Message.create({ sender_id: req.user.id, receiver_id: userId, content: initialMessage, message_type: 'text' });
+      await Message.create({ 
+        sender_id: senderAlumni.id, 
+        receiver_id: receiverAlumni.id, 
+        content: initialMessage, 
+        message_type: 'text' 
+      });
     }
-    res.status(201).json({ success: true, message: 'Conversation started' });
+    
+    res.status(201).json({ 
+      success: true, 
+      message: 'Conversation started' 
+    });
   } catch (error) {
     console.error("Start conversation error:", error);
     res.status(500).json({
