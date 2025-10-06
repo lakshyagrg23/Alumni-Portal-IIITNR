@@ -89,6 +89,13 @@ module.exports = function (io) {
           receiverPublicKey = null;
         }
 
+        // Get sender and receiver profile names for frontend display
+        const senderProfile = await AlumniProfile.findById(socket.alumniId);
+        const receiverProfile = await AlumniProfile.findById(recipient.alumniId);
+        
+        const senderName = senderProfile ? `${senderProfile.first_name || ''} ${senderProfile.last_name || ''}`.trim() : null;
+        const receiverName = receiverProfile ? `${receiverProfile.first_name || ''} ${receiverProfile.last_name || ''}`.trim() : null;
+
         // Persist the message (server stores ciphertext only), include any available public-key snapshots
         const savedMessage = await MessageModel.create({
           sender_id: socket.alumniId,
@@ -103,16 +110,27 @@ module.exports = function (io) {
 
         const clientId = metadata?.clientId || payload?.clientId || null;
 
+        // Enrich message with sender/receiver info for frontend
+        const enrichedMessage = {
+          ...savedMessage,
+          sender_user_id: socket.user.id,
+          receiver_user_id: recipient.userId,
+          sender_name: senderName,
+          receiver_name: receiverName,
+          sender_avatar: senderProfile?.profile_picture_url || null,
+          receiver_avatar: receiverProfile?.profile_picture_url || null,
+        };
+
         // Emit to recipient if online (their sockets are joined to room `user:<userId>`)
         io.to(`user:${recipient.userId}`).emit('secure:receive', {
           from: socket.user.id,
           alumniFrom: socket.alumniId,
-          message: savedMessage,
+          message: enrichedMessage,
           clientId,
         });
 
         // Acknowledge sender
-        socket.emit('secure:sent', { clientId, message: savedMessage });
+        socket.emit('secure:sent', { clientId, message: enrichedMessage });
       } catch (err) {
         console.error('secure:send error', err);
         socket.emit('secure:error', { message: 'Failed to send message' });

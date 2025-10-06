@@ -74,8 +74,8 @@ const Messages = () => {
         try {
           // server may send { message: <savedMessage>, from: <users.id>, clientId }
           const saved = payload.message || payload;
-          // server now sends `from` as users.id (auth user id) and `alumniFrom` as alumni_profiles.id
-          const from = payload.from || saved.sender_user_id || saved.sender_user_id || saved.sender_id || payload.alumniFrom
+          // Use sender_user_id as primary identifier for consistent key lookups
+          const from = saved.sender_user_id || payload.from || saved.from_user_id || saved.sender_id || payload.alumniFrom
 
           const ciphertext = saved.content || saved.ciphertext || saved.metadata?.ciphertext || payload.ciphertext
           const iv = saved.iv || saved.metadata?.iv || payload.iv
@@ -134,7 +134,16 @@ const Messages = () => {
           setMessages((prev) => {
             const msgId = saved.id || payload.id || saved.client_id || payload.clientId
             if (msgId && prev.some((x) => x.id === msgId || x.clientId === msgId)) return prev
-            return [...prev, { id: saved.id, clientId: saved.client_id || payload.clientId || null, from, text: plain, sent_at: saved.sent_at }]
+            return [...prev, { 
+              id: saved.id, 
+              clientId: saved.client_id || payload.clientId || null, 
+              from, 
+              text: plain, 
+              sent_at: saved.sent_at,
+              sender_name: saved.sender_name,
+              receiver_name: saved.receiver_name,
+              isOutgoing: from === user.id
+            }]
           })
         } catch (err) {
           console.error('Failed to decrypt incoming message', err)
@@ -227,16 +236,29 @@ const Messages = () => {
       }
 
       for (const m of old) {
-        const fromAuthUserId = m.sender_id || m.from_user_id || m.from || m.fromUserId
+        // Use sender_user_id as the primary identifier for 'from' since that's what we use for public key lookups
+        const fromAuthUserId = m.sender_user_id || m.from_user_id || m.from || m.fromUserId
         const ciphertext = m.content || m.ciphertext || m.metadata?.ciphertext
         const iv = m.iv || m.metadata?.iv
         const clientId = m.client_id || m.clientId || null
         if (!ciphertext) continue
+        
+        // Add message metadata for better identification
+        const messageData = {
+          id: m.id,
+          clientId,
+          from: fromAuthUserId,
+          sender_name: m.sender_name,
+          receiver_name: m.receiver_name,
+          sent_at: m.sent_at,
+          isOutgoing: fromAuthUserId === user.id
+        };
+        
         try {
           // If we have a derived conversation AES key use it for decryption
           if (convoAes && iv) {
             const plain = await crypto.decryptMessage(convoAes, iv, ciphertext)
-            decoded.push({ id: m.id, clientId, from: fromAuthUserId, text: plain, sent_at: m.sent_at })
+            decoded.push({ ...messageData, text: plain })
             continue
           }
 
@@ -256,7 +278,7 @@ const Messages = () => {
           }
 
           if (!senderPub) {
-            decoded.push({ id: m.id, clientId, from: fromAuthUserId, text: 'Encrypted message (no pubkey)', sent_at: m.sent_at })
+            decoded.push({ ...messageData, text: 'Encrypted message (no pubkey)' })
             continue
           }
 
@@ -264,7 +286,7 @@ const Messages = () => {
           const shared = await crypto.deriveSharedSecret(kp.privateKey, senderPubKey)
           const aes = await crypto.deriveAESGCMKey(shared)
           const plain = await crypto.decryptMessage(aes, iv, ciphertext)
-          decoded.push({ id: m.id, clientId, from: fromAuthUserId, text: plain, sent_at: m.sent_at })
+          decoded.push({ ...messageData, text: plain })
         } catch (e) {
           // provide extra debugging info in console to help diagnose stored-message decryption failures
           try {
@@ -283,7 +305,11 @@ const Messages = () => {
             console.warn('Stored message decryption failed (and debug logging failed)', logErr)
           }
 
-          decoded.push({ id: m.id, clientId, from: fromAuthUserId, text: 'Encrypted message (failed to decrypt)', sent_at: m.sent_at, raw: { iv, ciphertext } })
+          decoded.push({ 
+            ...messageData, 
+            text: 'Encrypted message (failed to decrypt)', 
+            raw: { iv, ciphertext, error: e.message } 
+          })
         }
       }
       setMessages(decoded)
@@ -382,11 +408,11 @@ const Messages = () => {
 
           {/* Chat area */}
           <main style={{ background: 'transparent' }}>
-            <div className={styles.controls}>
+            {/* <div className={styles.controls}>
               <label style={{ marginRight: 8 }}>Recipient</label>
               <input value={toUserId} onChange={(e) => setToUserId(e.target.value)} placeholder="Recipient user id" />
               <button onClick={() => toUserId && loadConversation(toUserId, localKeysRef.current)} disabled={!toUserId}>Load</button>
-            </div>
+            </div> */}
 
             <div className={styles.chatArea}>
               {/* Chat header */}
@@ -408,23 +434,30 @@ const Messages = () => {
                 ) : (
                   messages.map((m) => {
                     const key = m.id || m.clientId || `${m.from}-${m.sent_at}`
-                    const isOutgoing = m.from === user.id
+                    const isOutgoing = m.isOutgoing !== undefined ? m.isOutgoing : (m.from === user.id)
                     const partner = conversations.find(c => c.partnerUserId === toUserId)
-                    const avatar = isOutgoing ? (user?.profilePicture || (user?.firstName || user?.name || 'Y').slice(0,2).toUpperCase()) : (partner?.partnerName || m.sender_name || (m.from || '').slice(0,2).toUpperCase())
-                    const nameLabel = isOutgoing ? 'You' : (partner?.partnerName || m.sender_name || m.from)
+                    
+                    // Determine avatar and name based on sender
+                    const senderName = isOutgoing ? 'You' : (m.sender_name || partner?.partnerName || m.from)
+                    const avatarInitials = isOutgoing 
+                      ? (user?.firstName || user?.name || 'Y').slice(0,2).toUpperCase()
+                      : (m.sender_name || partner?.partnerName || (m.from || 'U')).slice(0,2).toUpperCase()
+                    
                     return (
-                      <div key={key} className={isOutgoing ? styles.outgoing : styles.incoming} style={{ display: 'flex', alignItems: 'flex-end' }}>
-                        {!isOutgoing && <div style={{ marginRight: 8, width: 40, textAlign: 'center' }}><div className={styles.avatar} style={{ width:32, height:32, borderRadius:16, fontSize:12 }}>{avatar}</div></div>}
-                        <div>
+                      <div key={key} className={isOutgoing ? styles.outgoing : styles.incoming} style={{ display: 'flex', alignItems: 'flex-end', marginBottom: '12px' }}>
+                        {!isOutgoing && <div style={{ marginRight: 8, width: 40, textAlign: 'center' }}><div className={styles.avatar} style={{ width:32, height:32, borderRadius:16, fontSize:12 }}>{avatarInitials}</div></div>}
+                        <div style={{ maxWidth: '70%' }}>
                           <div className={styles.bubble}>
-                            <div style={{ fontSize: 13, marginBottom: 4 }}><strong>{nameLabel}</strong></div>
-                            <div style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>
-                            <small>{m.sent_at ? new Date(m.sent_at).toLocaleString() : ''}</small>
-                            {m.pending && <span style={{ marginLeft: 8, color: '#9ca3af' }}> (sending…)</span>}
-                            {m.error && <span style={{ marginLeft: 8, color: '#ef4444' }}> ({m.error})</span>}
+                            <div style={{ fontSize: 13, marginBottom: 4, fontWeight: 600 }}>{senderName}</div>
+                            <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>{m.text}</div>
+                            <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.5)', marginTop: 4 }}>
+                              {m.sent_at ? new Date(m.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                            </div>
+                            {m.pending && <span style={{ fontSize: 11, color: '#9ca3af' }}> (sending…)</span>}
+                            {m.error && <span style={{ fontSize: 11, color: '#ef4444' }}> ({m.error})</span>}
                           </div>
                         </div>
-                        {isOutgoing && <div style={{ marginLeft: 8, width: 40, textAlign: 'center' }}><div className={styles.avatar} style={{ width:32, height:32, borderRadius:16, fontSize:12 }}>{avatar}</div></div>}
+                        {isOutgoing && <div style={{ marginLeft: 8, width: 40, textAlign: 'center' }}><div className={styles.avatar} style={{ width:32, height:32, borderRadius:16, fontSize:12 }}>{avatarInitials}</div></div>}
                       </div>
                     )
                   })
@@ -433,10 +466,10 @@ const Messages = () => {
                 <div ref={messagesEndRef} />
 
                 {/* simple debug panel to help diagnose missing messages */}
-                <details style={{ marginTop: 12 }}>
+                {/* <details style={{ marginTop: 12 }}>
                   <summary style={{ cursor: 'pointer', color: '#374151' }}>Debug: messages ({messages.length})</summary>
                   <pre style={{ maxHeight: 200, overflow: 'auto', background: '#f3f4f6', padding: 8 }}>{JSON.stringify({ connected, messages }, null, 2)}</pre>
-                </details>
+                </details> */}
               </div>
 
               <div className={styles.composer}>
