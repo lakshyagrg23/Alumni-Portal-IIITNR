@@ -37,6 +37,8 @@ const Messages = () => {
     (async () => {
       // load or generate keys and publish public key
       let kp = null
+      let publicKeyBase64 = null
+      
       try {
         const storedPriv = localStorage.getItem('e2e_priv_jwk')
         const storedPub = localStorage.getItem('e2e_pub_raw')
@@ -44,18 +46,25 @@ const Messages = () => {
           const privateKey = await crypto.importPrivateKey(storedPriv)
           const publicKey = await crypto.importPublicKey(storedPub)
           kp = { privateKey, publicKey }
+          publicKeyBase64 = storedPub // Use stored public key for upload
         } else {
           kp = await crypto.generateKeyPair()
           const pub = await crypto.exportPublicKey(kp.publicKey)
           const priv = await crypto.exportPrivateKey(kp.privateKey)
+          publicKeyBase64 = pub
           try {
             localStorage.setItem('e2e_pub_raw', pub)
             localStorage.setItem('e2e_priv_jwk', priv)
           } catch (e) {
             console.warn('Failed to persist keys in localStorage', e)
           }
+        }
+        
+        // Always upload public key to server (in case it's missing or outdated)
+        if (publicKeyBase64) {
           try {
-            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/messages/public-key`, { publicKey: pub }, { headers: { Authorization: `Bearer ${token}` }})
+            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/messages/public-key`, { publicKey: publicKeyBase64 }, { headers: { Authorization: `Bearer ${token}` }})
+            console.log('✅ Public key uploaded successfully')
           } catch (err) {
             console.warn('Failed to publish public key', err)
           }
@@ -98,7 +107,7 @@ const Messages = () => {
           if (!usedAes) {
             if (!aesKeyRef.current || aesKeyRef.current.peer !== from) {
               try {
-                const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/messages/public-key/${from}`, { headers: { Authorization: `Bearer ${token}` }})
+                const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/messages/public-key/${from}`, { headers: { Authorization: `Bearer ${token}` }})
                 const theirPub = res.data?.data?.public_key || res.data?.publicKey || res.data?.public_key
                 if (theirPub) {
                   const imported = await crypto.importPublicKey(theirPub)
@@ -180,7 +189,11 @@ const Messages = () => {
 
       // handle server-side errors
       socket.on('secure:error', (err) => {
-        console.warn('secure:error', err)
+        console.error('🚨 secure:error from server:', err)
+        setErrorMsg(err?.message || 'Server error occurred')
+        if (err?.details) {
+          console.error('Error details:', err.details)
+        }
         if (err?.clientId) {
           setMessages((prev) => prev.map((m) => (m.clientId === err.clientId ? { ...m, pending: false, error: err.message } : m)))
         }
@@ -188,7 +201,7 @@ const Messages = () => {
 
       // load conversations list (includes partnerName & partnerAvatar)
       try {
-        const convRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/messages`, { headers: { Authorization: `Bearer ${token}` }})
+        const convRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/messages`, { headers: { Authorization: `Bearer ${token}` }})
         setConversations(convRes.data?.data || [])
       } catch (e) {
         console.warn('Failed to load conversations', e)
@@ -217,21 +230,28 @@ const Messages = () => {
 
   const loadConversation = async (otherUserId, kp) => {
     try {
-      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/messages/conversation/${otherUserId}`, { headers: { Authorization: `Bearer ${token}` }})
+      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/messages/conversation/${otherUserId}`, { headers: { Authorization: `Bearer ${token}` }})
       const old = res.data?.data || []
       const decoded = []
       // Try to derive a conversation AES key using the partner's public key once
       let convoAes = null
+      let recipientHasKey = false
       try {
-        const pkRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/messages/public-key/${otherUserId}`, { headers: { Authorization: `Bearer ${token}` }})
+        const pkRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/messages/public-key/${otherUserId}`, { headers: { Authorization: `Bearer ${token}` }})
         const partnerPub = pkRes.data?.data?.public_key || pkRes.data?.publicKey || pkRes.data?.public_key || null
         if (partnerPub) {
           const imported = await crypto.importPublicKey(partnerPub)
           const shared = await crypto.deriveSharedSecret(kp.privateKey, imported)
           convoAes = await crypto.deriveAESGCMKey(shared)
+          recipientHasKey = true
         }
       } catch (e) {
-        // ignore and fallback to per-message keys
+        // Recipient hasn't generated encryption keys yet
+        if (e.response?.status === 404) {
+          console.warn('⚠️ Recipient has not set up encrypted messaging yet. They need to visit the Messages page to generate their encryption keys.')
+          setErrorMsg('This user needs to visit the Messages page before you can send them encrypted messages.')
+        }
+        // Fallback to per-message keys (will try again when sending)
         convoAes = null
       }
 
@@ -268,7 +288,7 @@ const Messages = () => {
             const tryIds = [m.sender_user_id, fromAuthUserId, m.sender_id, m.alumniFrom].filter(Boolean)
             for (const idToTry of tryIds) {
               try {
-                const senderPubRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/messages/public-key/${idToTry}`, { headers: { Authorization: `Bearer ${token}` }})
+                const senderPubRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/messages/public-key/${idToTry}`, { headers: { Authorization: `Bearer ${token}` }})
                 senderPub = senderPubRes.data?.data?.public_key || senderPubRes.data?.publicKey || senderPubRes.data?.public_key
                 if (senderPub) break
               } catch (e) {
@@ -325,34 +345,45 @@ const Messages = () => {
 
   const handleSend = async () => {
     setErrorMsg('')
+    console.log('🔍 handleSend called', { toUserId, text: text?.substring(0, 20), textLength: text?.length })
+    
     if (!toUserId || !text) {
       setErrorMsg('Recipient and message text are required')
+      console.error('❌ Missing toUserId or text', { toUserId, textLength: text?.length })
       return;
     }
 
     setSending(true)
     try {
+      console.log('📡 Initializing socket...')
       // make sure socket is initialized and connected
       let socket = getSocket()
       if (!socket || !socket.connected) {
+        console.log('🔌 Socket not connected, reconnecting...')
         socket = initSocket(token)
         // wait for connect or timeout
         await new Promise((resolve, reject) => {
           const timeout = setTimeout(() => reject(new Error('Socket connect timeout')), 5000)
-          socket.once('connect', () => { clearTimeout(timeout); resolve() })
-          socket.once('connect_error', (err) => { clearTimeout(timeout); reject(err) })
+          socket.once('connect', () => { clearTimeout(timeout); console.log('✅ Socket connected'); resolve() })
+          socket.once('connect_error', (err) => { clearTimeout(timeout); console.error('❌ Socket connect error:', err); reject(err) })
         })
+      } else {
+        console.log('✅ Socket already connected')
       }
 
       // fetch recipient public key
-      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/messages/public-key/${toUserId}`, { headers: { Authorization: `Bearer ${token}` }})
+      console.log(`🔑 Fetching public key for user: ${toUserId}`)
+      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/messages/public-key/${toUserId}`, { headers: { Authorization: `Bearer ${token}` }})
+      console.log('✅ Public key fetched:', res.data)
       const theirPub = res.data?.data?.public_key || res.data?.publicKey || res.data?.public_key
       if (!theirPub) throw new Error('Recipient public key not found')
 
+      console.log('🔐 Encrypting message...')
       const imported = await crypto.importPublicKey(theirPub)
       const shared = await crypto.deriveSharedSecret(localKeysRef.current.privateKey, imported)
       const aes = await crypto.deriveAESGCMKey(shared)
       const enc = await crypto.encryptMessage(aes, text)
+      console.log('✅ Message encrypted')
 
       // create a client-side id to track pending message
       const clientId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,9)}`
@@ -363,12 +394,14 @@ const Messages = () => {
         clientId,
       }
 
+      console.log('📤 Emitting secure:send...', { toUserId, clientId })
       socket.emit('secure:send', payload)
       // push pending message locally with clientId so we can reconcile when server acks
       setMessages((m) => [...m, { clientId, from: user.id, text, pending: true }])
       setText('')
+      console.log('✅ Message sent!')
     } catch (err) {
-      console.error('send failed', err)
+      console.error('❌ send failed', err)
       setErrorMsg(err.message || 'Failed to send message')
     } finally {
       setSending(false)
