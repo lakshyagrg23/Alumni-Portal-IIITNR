@@ -67,8 +67,8 @@ app.use("/api/auth/forgot-password", authLimiter);
 const corsOptions = {
   origin:
     process.env.NODE_ENV === "production"
-      ? ["https://alumni.iiitnr.ac.in", "https://www.iiitnr.ac.in"]
-      : ["http://localhost:3000", "http://127.0.0.1:3000"],
+      ? process.env.CORS_ORIGINS?.split(',') || ["https://alumni.iiitnr.ac.in", "https://www.iiitnr.ac.in"]
+      : process.env.CORS_ORIGINS?.split(',') || ["http://localhost:3000", "http://127.0.0.1:3000"],
   credentials: true,
   optionsSuccessStatus: 200,
 };
