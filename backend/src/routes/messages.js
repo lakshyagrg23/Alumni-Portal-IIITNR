@@ -1,9 +1,9 @@
-const express = require("express");
+import express from "express";
 const router = express.Router();
-const { authenticate } = require("../middleware/auth");
-const Message = require("../models/Message");
-const PublicKey = require("../models/PublicKey");
-const AlumniProfile = require("../models/AlumniProfile");
+import { authenticate } from "../middleware/auth.js";
+import Message from "../models/Message.js";
+import PublicKey from "../models/PublicKey.js";
+import AlumniProfile from "../models/AlumniProfile.js";
 
 /**
  * @route   GET /api/messages
@@ -47,7 +47,8 @@ router.get("/", authenticate, async (req, res) => {
       ORDER BY sent_at DESC
       LIMIT $2 OFFSET $3
     `;
-    const msgsRes = await require('../config/database').query(q, [authAlumni.id, parseInt(limit), parseInt(offset)]);
+    const { query } = await import('../config/database.js');
+    const msgsRes = await query(q, [authAlumni.id, parseInt(limit), parseInt(offset)]);
     const rows = msgsRes.rows || [];
 
     // Build conversation map with partner info
@@ -199,7 +200,7 @@ router.put("/:id/read", authenticate, async (req, res) => {
     const { id } = req.params;
     // Mark message as read only if receiver
     // Simple update using updateMany helper
-    const { updateMany } = require('../utils/sqlHelpers');
+    const { updateMany } = await import('../utils/sqlHelpers.js');
     const updated = await updateMany('messages', { is_read: true, read_at: new Date() }, { id, receiver_id: req.user?.id });
     if (updated.length === 0) {
       return res.status(404).json({ success: false, message: 'Message not found or not permitted' });
@@ -222,7 +223,7 @@ router.put("/:id/read", authenticate, async (req, res) => {
 router.delete("/:id", authenticate, async (req, res) => {
   try {
     const { id } = req.params;
-    const { deleteMany } = require('../utils/sqlHelpers');
+    const { deleteMany } = await import('../utils/sqlHelpers.js');
     const deletedCount = await deleteMany('messages', { id, sender_id: req.user?.id });
     if (deletedCount === 0) {
       return res.status(404).json({ success: false, message: 'Message not found or not permitted' });
@@ -244,7 +245,7 @@ router.delete("/:id", authenticate, async (req, res) => {
  */
 router.get("/unread/count", authenticate, async (req, res) => {
   try {
-    const { count } = require('../utils/sqlHelpers');
+    const { count } = await import('../utils/sqlHelpers.js');
     const unreadCount = await count('messages', { receiver_id: req.user?.id, is_read: false });
 
     res.json({
@@ -316,4 +317,4 @@ router.get('/public-key/:userId', authenticate, async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

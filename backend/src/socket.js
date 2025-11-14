@@ -1,13 +1,13 @@
-const jwt = require('jsonwebtoken');
-const MessageModel = require('./models/Message');
-const PublicKeyModel = require('./models/PublicKey');
-const AlumniProfile = require('./models/AlumniProfile');
+import jwt from 'jsonwebtoken';
+import MessageModel from './models/Message.js';
+import PublicKeyModel from './models/PublicKey.js';
+import AlumniProfile from './models/AlumniProfile.js';
 
 /**
  * Socket.io handlers for real-time messaging with minimal E2E support.
  * Clients are expected to send JWT in the `token` query param when connecting.
  */
-module.exports = function (io) {
+export default function (io) {
   io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth?.token || socket.handshake.query?.token;
@@ -153,4 +153,4 @@ module.exports = function (io) {
       console.log(`Socket disconnected: ${socket.id} reason=${reason}`);
     });
   });
-};
+}

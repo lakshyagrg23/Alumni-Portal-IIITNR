@@ -1,4 +1,4 @@
-const { insertOne, findMany, findOne, query } = require('../utils/sqlHelpers');
+import { insertOne, findMany, findOne, query } from '../utils/sqlHelpers.js';
 
 class Message {
   static async create(data) {
@@ -23,4 +23,4 @@ class Message {
   }
 }
 
-module.exports = Message;
+export default Message;

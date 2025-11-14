@@ -1,6 +1,6 @@
-const express = require("express");
+import express from "express";
 const router = express.Router();
-const AlumniProfile = require("../models/AlumniProfile");
+import AlumniProfile from "../models/AlumniProfile.js";
 
 /**
  * @route   GET /api/alumni
@@ -113,7 +113,7 @@ router.post("/", async (req, res) => {
     let userId = profileData.user_id;
 
     if (!userId) {
-      const { query } = require("../config/database");
+      const { query } = await import("../config/database.js");
       const userResult = await query(
         "SELECT id FROM users ORDER BY created_at LIMIT 1",
         []
@@ -286,4 +286,4 @@ router.get("/stats/dashboard", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

@@ -1,4 +1,4 @@
-const {
+import {
   findOne,
   findMany,
   insertOne,
@@ -7,7 +7,7 @@ const {
   count,
   query,
   executeTransaction,
-} = require("../utils/sqlHelpers");
+} from "../utils/sqlHelpers.js";
 
 /**
  * News Model - SQL-based operations for news table
@@ -415,4 +415,4 @@ class News {
   }
 }
 
-module.exports = News;
+export default News;

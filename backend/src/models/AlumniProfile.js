@@ -1,4 +1,4 @@
-const {
+import {
   findOne,
   findMany,
   insertOne,
@@ -7,7 +7,7 @@ const {
   count,
   query,
   executeTransaction,
-} = require("../utils/sqlHelpers");
+} from "../utils/sqlHelpers.js";
 
 /**
  * Alumni Profile Model - SQL-based operations for alumni_profiles table
@@ -573,4 +573,4 @@ class AlumniProfile {
   }
 }
 
-module.exports = AlumniProfile;
+export default AlumniProfile;

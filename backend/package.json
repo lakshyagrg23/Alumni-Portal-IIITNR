@@ -36,6 +36,7 @@
     "express",
     "postgresql"
   ],
+  "type": "module",
   "author": "IIIT Naya Raipur",
   "license": "MIT",
   "dependencies": {

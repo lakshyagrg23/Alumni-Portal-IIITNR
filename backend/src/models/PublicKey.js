@@ -1,4 +1,4 @@
-const { findOne, updateMany, insertOne } = require('../utils/sqlHelpers');
+import { findOne, updateMany, insertOne } from '../utils/sqlHelpers.js';
 
 class PublicKey {
   static async findByUserId(userId) {
@@ -15,4 +15,4 @@ class PublicKey {
   }
 }
 
-module.exports = PublicKey;
+export default PublicKey;

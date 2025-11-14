@@ -1,355 +1,154 @@
-const {
-  findOne,
-  findMany,
-  insertOne,
-  updateMany,
-  deleteMany,
-  count,
-  query,
-  executeTransaction,
-} = require("../utils/sqlHelpers");
-const bcrypt = require("bcryptjs");
+import bcrypt from 'bcryptjs';
+import { query, insertOne, updateMany, deleteMany, findOne } from '../utils/sqlHelpers.js';
 
 /**
- * User Model - SQL-based operations for users table
+ * SQL-based User Model compatible with existing routes/middleware.
+ * Returns DB-native snake_case fields to match current usage.
  */
 class User {
-  /**
-   * Find user by ID
-   * @param {string} id - User UUID
-   * @returns {Promise<Object|null>}
-   */
-  static async findById(id) {
-    return await findOne("users", { id });
-  }
-
-  /**
-   * Find user by email
-   * @param {string} email - User email
-   * @returns {Promise<Object|null>}
-   */
-  static async findByEmail(email) {
-    return await findOne("users", { email: email.toLowerCase() });
-  }
-
-  /**
-   * Find user by provider ID (for OAuth)
-   * @param {string} providerId - Provider ID
-   * @param {string} provider - Provider name (google, etc.)
-   * @returns {Promise<Object|null>}
-   */
-  static async findByProviderId(providerId, provider = "google") {
-    return await findOne("users", { provider_id: providerId, provider });
-  }
-
-  /**
-   * Create a new user
-   * @param {Object} userData - User data
-   * @returns {Promise<Object>}
-   */
-  static async create(userData) {
-    const {
-      email,
-      password,
-      provider = "local",
-      providerId,
-      role = "alumni",
-      isApproved,
-      is_approved,
-      is_active = true,
-    } = userData;
-
-    const data = {
-      email: email.toLowerCase(),
-      provider,
-      role,
-      is_approved:
-        isApproved !== undefined
-          ? isApproved
-          : is_approved !== undefined
-            ? is_approved
-            : this.isInstituteEmail(email),
-      is_active,
-      email_verified: provider !== "local", // OAuth users are pre-verified
-    };
-
-    // Add provider ID for OAuth users
-    if (providerId) {
-      data.provider_id = providerId;
+    static async findById(id) {
+        return await findOne('users', { id });
     }
 
-    // Hash password for local users
-    if (password) {
-      data.password_hash = await bcrypt.hash(password, 12);
+    static async findByEmail(email) {
+        const res = await query('SELECT * FROM users WHERE LOWER(email)=LOWER($1) LIMIT 1', [email]);
+        return res.rows[0] || null;
     }
 
-    return await insertOne("users", data);
-  }
+    static async create(data) {
+        const email = (data.email || '').toLowerCase();
 
-  /**
-   * Update user
-   * @param {string} id - User ID
-   * @param {Object} updateData - Data to update
-   * @returns {Promise<Object|null>}
-   */
-  static async update(id, updateData) {
-    const result = await updateMany("users", updateData, { id });
-    return result[0] || null;
-  }
+        let password_hash = data.password_hash || null;
+        if (!password_hash && data.password) {
+            const salt = await bcrypt.genSalt(10);
+            password_hash = await bcrypt.hash(data.password, salt);
+        }
 
-  /**
-   * Update password
-   * @param {string} id - User ID
-   * @param {string} newPassword - New password
-   * @returns {Promise<Object|null>}
-   */
-  static async updatePassword(id, newPassword) {
-    const passwordHash = await bcrypt.hash(newPassword, 12);
-    return await this.update(id, { password_hash: passwordHash });
-  }
+        const provider = data.provider || 'local';
+        const provider_id = data.providerId || data.provider_id || null;
+        const role = data.role || 'alumni';
 
-  /**
-   * Verify password
-   * @param {string} password - Plain text password
-   * @param {string} hashedPassword - Hashed password from database
-   * @returns {Promise<boolean>}
-   */
-  static async verifyPassword(password, hashedPassword) {
-    if (!hashedPassword) return false;
-    return await bcrypt.compare(password, hashedPassword);
-  }
+        // booleans: accept both camelCase and snake_case inputs
+        let is_approved = data.is_approved;
+        if (typeof is_approved === 'undefined') is_approved = data.isApproved ?? false;
+        let is_active = data.is_active;
+        if (typeof is_active === 'undefined') is_active = data.isActive ?? true;
+        let email_verified = data.email_verified;
+        if (typeof email_verified === 'undefined') email_verified = data.emailVerified ?? false;
 
-  /**
-   * Get all users with pagination
-   * @param {Object} options - Query options
-   * @returns {Promise<Object>}
-   */
-  static async findAll(options = {}) {
-    const {
-      page = 1,
-      limit = 10,
-      role,
-      isApproved,
-      orderBy = "created_at DESC",
-    } = options;
+        // Auto-approve institute emails
+        if (email.endsWith('@iiitnr.edu.in')) {
+            is_approved = true;
+            email_verified = true;
+        }
 
-    const offset = (page - 1) * limit;
-    const where = {};
+        const insertData = {
+            email,
+            password_hash,
+            provider,
+            provider_id,
+            role,
+            is_approved,
+            is_active,
+            email_verified,
+            created_at: new Date(),
+            updated_at: new Date(),
+        };
 
-    if (role) where.role = role;
-    if (isApproved !== undefined) where.is_approved = isApproved;
+        const row = await insertOne('users', insertData);
+        return row;
+    }
 
-    const users = await findMany("users", {
-      where,
-      orderBy,
-      limit,
-      offset,
-      columns:
-        "id, email, role, is_approved, is_active, email_verified, provider, created_at, updated_at",
-    });
+    static async update(id, updateData = {}) {
+        const db = {};
 
-    const total = await count("users", where);
+        if (updateData.email) db.email = updateData.email.toLowerCase();
+        if (updateData.provider) db.provider = updateData.provider;
+        if (updateData.providerId || updateData.provider_id) db.provider_id = updateData.providerId || updateData.provider_id;
+        if (updateData.role) db.role = updateData.role;
 
-    return {
-      users,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
-      },
-    };
-  }
+        if (typeof updateData.is_approved !== 'undefined') db.is_approved = updateData.is_approved;
+        if (typeof updateData.isApproved !== 'undefined') db.is_approved = updateData.isApproved;
+        if (typeof updateData.is_active !== 'undefined') db.is_active = updateData.is_active;
+        if (typeof updateData.isActive !== 'undefined') db.is_active = updateData.isActive;
+        if (typeof updateData.email_verified !== 'undefined') db.email_verified = updateData.email_verified;
+        if (typeof updateData.emailVerified !== 'undefined') db.email_verified = updateData.emailVerified;
 
-  /**
-   * Get pending approval users
-   * @returns {Promise<Array>}
-   */
-  static async getPendingApprovals() {
-    return await findMany("users", {
-      where: { is_approved: false },
-      orderBy: "created_at ASC",
-      columns: "id, email, role, provider, created_at",
-    });
-  }
+        if (updateData.password) {
+            const salt = await bcrypt.genSalt(10);
+            db.password_hash = await bcrypt.hash(updateData.password, salt);
+        }
+        if (updateData.password_hash) db.password_hash = updateData.password_hash;
 
-  /**
-   * Approve user
-   * @param {string} id - User ID
-   * @returns {Promise<Object|null>}
-   */
-  static async approve(id) {
-    return await this.update(id, { is_approved: true });
-  }
+        db.updated_at = new Date();
 
-  /**
-   * Deactivate user
-   * @param {string} id - User ID
-   * @returns {Promise<Object|null>}
-   */
-  static async deactivate(id) {
-    return await this.update(id, { is_active: false });
-  }
+        const rows = await updateMany('users', db, { id });
+        return rows[0] || null;
+    }
 
-  /**
-   * Delete user
-   * @param {string} id - User ID
-   * @returns {Promise<number>}
-   */
-  static async delete(id) {
-    return await deleteMany("users", { id });
-  }
+    static async delete(id) {
+        const count = await deleteMany('users', { id });
+        return count > 0;
+    }
 
-  /**
-   * Set email verification token
-   * @param {string} id - User ID
-   * @param {string} token - Verification token
-   * @returns {Promise<Object|null>}
-   */
-  static async setEmailVerificationToken(id, token) {
-    return await this.update(id, { email_verification_token: token });
-  }
+    /**
+     * List users with basic filtering/pagination.
+     * options: page, limit, role, isApproved, orderBy, orderDirection
+     * returns: { users, pagination }
+     */
+    static async findAll(options = {}) {
+        const {
+            page = 1,
+            limit = 20,
+            role,
+            isApproved,
+            orderBy = 'created_at',
+            orderDirection = 'DESC',
+        } = options;
 
-  /**
-   * Verify email
-   * @param {string} token - Verification token
-   * @returns {Promise<Object|null>}
-   */
-  static async verifyEmail(token) {
-    const user = await findOne("users", { email_verification_token: token });
-    if (!user) return null;
+        const safeOrderFields = new Set(['created_at', 'updated_at', 'email', 'role']);
+        const safeDir = orderDirection && String(orderDirection).toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+        const orderField = safeOrderFields.has(orderBy) ? orderBy : 'created_at';
 
-    return await this.update(user.id, {
-      email_verified: true,
-      email_verification_token: null,
-    });
-  }
+        const conditions = [];
+        const params = [];
+        let idx = 1;
 
-  /**
-   * Set password reset token
-   * @param {string} email - User email
-   * @param {string} token - Reset token
-   * @param {Date} expires - Token expiry
-   * @returns {Promise<Object|null>}
-   */
-  static async setPasswordResetToken(email, token, expires) {
-    const result = await updateMany(
-      "users",
-      {
-        password_reset_token: token,
-        password_reset_expires: expires,
-      },
-      { email: email.toLowerCase() }
-    );
+        if (role) {
+            conditions.push(`role = $${idx++}`);
+            params.push(role);
+        }
+        if (typeof isApproved === 'boolean') {
+            conditions.push(`is_approved = $${idx++}`);
+            params.push(isApproved);
+        }
 
-    return result[0] || null;
-  }
+        const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  /**
-   * Reset password with token
-   * @param {string} token - Reset token
-   * @param {string} newPassword - New password
-   * @returns {Promise<Object|null>}
-   */
-  static async resetPassword(token, newPassword) {
-    return await executeTransaction(async (client) => {
-      // Find user with valid token
-      const userQuery = `
-        SELECT id FROM users 
-        WHERE password_reset_token = $1 
-        AND password_reset_expires > NOW()
-      `;
-      const userResult = await client.query(userQuery, [token]);
+        const countRes = await query(`SELECT COUNT(*)::int AS total FROM users ${where}`, params);
+        const total = countRes.rows[0]?.total || 0;
 
-      if (userResult.rows.length === 0) {
-        throw new Error("Invalid or expired reset token");
-      }
+        const offset = (parseInt(page) - 1) * parseInt(limit);
+        const listRes = await query(
+            `SELECT * FROM users ${where} ORDER BY ${orderField} ${safeDir} LIMIT $${idx} OFFSET $${idx + 1}`,
+            [...params, parseInt(limit), offset]
+        );
 
-      const userId = userResult.rows[0].id;
-      const passwordHash = await bcrypt.hash(newPassword, 12);
+        return {
+            users: listRes.rows,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total,
+                pages: Math.max(1, Math.ceil(total / parseInt(limit))),
+            },
+        };
+    }
 
-      // Update password and clear reset token
-      const updateQuery = `
-        UPDATE users 
-        SET password_hash = $1, 
-            password_reset_token = NULL, 
-            password_reset_expires = NULL,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = $2
-        RETURNING id, email, role, is_approved, is_active, email_verified, provider, created_at, updated_at
-      `;
-
-      const updateResult = await client.query(updateQuery, [
-        passwordHash,
-        userId,
-      ]);
-      return updateResult.rows[0];
-    });
-  }
-
-  /**
-   * Get user statistics
-   * @returns {Promise<Object>}
-   */
-  static async getStats() {
-    const statsQuery = `
-      SELECT 
-        COUNT(*) as total_users,
-        COUNT(*) FILTER (WHERE is_approved = true) as approved_users,
-        COUNT(*) FILTER (WHERE is_approved = false) as pending_users,
-        COUNT(*) FILTER (WHERE role = 'admin') as admin_users,
-        COUNT(*) FILTER (WHERE role = 'alumni') as alumni_users,
-        COUNT(*) FILTER (WHERE provider = 'local') as local_users,
-        COUNT(*) FILTER (WHERE provider = 'google') as oauth_users
-      FROM users
-    `;
-
-    const result = await query(statsQuery);
-    return result.rows[0];
-  }
-
-  /**
-   * Check if email is institute email
-   * @param {string} email - Email to check
-   * @returns {boolean}
-   */
-  static isInstituteEmail(email) {
-    return email.toLowerCase().endsWith("@iiitnr.edu.in");
-  }
-
-  /**
-   * Get user with profile information
-   * @param {string} id - User ID
-   * @returns {Promise<Object|null>}
-   */
-  static async findWithProfile(id) {
-    const queryText = `
-      SELECT 
-        u.id,
-        u.email,
-        u.role,
-        u.is_approved,
-        u.is_active,
-        u.email_verified,
-        u.provider,
-        u.created_at,
-        u.updated_at,
-        ap.id as profile_id,
-        ap.first_name,
-        ap.last_name,
-        ap.profile_picture_url,
-        ap.current_company,
-        ap.current_position,
-        ap.graduation_year,
-        ap.branch
-      FROM users u
-      LEFT JOIN alumni_profiles ap ON u.id = ap.user_id
-      WHERE u.id = $1
-    `;
-
-    const result = await query(queryText, [id]);
-    return result.rows[0] || null;
-  }
+    static async verifyPassword(plain, hash) {
+        if (!hash) return false;
+        return await bcrypt.compare(plain, hash);
+    }
 }
 
-module.exports = User;
+export default User;

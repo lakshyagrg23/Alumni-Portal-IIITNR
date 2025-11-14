@@ -1,10 +1,10 @@
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+import jwt from "jsonwebtoken";
+import User from "../models/User.js";
 
 /**
  * Authentication middleware - verifies JWT token
  */
-const authenticate = async (req, res, next) => {
+export const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.header("Authorization");
     
@@ -44,7 +44,7 @@ const authenticate = async (req, res, next) => {
 /**
  * Admin authorization middleware - checks if user is admin
  */
-const requireAdmin = (req, res, next) => {
+export const requireAdmin = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({
       success: false,
@@ -65,12 +65,5 @@ const requireAdmin = (req, res, next) => {
 /**
  * Combined middleware for admin-only routes
  */
-const requireAuth = authenticate;
-const requireAdminAuth = [authenticate, requireAdmin];
-
-module.exports = {
-  authenticate,
-  requireAdmin,
-  requireAuth,
-  requireAdminAuth,
-};
+export const requireAuth = authenticate;
+export const requireAdminAuth = [authenticate, requireAdmin];

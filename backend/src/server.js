@@ -1,36 +1,38 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const helmet = require("helmet");
-const compression = require("compression");
-const morgan = require("morgan");
-const rateLimit = require("express-rate-limit");
-const path = require("path");
+import 'dotenv/config';
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import compression from "compression";
+import morgan from "morgan";
+import rateLimit from "express-rate-limit";
+import path from "path";
+import { fileURLToPath } from 'url';
+import { createServer } from 'http';
+import { Server as IOServer } from 'socket.io';
 
 // Import database connection
-const { testConnection, closePool } = require("./config/database");
+import { testConnection, closePool } from "./config/database.js";
 
 // Import routes
-const authRoutes = require("./routes/auth");
-const userRoutes = require("./routes/users");
-const alumniRoutes = require("./routes/alumni");
-const newsRoutes = require("./routes/news");
-const eventRoutes = require("./routes/events");
-const connectionRoutes = require("./routes/connections");
-const messageRoutes = require("./routes/messages");
-const adminRoutes = require("./routes/admin");
+import authRoutes from "./routes/auth.js";
+import userRoutes from "./routes/users.js";
+import alumniRoutes from "./routes/alumni.js";
+import newsRoutes from "./routes/news.js";
+import eventRoutes from "./routes/events.js";
+import connectionRoutes from "./routes/connections.js";
+import messageRoutes from "./routes/messages.js";
+import adminRoutes from "./routes/admin.js";
 
 // Import middleware
-const errorHandler = require("./middleware/errorHandler");
-const notFound = require("./middleware/notFound");
+import errorHandler from "./middleware/errorHandler.js";
+import notFound from "./middleware/notFound.js";
+import setupSocket from './socket.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // We'll create an HTTP server and attach socket.io after configuring Express
-const http = require('http');
-const server = http.createServer(app);
-const { Server: IOServer } = require('socket.io');
+const server = createServer(app);
 let io;
 
 // Security middleware
@@ -71,6 +73,10 @@ app.use('/api', (req, res, next) => {
 
 // Logging middleware
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
+
+// Resolve __dirname equivalent in ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Static file serving
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
@@ -127,7 +133,7 @@ const startServer = async () => {
       });
 
       // Attach socket handlers
-      require('./socket')(io);
+      setupSocket(io);
 
       server.listen(PORT, () => {
         console.log(`🚀 Server is running on port ${PORT}`);
@@ -172,4 +178,5 @@ process.on("SIGINT", async () => {
 startServer();
 
 // Export server and io for tests or external usage
-module.exports = { app, server, getIo: () => io };
+export { app, server };
+export const getIo = () => io;

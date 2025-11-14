@@ -1,11 +1,11 @@
-const express = require("express");
+import express from "express";
 const router = express.Router();
-const User = require("../models/User");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const axios = require("axios");
-const { authenticate } = require("../middleware/auth");
-const { query } = require("../config/database");
+import User from "../models/User.js";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import axios from "axios";
+import { authenticate } from "../middleware/auth.js";
+import { query } from "../config/database.js";
 
 /**
  * @route   POST /api/auth/register
@@ -54,7 +54,7 @@ router.post("/register", async (req, res) => {
     const user = await User.create(userData);
 
     // Create alumni profile with personal information
-    const AlumniProfile = require("../models/AlumniProfile");
+    const { default: AlumniProfile } = await import("../models/AlumniProfile.js");
     const profileData = {
       userId: user.id,
       firstName,
@@ -199,7 +199,7 @@ router.post("/google", async (req, res) => {
     }
 
     // Check if alumni profile exists for this user (regardless of whether user is new or existing)
-    const AlumniProfile = require("../models/AlumniProfile");
+    const { default: AlumniProfile } = await import("../models/AlumniProfile.js");
     const existingProfile = await AlumniProfile.findByUserId(user.id);
 
     let isNewUser = false;
@@ -292,7 +292,7 @@ router.post("/linkedin", async (req, res) => {
     }
 
     // Check if alumni profile exists for this user (regardless of whether user is new or existing)
-    const AlumniProfile = require("../models/AlumniProfile");
+    const { default: AlumniProfile } = await import("../models/AlumniProfile.js");
     const existingProfile = await AlumniProfile.findByUserId(user.id);
 
     let isNewUser = false;
@@ -685,13 +685,13 @@ router.put("/profile", authenticate, async (req, res) => {
           "Updating existing profile with ID:",
           existingProfile.rows[0].id
         );
-        const AlumniProfile = require("../models/AlumniProfile");
+        const { default: AlumniProfile } = await import("../models/AlumniProfile.js");
         await AlumniProfile.update(existingProfile.rows[0].id, alumniData);
         console.log("Profile updated successfully");
       } else {
         // Create new profile
         console.log("Creating new profile");
-        const AlumniProfile = require("../models/AlumniProfile");
+        const { default: AlumniProfile } = await import("../models/AlumniProfile.js");
         alumniData.userId = userId;
         await AlumniProfile.create(alumniData);
         console.log("New profile created");
@@ -750,4 +750,4 @@ router.post("/logout", (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;
