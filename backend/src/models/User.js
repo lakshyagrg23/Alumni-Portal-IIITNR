@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { query, insertOne, updateMany, deleteMany, findOne } from '../utils/sqlHelpers.js';
+import { generateToken, generateTokenExpiry, isTokenExpired } from '../utils/tokenUtils.js';
 
 /**
  * SQL-based User Model compatible with existing routes/middleware.
@@ -97,58 +98,74 @@ class User {
      * returns: { users, pagination }
      */
     static async findAll(options = {}) {
-        const {
-            page = 1,
-            limit = 20,
-            role,
-            isApproved,
-            orderBy = 'created_at',
-            orderDirection = 'DESC',
-        } = options;
-
+        const { page = 1, limit = 20, role, isApproved, orderBy = 'created_at', orderDirection = 'DESC' } = options;
         const safeOrderFields = new Set(['created_at', 'updated_at', 'email', 'role']);
         const safeDir = orderDirection && String(orderDirection).toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
         const orderField = safeOrderFields.has(orderBy) ? orderBy : 'created_at';
-
         const conditions = [];
         const params = [];
         let idx = 1;
-
-        if (role) {
-            conditions.push(`role = $${idx++}`);
-            params.push(role);
-        }
-        if (typeof isApproved === 'boolean') {
-            conditions.push(`is_approved = $${idx++}`);
-            params.push(isApproved);
-        }
-
+        if (role) { conditions.push(`role = $${idx++}`); params.push(role); }
+        if (typeof isApproved === 'boolean') { conditions.push(`is_approved = $${idx++}`); params.push(isApproved); }
         const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-
         const countRes = await query(`SELECT COUNT(*)::int AS total FROM users ${where}`, params);
         const total = countRes.rows[0]?.total || 0;
-
         const offset = (parseInt(page) - 1) * parseInt(limit);
         const listRes = await query(
             `SELECT * FROM users ${where} ORDER BY ${orderField} ${safeDir} LIMIT $${idx} OFFSET $${idx + 1}`,
             [...params, parseInt(limit), offset]
         );
-
-        return {
-            users: listRes.rows,
-            pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
-                total,
-                pages: Math.max(1, Math.ceil(total / parseInt(limit))),
-            },
-        };
+        return { users: listRes.rows, pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.max(1, Math.ceil(total / parseInt(limit))) } };
     }
 
     static async verifyPassword(plain, hash) {
         if (!hash) return false;
         return await bcrypt.compare(plain, hash);
     }
-}
 
+    static isInstituteEmail(email) {
+        return email.toLowerCase().endsWith('@iiitnr.edu.in');
+    }
+
+    static async findWithProfile(id) {
+        const queryText = `SELECT 
+          u.id, u.email, u.role, u.is_approved, u.is_active, u.email_verified, u.provider, u.created_at, u.updated_at,
+          ap.id as profile_id, ap.first_name, ap.last_name, ap.profile_picture_url, ap.current_company, ap.current_position,
+          ap.graduation_year, ap.branch
+        FROM users u LEFT JOIN alumni_profiles ap ON u.id = ap.user_id WHERE u.id = $1`;
+        const result = await query(queryText, [id]);
+        return result.rows[0] || null;
+    }
+
+    static async generateVerificationToken(userId) {
+        const token = generateToken(32);
+        const expires = generateTokenExpiry(24); // hours
+        await this.update(userId, { email_verification_token: token, email_verification_token_expires: expires });
+        return token;
+    }
+
+    static async verifyEmail(token) {
+        const result = await query('SELECT * FROM users WHERE email_verification_token = $1', [token]);
+        if (result.rows.length === 0) return { success: false, message: 'Invalid verification token' };
+        const user = result.rows[0];
+        if (isTokenExpired(user.email_verification_token_expires)) return { success: false, message: 'Verification token has expired' };
+        if (user.email_verified) return { success: false, message: 'Email already verified', alreadyVerified: true };
+        await query(`UPDATE users SET email_verified = TRUE, is_approved = TRUE, email_verification_token = NULL, email_verification_token_expires = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = $1`, [user.id]);
+        return { success: true, user };
+    }
+
+    static async getStats() {
+        const statsQuery = `SELECT 
+          COUNT(*) as total_users,
+          COUNT(*) FILTER (WHERE is_approved = true) as approved_users,
+          COUNT(*) FILTER (WHERE is_approved = false) as pending_users,
+          COUNT(*) FILTER (WHERE role = 'admin') as admin_users,
+          COUNT(*) FILTER (WHERE role = 'alumni') as alumni_users,
+          COUNT(*) FILTER (WHERE provider = 'local') as local_users,
+          COUNT(*) FILTER (WHERE provider = 'google') as oauth_users
+        FROM users`;
+        const result = await query(statsQuery);
+        return result.rows[0];
+    }
+}
 export default User;

@@ -132,8 +132,15 @@ export default function (io) {
         // Acknowledge sender
         socket.emit('secure:sent', { clientId, message: enrichedMessage });
       } catch (err) {
-        console.error('secure:send error', err);
-        socket.emit('secure:error', { message: 'Failed to send message' });
+        console.error('❌ secure:send error:', err);
+        console.error('Error details:', {
+          message: err.message,
+          stack: err.stack,
+          toUserId: payload?.toUserId,
+          senderAlumniId: socket.alumniId,
+          senderUserId: socket.user.id
+        });
+        socket.emit('secure:error', { message: 'Failed to send message', details: err.message });
       }
     });
     socket.on('publickey:publish', async ({ publicKey }) => {

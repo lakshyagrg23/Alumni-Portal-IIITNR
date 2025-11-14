@@ -31,7 +31,7 @@ import setupSocket from './socket.js';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// We'll create an HTTP server and attach socket.io after configuring Express
+// Create HTTP server (for socket.io attachment)
 const server = createServer(app);
 let io;
 
@@ -39,20 +39,38 @@ let io;
 app.use(helmet());
 app.use(compression());
 
-// Rate limiting
+// Rate limiting - Adjusted for development
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: process.env.NODE_ENV === "production" ? 200 : 1000, // More lenient for development
   message: "Too many requests from this IP, please try again later.",
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
+
+// Apply rate limiting to all API routes
 app.use("/api/", limiter);
+
+// More restrictive rate limiting for authentication endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === "production" ? 20 : 100, // More restrictive for auth
+  message: "Too many authentication attempts, please try again later.",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply stricter rate limiting to auth routes
+app.use("/api/auth/login", authLimiter);
+app.use("/api/auth/register", authLimiter);
+app.use("/api/auth/forgot-password", authLimiter);
 
 // CORS configuration
 const corsOptions = {
   origin:
     process.env.NODE_ENV === "production"
-      ? ["https://alumni.iiitnr.ac.in", "https://www.iiitnr.ac.in"]
-      : ["http://localhost:3000", "http://127.0.0.1:3000"],
+      ? process.env.CORS_ORIGINS?.split(',') || ["https://alumni.iiitnr.ac.in", "https://www.iiitnr.ac.in"]
+      : process.env.CORS_ORIGINS?.split(',') || ["http://localhost:3000", "http://127.0.0.1:3000"],
   credentials: true,
   optionsSuccessStatus: 200,
 };
@@ -63,11 +81,11 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Prevent client-side caching for API routes — avoids 304 responses for dynamic data
-app.use('/api', (req, res, next) => {
+app.use("/api", (req, res, next) => {
   // Strong no-cache for API endpoints
-  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-  res.set('Pragma', 'no-cache');
-  res.set('Expires', '0');
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
   next();
 });
 
@@ -127,7 +145,10 @@ const startServer = async () => {
       // Initialize socket.io
       io = new IOServer(server, {
         cors: {
-          origin: process.env.NODE_ENV === 'production' ? ["https://alumni.iiitnr.ac.in"] : ["http://localhost:3000"],
+          origin:
+            process.env.NODE_ENV === "production"
+              ? ["https://alumni.iiitnr.ac.in"]
+              : ["http://localhost:3000"],
           methods: ["GET", "POST"],
         },
       });

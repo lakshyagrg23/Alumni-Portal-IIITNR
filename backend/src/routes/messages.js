@@ -4,6 +4,52 @@ import { authenticate } from "../middleware/auth.js";
 import Message from "../models/Message.js";
 import PublicKey from "../models/PublicKey.js";
 import AlumniProfile from "../models/AlumniProfile.js";
+import { updateMany, deleteMany, count } from "../utils/sqlHelpers.js";
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+
+// Attachment upload (basic). Files stored under /uploads/messages.
+const attachmentsDir = path.join(process.cwd(), 'uploads', 'messages');
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    try { fs.mkdirSync(attachmentsDir, { recursive: true }); } catch {}
+    cb(null, attachmentsDir);
+  },
+  filename: (req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname) || '';
+    cb(null, unique + ext);
+  }
+});
+const allowedTypes = new Set([
+  'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf'
+]);
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    try {
+      // Basic MIME whitelist check
+      if (!allowedTypes.has(file.mimetype)) {
+        return cb(new Error('Unsupported file type. Allowed: PNG, JPEG, GIF, WEBP, PDF'));
+      }
+      // Extension sanity check (prevent disguised executables)
+      const lower = file.originalname.toLowerCase();
+      const forbiddenExt = ['.exe','.bat','.cmd','.com','.js','.msi','.vbs','.ps1'];
+      if (forbiddenExt.some(ext => lower.endsWith(ext))) {
+        return cb(new Error('Forbidden file extension'));
+      }
+      // Double extension pattern (e.g., image.jpg.exe)
+      if (/\.(png|jpe?g|gif|webp|pdf)\.[a-z0-9]{2,4}$/.test(lower)) {
+        return cb(new Error('Suspicious double extension'));
+      }
+      cb(null, true);
+    } catch (e) {
+      cb(new Error('File validation error'));
+    }
+  }
+});
 
 /**
  * @route   GET /api/messages
@@ -174,7 +220,42 @@ router.post("/send", authenticate, async (req, res) => {
       });
     }
 
-    const record = await Message.create({ sender_id: req.user.id, receiver_id: receiverId, content, message_type: messageType });
+    // Resolve sender: authenticated user -> alumni_profiles.id
+    const senderAlumni = await AlumniProfile.findByUserId(req.user.id);
+    if (!senderAlumni) {
+      return res.status(400).json({
+        success: false,
+        message: "Sender has no alumni profile",
+      });
+    }
+
+    // Resolve receiver: allow either alumni_profiles.id or users.id
+    let receiverAlumni = await AlumniProfile.findById(receiverId);
+    if (!receiverAlumni) {
+      receiverAlumni = await AlumniProfile.findByUserId(receiverId);
+    }
+    
+    if (!receiverAlumni) {
+      return res.status(400).json({
+        success: false,
+        message: "Receiver not found or has no alumni profile",
+      });
+    }
+
+    // Prevent self-messaging at application level (also enforced by DB constraint)
+    if (senderAlumni.id === receiverAlumni.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot send message to yourself",
+      });
+    }
+
+    const record = await Message.create({ 
+      sender_id: senderAlumni.id, 
+      receiver_id: receiverAlumni.id, 
+      content, 
+      message_type: messageType 
+    });
 
     res.status(201).json({
       success: true,
@@ -191,6 +272,32 @@ router.post("/send", authenticate, async (req, res) => {
 });
 
 /**
+ * @route POST /api/messages/upload
+ * @desc  Upload an attachment (returns URL & metadata). Content encryption done client-side in message.
+ * @access Private
+ */
+router.post('/upload', authenticate, (req, res) => {
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, message: err.message || 'Upload failed' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file provided' });
+    }
+    const url = `/uploads/messages/${req.file.filename}`; // served by existing static handler
+    res.json({
+      success: true,
+      data: {
+        url,
+        name: req.file.originalname,
+        mimeType: req.file.mimetype,
+        size: req.file.size
+      }
+    });
+  });
+});
+
+/**
  * @route   PUT /api/messages/:id/read
  * @desc    Mark message as read
  * @access  Private
@@ -198,10 +305,12 @@ router.post("/send", authenticate, async (req, res) => {
 router.put("/:id/read", authenticate, async (req, res) => {
   try {
     const { id } = req.params;
-    // Mark message as read only if receiver
-    // Simple update using updateMany helper
-    const { updateMany } = await import('../utils/sqlHelpers.js');
-    const updated = await updateMany('messages', { is_read: true, read_at: new Date() }, { id, receiver_id: req.user?.id });
+    // Resolve authenticated user -> alumni_profiles.id
+    const receiverAlumni = await AlumniProfile.findByUserId(req.user.id);
+    if (!receiverAlumni) {
+      return res.status(400).json({ success: false, message: 'User has no alumni profile' });
+    }
+    const updated = await updateMany('messages', { is_read: true, read_at: new Date() }, { id, receiver_id: receiverAlumni.id });
     if (updated.length === 0) {
       return res.status(404).json({ success: false, message: 'Message not found or not permitted' });
     }
@@ -223,8 +332,12 @@ router.put("/:id/read", authenticate, async (req, res) => {
 router.delete("/:id", authenticate, async (req, res) => {
   try {
     const { id } = req.params;
-    const { deleteMany } = await import('../utils/sqlHelpers.js');
-    const deletedCount = await deleteMany('messages', { id, sender_id: req.user?.id });
+    // Resolve authenticated user -> alumni_profiles.id
+    const senderAlumni = await AlumniProfile.findByUserId(req.user.id);
+    if (!senderAlumni) {
+      return res.status(400).json({ success: false, message: 'User has no alumni profile' });
+    }
+    const deletedCount = await deleteMany('messages', { id, sender_id: senderAlumni.id });
     if (deletedCount === 0) {
       return res.status(404).json({ success: false, message: 'Message not found or not permitted' });
     }
@@ -245,8 +358,12 @@ router.delete("/:id", authenticate, async (req, res) => {
  */
 router.get("/unread/count", authenticate, async (req, res) => {
   try {
-    const { count } = await import('../utils/sqlHelpers.js');
-    const unreadCount = await count('messages', { receiver_id: req.user?.id, is_read: false });
+    // Resolve authenticated user -> alumni_profiles.id
+    const receiverAlumni = await AlumniProfile.findByUserId(req.user.id);
+    if (!receiverAlumni) {
+      return res.json({ success: true, data: { unreadCount: 0 } });
+    }
+    const unreadCount = await count('messages', { receiver_id: receiverAlumni.id, is_read: false });
 
     res.json({
       success: true,
@@ -264,6 +381,42 @@ router.get("/unread/count", authenticate, async (req, res) => {
 });
 
 /**
+ * @route   GET /api/messages/unread/by-conversation
+ * @desc    Get unread counts grouped by conversation partner (sender)
+ * @access  Private
+ */
+router.get('/unread/by-conversation', authenticate, async (req, res) => {
+  try {
+    const receiverAlumni = await AlumniProfile.findByUserId(req.user.id);
+    if (!receiverAlumni) {
+      return res.json({ success: true, data: [] });
+    }
+    const { query } = await import('../config/database.js');
+    const sql = `
+      SELECT m.sender_id AS partner_alumni_id, COUNT(*) AS unread_count
+      FROM messages m
+      WHERE m.receiver_id = $1 AND m.is_read = false
+      GROUP BY m.sender_id
+    `;
+    const result = await query(sql, [receiverAlumni.id]);
+    const rows = result.rows || [];
+    const enriched = [];
+    for (const r of rows) {
+      const partnerProfile = await AlumniProfile.findById(r.partner_alumni_id);
+      enriched.push({
+        partnerAlumniId: r.partner_alumni_id,
+        partnerUserId: partnerProfile ? partnerProfile.user_id : null,
+        unreadCount: parseInt(r.unread_count, 10)
+      });
+    }
+    res.json({ success: true, data: enriched });
+  } catch (error) {
+    console.error('Get unread by conversation error:', error);
+    res.status(500).json({ success: false, message: 'Server error while fetching unread counts' });
+  }
+});
+
+/**
  * @route   POST /api/messages/conversation/:userId/start
  * @desc    Start a new conversation
  * @access  Private
@@ -272,11 +425,51 @@ router.post("/conversation/:userId/start", authenticate, async (req, res) => {
   try {
     const { userId } = req.params;
     const { initialMessage } = req.body;
+    
+    // Resolve sender: authenticated user -> alumni_profiles.id
+    const senderAlumni = await AlumniProfile.findByUserId(req.user.id);
+    if (!senderAlumni) {
+      return res.status(400).json({
+        success: false,
+        message: "Sender has no alumni profile",
+      });
+    }
+    
+    // Resolve receiver: allow either alumni_profiles.id or users.id
+    let receiverAlumni = await AlumniProfile.findById(userId);
+    if (!receiverAlumni) {
+      receiverAlumni = await AlumniProfile.findByUserId(userId);
+    }
+    
+    if (!receiverAlumni) {
+      return res.status(400).json({
+        success: false,
+        message: "Receiver not found or has no alumni profile",
+      });
+    }
+    
+    // Prevent self-conversation
+    if (senderAlumni.id === receiverAlumni.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot start conversation with yourself",
+      });
+    }
+    
     // Create initial message if provided
     if (initialMessage) {
-      await Message.create({ sender_id: req.user.id, receiver_id: userId, content: initialMessage, message_type: 'text' });
+      await Message.create({ 
+        sender_id: senderAlumni.id, 
+        receiver_id: receiverAlumni.id, 
+        content: initialMessage, 
+        message_type: 'text' 
+      });
     }
-    res.status(201).json({ success: true, message: 'Conversation started' });
+    
+    res.status(201).json({ 
+      success: true, 
+      message: 'Conversation started' 
+    });
   } catch (error) {
     console.error("Start conversation error:", error);
     res.status(500).json({

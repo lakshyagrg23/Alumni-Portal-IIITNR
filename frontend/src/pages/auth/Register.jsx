@@ -75,13 +75,29 @@ const Register = () => {
         lastName: data.lastName,
       });
       
-      toast.success('Registration successful! Please complete your profile.');
-      
-      // Redirect to profile completion
-      navigate('/complete-profile');
+      // Check if email verification is required
+      if (response.requiresVerification) {
+        toast.success('Registration successful! Please check your email.');
+        
+        // Redirect to email sent page
+        navigate('/email-sent', {
+          state: { email: response.email || data.email },
+        });
+      } else {
+        // OAuth users or already verified users
+        toast.success('Registration successful! Please complete your profile.');
+        navigate('/complete-profile');
+      }
       
     } catch (error) {
-      toast.error(error.message || 'Registration failed. Please try again.');
+      // Check if user already exists but needs verification
+      if (error.response?.data?.canResendVerification) {
+        navigate('/email-sent', {
+          state: { email: error.response.data.email || data.email },
+        });
+      } else {
+        toast.error(error.message || 'Registration failed. Please try again.');
+      }
     }
   };
 
