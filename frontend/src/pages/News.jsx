@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import styles from './News.module.css';
 
+// API Base URL
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 const NewsCard = ({ article }) => {
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -117,7 +120,7 @@ const News = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('/api/news/categories');
+      const response = await fetch(`${API_URL}/news/categories`);
       if (response.ok) {
         const data = await response.json();
         // Extract just the category names from the response
@@ -131,7 +134,7 @@ const News = () => {
 
   const fetchFeaturedArticles = async () => {
     try {
-      const response = await fetch('/api/news/featured?limit=3');
+      const response = await fetch(`${API_URL}/news/featured?limit=3`);
       if (response.ok) {
         const data = await response.json();
         setFeaturedArticles(data.data || []);
@@ -152,7 +155,7 @@ const News = () => {
         ...(filters.featured && { featured: 'true' })
       });
 
-      const response = await fetch(`/api/news?${queryParams}`);
+      const response = await fetch(`${API_URL}/news?${queryParams}`);
       if (response.ok) {
         const data = await response.json();
         setArticles(data.data || []);

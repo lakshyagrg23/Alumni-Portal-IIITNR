@@ -3,6 +3,9 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import styles from './NewsDetail.module.css';
 
+// API Base URL
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 const NewsDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -22,7 +25,7 @@ const NewsDetail = () => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`/api/news/${id}`);
+      const response = await fetch(`${API_URL}/news/${id}`);
       if (response.ok) {
         const data = await response.json();
         setArticle(data.article);
