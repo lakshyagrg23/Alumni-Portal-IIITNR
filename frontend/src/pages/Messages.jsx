@@ -37,7 +37,7 @@ const Messages = () => {
   const [unreadMap, setUnreadMap] = useState({})
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !token) {
       return;
     }
 
@@ -235,7 +235,7 @@ const Messages = () => {
       }
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user])
+  }, [user, token])
 
   useEffect(() => {
     // if preTo changes externally update

@@ -127,6 +127,17 @@ export const AuthProvider = ({ children }) => {
         type: authActions.LOGIN_SUCCESS,
         payload: response,
       })
+
+      // Eagerly load full profile so consumers have it without refresh
+      try {
+        const profile = await authService.getProfile()
+        if (profile?.success && profile?.data) {
+          dispatch({ type: authActions.LOAD_USER, payload: profile.data })
+        }
+      } catch (e) {
+        // non-fatal; components can still call getProfile themselves
+        console.warn('Post-login profile fetch failed', e?.message || e)
+      }
       
       return response
     } catch (error) {
@@ -199,6 +210,16 @@ export const AuthProvider = ({ children }) => {
         type: authActions.LOGIN_SUCCESS,
         payload: response,
       })
+
+      // Load profile details post-login
+      try {
+        const profile = await authService.getProfile()
+        if (profile?.success && profile?.data) {
+          dispatch({ type: authActions.LOAD_USER, payload: profile.data })
+        }
+      } catch (e) {
+        console.warn('Post-Google-login profile fetch failed', e?.message || e)
+      }
       
       return response
     } catch (error) {
@@ -221,6 +242,16 @@ export const AuthProvider = ({ children }) => {
         type: authActions.LOGIN_SUCCESS,
         payload: response,
       })
+
+      // Load profile details post-login
+      try {
+        const profile = await authService.getProfile()
+        if (profile?.success && profile?.data) {
+          dispatch({ type: authActions.LOAD_USER, payload: profile.data })
+        }
+      } catch (e) {
+        console.warn('Post-LinkedIn-login profile fetch failed', e?.message || e)
+      }
       
       return response
     } catch (error) {
