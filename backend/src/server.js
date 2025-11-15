@@ -19,6 +19,8 @@ const eventRoutes = require("./routes/events");
 const connectionRoutes = require("./routes/connections");
 const messageRoutes = require("./routes/messages");
 const adminRoutes = require("./routes/admin");
+const reportsRoutes = require("./routes/reports");
+const exportRoutes = require("./routes/export");
 
 // Import middleware
 const errorHandler = require("./middleware/errorHandler");
@@ -79,6 +81,8 @@ app.use("/api/events", eventRoutes);
 app.use("/api/connections", connectionRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/admin/reports", reportsRoutes);
+app.use("/api/admin/reports/export", exportRoutes);
 
 // Welcome route
 app.get("/", (req, res) => {
@@ -143,3 +147,4 @@ process.on("SIGINT", async () => {
 startServer();
 
 module.exports = app;
+
