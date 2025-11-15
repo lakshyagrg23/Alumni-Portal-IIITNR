@@ -1,11 +1,30 @@
 import React, { useEffect, useState } from 'react'
 import styles from './AdminPanel.module.css'
 import reportsService from '@services/reportsService'
+import { 
+  EmploymentStatusChart, 
+  PlacementTrendsChart, 
+  IndustryDistributionChart,
+  TopEmployersChart,
+  HigherEducationChart,
+  ContributionsChart
+} from './components/AccreditationCharts'
+import {
+  PlacementTable,
+  HigherEducationTable,
+  ContributionsTable,
+  AchievementsTable
+} from './components/AccreditationTables'
 
 const AccreditationDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview')
   const [overview, setOverview] = useState(null)
   const [placements, setPlacements] = useState(null)
+  const [placementTrends, setPlacementTrends] = useState(null)
+  const [topEmployers, setTopEmployers] = useState(null)
+  const [industryDist, setIndustryDist] = useState(null)
+  const [higherEd, setHigherEd] = useState(null)
+  const [higherEdStats, setHigherEdStats] = useState(null)
   const [contributions, setContributions] = useState(null)
   const [achievements, setAchievements] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -38,11 +57,36 @@ const AccreditationDashboard = () => {
   const loadPlacements = async () => {
     try {
       setLoading(true)
-      const data = await reportsService.getPlacementDetails(filters)
-      setPlacements(data)
+      const [details, trends, employers, industry] = await Promise.all([
+        reportsService.getPlacementDetails(filters),
+        reportsService.getPlacementTrends(filters),
+        reportsService.getTopEmployers(filters),
+        reportsService.getIndustryDistribution(filters)
+      ])
+      setPlacements(details)
+      setPlacementTrends(trends)
+      setTopEmployers(employers)
+      setIndustryDist(industry)
     } catch (err) {
       console.error('Failed to load placements', err)
       setError(err.message || 'Failed to load placements')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadHigherEducation = async () => {
+    try {
+      setLoading(true)
+      const [details, stats] = await Promise.all([
+        reportsService.getHigherEducationDetails(filters),
+        reportsService.getHigherEducationStats(filters)
+      ])
+      setHigherEd(details)
+      setHigherEdStats(stats)
+    } catch (err) {
+      console.error('Failed to load higher education data', err)
+      setError(err.message || 'Failed to load higher education data')
     } finally {
       setLoading(false)
     }
@@ -81,6 +125,8 @@ const AccreditationDashboard = () => {
     // Load data for the specific tab if not already loaded
     if (tab === 'placements' && !placements) {
       loadPlacements()
+    } else if (tab === 'higher-education' && !higherEd) {
+      loadHigherEducation()
     } else if (tab === 'contributions' && !contributions) {
       loadContributions()
     } else if (tab === 'achievements' && !achievements) {
@@ -96,6 +142,7 @@ const AccreditationDashboard = () => {
   const applyFilters = () => {
     loadData()
     if (activeTab === 'placements') loadPlacements()
+    if (activeTab === 'higher-education') loadHigherEducation()
     if (activeTab === 'contributions') loadContributions()
     if (activeTab === 'achievements') loadAchievements()
   }
@@ -179,8 +226,8 @@ const AccreditationDashboard = () => {
 
       {/* Tabs Navigation */}
       <div style={{ borderBottom: '2px solid #e0e0e0', marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          {['overview', 'placements', 'contributions', 'achievements'].map(tab => (
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {['overview', 'placements', 'higher-education', 'contributions', 'achievements'].map(tab => (
             <button
               key={tab}
               onClick={() => handleTabChange(tab)}
@@ -219,7 +266,10 @@ const AccreditationDashboard = () => {
           <div className={styles.statsGrid} style={{ marginBottom: '2rem' }}>
             <div className={styles.statCard}>
               <div className={styles.statValue}>{data.total_alumni || '0'}</div>
-              <div className={styles.statLabel}>Total Alumni</div>
+              <div className={styles.statLabel}>Total Alumni (Approved)</div>
+              <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.25rem' }}>
+                {data.total_profiles_alumni || '0'} profiles
+              </div>
             </div>
             <div className={styles.statCard}>
               <div className={styles.statValue}>{data.employed_count || '0'}</div>
@@ -271,59 +321,125 @@ const AccreditationDashboard = () => {
               <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#166534' }}>Data Quality</h4>
               <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#14532d' }}>{data.verified_count || '0'}</div>
               <div style={{ fontSize: '0.75rem', color: '#166534', marginTop: '0.25rem' }}>
-                {data.consented_count || '0'} consented for reports
+                {data.consented_count || '0'} consented · {data.contact_completeness || '0'}% contact complete
               </div>
             </div>
           </div>
 
-          {/* Detailed Summary */}
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-            <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>Detailed Summary</h3>
-            <pre style={{ whiteSpace: 'pre-wrap', background: '#f8f9fa', padding: '1rem', borderRadius: '4px', fontSize: '0.875rem', overflow: 'auto' }}>
-              {JSON.stringify(data, null, 2)}
-            </pre>
+          {/* Employment Status Chart */}
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e0e0e0', marginBottom: '2rem' }}>
+            <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>Employment Status Distribution</h3>
+            <EmploymentStatusChart data={data} />
           </div>
         </div>
       )}
 
       {/* Placements Tab */}
-      {!loading && !error && activeTab === 'placements' && placements && (
+      {!loading && !error && activeTab === 'placements' && (
         <div style={{ padding: '1rem 0' }}>
-          <h3>Placement Details</h3>
-          <pre style={{ whiteSpace: 'pre-wrap', background: '#f8f9fa', padding: '1rem', borderRadius: '4px', fontSize: '0.875rem' }}>
-            {JSON.stringify(placements, null, 2)}
-          </pre>
+          {placementTrends && placementTrends.length > 0 && (
+            <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e0e0e0', marginBottom: '2rem' }}>
+              <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>Placement Trends (Year-wise)</h3>
+              <PlacementTrendsChart data={placementTrends} />
+            </div>
+          )}
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+            {topEmployers && topEmployers.length > 0 && (
+              <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+                <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>Top Employers</h3>
+                <TopEmployersChart data={topEmployers} />
+              </div>
+            )}
+
+            {industryDist && industryDist.length > 0 && (
+              <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+                <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>Industry Distribution</h3>
+                <IndustryDistributionChart data={industryDist} />
+              </div>
+            )}
+          </div>
+
+          {placements && (
+            <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+              <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>Placement Records</h3>
+              <PlacementTable data={placements} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Higher Education Tab */}
+      {!loading && !error && activeTab === 'higher-education' && (
+        <div style={{ padding: '1rem 0' }}>
+          {higherEdStats && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+              <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+                <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>Program Level Distribution</h3>
+                <HigherEducationChart data={higherEdStats} />
+              </div>
+
+              {higherEdStats.byCountry && higherEdStats.byCountry.length > 0 && (
+                <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+                  <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>Top Destinations</h3>
+                  <div style={{ fontSize: '0.875rem' }}>
+                    {higherEdStats.byCountry.slice(0, 5).map((item, index) => (
+                      <div key={index} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid #e0e0e0' }}>
+                        <span>{item.institution_country}</span>
+                        <span style={{ fontWeight: '600' }}>{item.student_count} students ({item.percentage}%)</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {higherEd && (
+            <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+              <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>Higher Education Records</h3>
+              <HigherEducationTable data={higherEd} />
+            </div>
+          )}
         </div>
       )}
 
       {/* Contributions Tab */}
       {!loading && !error && activeTab === 'contributions' && contributions && (
         <div style={{ padding: '1rem 0' }}>
-          <h3>Alumni Contributions</h3>
-          <pre style={{ whiteSpace: 'pre-wrap', background: '#f8f9fa', padding: '1rem', borderRadius: '4px', fontSize: '0.875rem' }}>
-            {JSON.stringify(contributions, null, 2)}
-          </pre>
+          {contributions.summary && contributions.summary.length > 0 && (
+            <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e0e0e0', marginBottom: '2rem' }}>
+              <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>Contributions by Type</h3>
+              <ContributionsChart data={contributions} />
+            </div>
+          )}
+
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+            <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>Contribution Records</h3>
+            <ContributionsTable data={contributions} />
+          </div>
         </div>
       )}
 
       {/* Achievements Tab */}
       {!loading && !error && activeTab === 'achievements' && achievements && (
         <div style={{ padding: '1rem 0' }}>
-          <h3>Alumni Achievements</h3>
-          <pre style={{ whiteSpace: 'pre-wrap', background: '#f8f9fa', padding: '1rem', borderRadius: '4px', fontSize: '0.875rem' }}>
-            {JSON.stringify(achievements, null, 2)}
-          </pre>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+            <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>Achievement Records</h3>
+            <AchievementsTable data={achievements} />
+          </div>
         </div>
       )}
 
       {/* Empty State */}
       {!loading && !error && activeTab !== 'overview' && (
         (activeTab === 'placements' && !placements) ||
+        (activeTab === 'higher-education' && !higherEd) ||
         (activeTab === 'contributions' && !contributions) ||
         (activeTab === 'achievements' && !achievements)
       ) && (
         <div style={{ textAlign: 'center', padding: '3rem', color: '#666' }}>
-          <p>Loading {activeTab} data...</p>
+          <p>Click "Apply Filters" to load {activeTab.replace('-', ' ')} data...</p>
         </div>
       )}
     </div>

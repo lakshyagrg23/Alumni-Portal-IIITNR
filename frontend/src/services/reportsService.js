@@ -380,12 +380,77 @@ export const exportComplete = async (filters = {}) => {
     return api.get(`/export/complete?${params.toString()}`);
 };
 
+/**
+ * Get top employers
+ */
+export const getTopEmployers = async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.startYear) params.append('startYear', filters.startYear);
+    if (filters.endYear) params.append('endYear', filters.endYear);
+    if (filters.limit) params.append('limit', filters.limit);
+    
+    const response = await api.get(`/employers?${params.toString()}`);
+    return response.data?.topEmployers || [];
+};
+
+/**
+ * Get industry distribution
+ */
+export const getIndustryDistribution = async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.startYear) params.append('startYear', filters.startYear);
+    if (filters.endYear) params.append('endYear', filters.endYear);
+    
+    const response = await api.get(`/employers?${params.toString()}`);
+    return response.data?.industryDistribution || [];
+};
+
+/**
+ * Get higher education details
+ */
+export const getHigherEducationDetails = async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.startYear) params.append('startYear', filters.startYear);
+    if (filters.endYear) params.append('endYear', filters.endYear);
+    if (filters.program) params.append('program', filters.program);
+    if (filters.department) params.append('department', filters.department);
+    if (filters.country) params.append('country', filters.country);
+    if (filters.limit) params.append('limit', filters.limit);
+    if (filters.offset) params.append('offset', filters.offset);
+    
+    const response = await api.get(`/higher-studies?${params.toString()}`);
+    return {
+        data: response.details || [],
+        total: response.pagination?.total || 0,
+        limit: response.pagination?.limit || 100,
+        offset: response.pagination?.offset || 0
+    };
+};
+
+/**
+ * Get higher education stats
+ */
+export const getHigherEducationStats = async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.startYear) params.append('startYear', filters.startYear);
+    if (filters.endYear) params.append('endYear', filters.endYear);
+    if (filters.program) params.append('program', filters.program);
+    if (filters.department) params.append('department', filters.department);
+    
+    const response = await api.get(`/higher-studies?${params.toString()}`);
+    return response.stats || {};
+};
+
 export default {
     getOverview,
     getPlacementDetails,
     getPlacementTrends,
     getEmployers,
+    getTopEmployers,
+    getIndustryDistribution,
     getHigherEducation,
+    getHigherEducationDetails,
+    getHigherEducationStats,
     getContributions,
     getAchievements,
     getContactStatus,

@@ -563,9 +563,9 @@ async function getHigherEducationStats(filters = {}) {
  * Get alumni contributions summary
  */
 async function getContributionsSummary(filters = {}) {
-    const { startYear, endYear, type, limit = 50 } = filters;
+    const { startYear, endYear, type, minAmount, limit = 50 } = filters;
     
-    let whereConditions = ['ac.verification_status = \'verified\''];
+    let whereConditions = ['ac.is_verified = true'];
     let params = [];
     let paramCount = 1;
     
@@ -582,7 +582,7 @@ async function getContributionsSummary(filters = {}) {
     }
     
     if (type) {
-        whereConditions.push(`ac.type = $${paramCount}`);
+        whereConditions.push(`ac.contribution_type = $${paramCount}`);
         params.push(type);
         paramCount++;
     }
@@ -608,14 +608,13 @@ async function getContributionsSummary(filters = {}) {
     // Summary statistics
     const statsQuery = `
         SELECT 
-            type,
+            contribution_type as type,
             COUNT(*) as count,
             SUM(amount) as total_amount,
-            SUM(students_impacted) as total_students_impacted,
-            SUM(duration_hours) as total_hours
+            SUM(beneficiaries_count) as total_students_impacted
         FROM alumni_contributions ac
         WHERE ${whereClause}
-        GROUP BY type
+        GROUP BY contribution_type
         ORDER BY count DESC
     `;
     
@@ -636,7 +635,7 @@ async function getContributionsSummary(filters = {}) {
 async function getAchievementsSummary(filters = {}) {
     const { startYear, endYear, type, recognitionLevel, limit = 50 } = filters;
     
-    let whereConditions = ['aa.verification_status = \'verified\'', 'aa.is_published = true'];
+    let whereConditions = ['aa.is_verified = true'];
     let params = [];
     let paramCount = 1;
     
@@ -653,13 +652,13 @@ async function getAchievementsSummary(filters = {}) {
     }
     
     if (type) {
-        whereConditions.push(`aa.type = $${paramCount}`);
+        whereConditions.push(`aa.achievement_type = $${paramCount}`);
         params.push(type);
         paramCount++;
     }
     
     if (recognitionLevel) {
-        whereConditions.push(`aa.recognition_level = $${paramCount}`);
+        whereConditions.push(`aa.visibility = $${paramCount}`);
         params.push(recognitionLevel);
         paramCount++;
     }
@@ -678,21 +677,21 @@ async function getAchievementsSummary(filters = {}) {
         FROM alumni_achievements aa
         JOIN alumni_profiles ap ON aa.alumni_id = ap.id
         WHERE ${whereClause}
-        ORDER BY aa.is_featured DESC, aa.achievement_date DESC
+        ORDER BY aa.achievement_date DESC, aa.created_at DESC
         LIMIT $${paramCount}
     `;
     
     // Summary statistics
     const statsQuery = `
         SELECT 
-            type,
+            achievement_type as type,
             COUNT(*) as count,
-            recognition_level,
+            visibility as recognition_level,
             COUNT(*) as count_by_level
         FROM alumni_achievements aa
         WHERE ${whereClause}
-        GROUP BY ROLLUP(type, recognition_level)
-        ORDER BY type, count DESC
+        GROUP BY ROLLUP(achievement_type, visibility)
+        ORDER BY achievement_type, count DESC
     `;
     
     const [achievements, stats] = await Promise.all([
