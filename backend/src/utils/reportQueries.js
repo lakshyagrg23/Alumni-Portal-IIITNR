@@ -46,7 +46,7 @@ async function getOverviewKPIs(filters = {}) {
     const query = `
         WITH alumni_stats AS (
             SELECT 
-                COUNT(*) as total_alumni,
+                COUNT(*) as total_profiles_alumni,
                 COUNT(*) FILTER (WHERE employment_status = 'Employed') as employed_count,
                 COUNT(*) FILTER (WHERE employment_status = 'Higher Studies') as higher_studies_count,
                 COUNT(*) FILTER (WHERE employment_status = 'Entrepreneur') as entrepreneur_count,
@@ -57,6 +57,12 @@ async function getOverviewKPIs(filters = {}) {
                 AVG(cgpa) as avg_cgpa
             FROM alumni_profiles
             WHERE ${whereClause}
+        ),
+        users_count AS (
+            -- Global alumni count based on approved users (role='alumni' AND is_approved = true)
+            SELECT COUNT(*) as total_alumni_users
+            FROM users
+            WHERE role = 'alumni' AND is_approved = true
         ),
         placement_stats AS (
             SELECT 
@@ -93,31 +99,51 @@ async function getOverviewKPIs(filters = {}) {
                 AND ${whereClause.replace('graduation_year', 'ap.graduation_year').replace('program', 'ap.program').replace('department', 'ap.department')}
         )
         SELECT 
-            a.*,
-            p.*,
-            c.*,
-            ach.*,
+            u.total_alumni_users as total_alumni,
+            a.total_profiles_alumni as total_profiles_alumni,
+            a.employed_count,
+            a.higher_studies_count,
+            a.entrepreneur_count,
+            a.self_employed_count,
+            a.consented_count,
+            a.verified_count,
+            a.complete_contact_count,
+            a.avg_cgpa,
+            p.total_placements,
+            p.avg_salary,
+            p.max_salary,
+            p.min_salary,
+            p.unique_companies,
+            c.total_contributions,
+            c.total_donations,
+            c.guest_lectures,
+            c.mentorships,
+            ach.total_achievements,
+            ach.startups_founded,
+            ach.patents_filed,
+            ach.publications,
             CASE 
-                WHEN a.total_alumni > 0 
-                THEN ROUND((a.employed_count::numeric / a.total_alumni::numeric) * 100, 2)
+                WHEN a.total_profiles_alumni > 0 
+                THEN ROUND((a.employed_count::numeric / a.total_profiles_alumni::numeric) * 100, 2)
                 ELSE 0
             END as placement_rate,
             CASE 
-                WHEN a.total_alumni > 0 
-                THEN ROUND((a.higher_studies_count::numeric / a.total_alumni::numeric) * 100, 2)
+                WHEN a.total_profiles_alumni > 0 
+                THEN ROUND((a.higher_studies_count::numeric / a.total_profiles_alumni::numeric) * 100, 2)
                 ELSE 0
             END as higher_studies_rate,
             CASE 
-                WHEN a.total_alumni > 0 
-                THEN ROUND((a.complete_contact_count::numeric / a.total_alumni::numeric) * 100, 2)
+                WHEN a.total_profiles_alumni > 0 
+                THEN ROUND((a.complete_contact_count::numeric / a.total_profiles_alumni::numeric) * 100, 2)
                 ELSE 0
             END as contact_completeness,
             CASE 
-                WHEN a.total_alumni > 0 
-                THEN ROUND(((a.employed_count + a.higher_studies_count + a.entrepreneur_count)::numeric / a.total_alumni::numeric) * 100, 2)
+                WHEN a.total_profiles_alumni > 0 
+                THEN ROUND(((a.employed_count + a.higher_studies_count + a.entrepreneur_count)::numeric / a.total_profiles_alumni::numeric) * 100, 2)
                 ELSE 0
             END as overall_outcome_rate
         FROM alumni_stats a
+        CROSS JOIN users_count u
         CROSS JOIN placement_stats p
         CROSS JOIN contribution_stats c
         CROSS JOIN achievement_stats ach
