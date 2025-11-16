@@ -4,9 +4,10 @@ import User from "../models/User.js";
 import bcrypt from "bcryptjs"; // kept for potential future use (password validation etc.)
 import jwt from "jsonwebtoken";
 import axios from "axios";
-import { authenticate } from "../middleware/auth.js";
+import { authenticate } from "../models/middleware/auth.js";
 import { query } from "../config/database.js";
 import emailService from "../services/emailService.js";
+import AlumniProfile from "../models/AlumniProfile.js";
 
 /**
  * @route   POST /api/auth/register
@@ -651,7 +652,7 @@ router.get("/profile", authenticate, async (req, res) => {
         [userId]
       );
       if (result.rows.length > 0) {
-        alumniProfile = result.rows[0];
+        alumniProfile = AlumniProfile.convertFromDbFormat(result.rows[0]);
       }
     } catch (error) {
       console.log("No alumni profile found for user:", userId);
@@ -678,7 +679,7 @@ router.get("/profile", authenticate, async (req, res) => {
       });
     }
 
-    // Return profile data primarily from alumni_profiles table
+    // Return profile data primarily from alumni_profiles table (converted)
     res.json({
       success: true,
       data: {
@@ -689,11 +690,11 @@ router.get("/profile", authenticate, async (req, res) => {
         isActive: user.is_active,
         provider: user.provider,
         createdAt: user.created_at,
-        // Get primary profile data from alumni_profiles table
-        firstName: alumniProfile.first_name || "",
-        lastName: alumniProfile.last_name || "",
+        // Get primary profile data from converted alumni profile
+        firstName: alumniProfile?.firstName || "",
+        lastName: alumniProfile?.lastName || "",
         profilePicture:
-          alumniProfile.profile_picture_url || user.profile_picture_url || "",
+          alumniProfile?.profilePictureUrl || user.profile_picture_url || "",
         alumniProfile: alumniProfile,
       },
     });
@@ -858,7 +859,10 @@ router.put("/profile", authenticate, async (req, res) => {
       [userId]
     );
 
-    const alumniProfile = profileResult.rows[0] || null;
+    let alumniProfile = profileResult.rows[0] || null;
+    if (alumniProfile) {
+      alumniProfile = AlumniProfile.convertFromDbFormat(alumniProfile);
+    }
 
     res.json({
       success: true,
@@ -867,9 +871,9 @@ router.put("/profile", authenticate, async (req, res) => {
         id: updatedUser.id,
         email: updatedUser.email,
         role: updatedUser.role,
-        firstName: alumniProfile?.first_name || "",
-        lastName: alumniProfile?.last_name || "",
-        profilePicture: alumniProfile?.profile_picture_url || "",
+        firstName: alumniProfile?.firstName || "",
+        lastName: alumniProfile?.lastName || "",
+        profilePicture: alumniProfile?.profilePictureUrl || "",
         alumniProfile: alumniProfile,
       },
     });

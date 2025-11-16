@@ -1,7 +1,7 @@
 import express from "express";
 const router = express.Router();
 import User from "../models/User.js";
-import { requireAdminAuth } from "../middleware/auth.js";
+import { requireAdminAuth } from "../models/middleware/auth.js";
 
 // Apply admin authentication to all routes in this router
 router.use(requireAdminAuth);
@@ -218,8 +218,8 @@ router.put("/users/:id/activate", async (req, res) => {
  */
 router.get("/stats/users", async (req, res) => {
   try {
-    const totalUsers = await User.findAll({ limit: 1000 }); // Get all users for stats
-    const users = totalUsers.users;
+    // `User.findAll` returns an array of users; use it directly for stats
+    const users = await User.findAll({ limit: 1000 }); // Get users array for stats
 
     const stats = {
       total: users.length,

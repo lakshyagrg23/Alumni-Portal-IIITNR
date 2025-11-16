@@ -1,14 +1,19 @@
 import React, { useState } from 'react';
 import styles from './ConsentSection.module.css';
 
-const ConsentSection = ({ initialConsent = false, consentDate = null, onSave }) => {
-  const [consent, setConsent] = useState(initialConsent);
+const ConsentSection = (props) => {
+  // Accept either camelCase props or snake_case from API
+  const { onSave } = props;
+  const initialConsentProp = props.initialConsent ?? props.consent_for_accreditation ?? props.consentForAccreditation ?? false;
+  const consentDateProp = props.consentDate ?? props.consent_date ?? props.consentDate ?? null;
+
+  const [consent, setConsent] = useState(initialConsentProp);
   const [showDetails, setShowDetails] = useState(false);
 
   const handleConsentChange = (e) => {
     const newConsent = e.target.checked;
     setConsent(newConsent);
-    onSave(newConsent);
+    if (typeof onSave === 'function') onSave(newConsent);
   };
 
   return (
@@ -36,9 +41,9 @@ const ConsentSection = ({ initialConsent = false, consentDate = null, onSave }) 
           </span>
         </label>
 
-        {consentDate && (
+        {consentDateProp && (
           <div className={styles.consentStatus}>
-            ✓ Consent granted on {new Date(consentDate).toLocaleDateString('en-IN', {
+            ✓ Consent granted on {new Date(consentDateProp).toLocaleDateString('en-IN', {
               day: 'numeric',
               month: 'long',
               year: 'numeric'
