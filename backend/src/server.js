@@ -26,8 +26,8 @@ import reportsRoutes from "./routes/reports.js";
 import exportRoutes from "./routes/export.js";
 
 // Import middleware
-import errorHandler from "./middleware/errorHandler.js";
-import notFound from "./middleware/notFound.js";
+import errorHandler from "./models/middleware/errorHandler.js";
+import notFound from "./models/middleware/notFound.js";
 import setupSocket from "./socket.js";
 
 const app = express();
