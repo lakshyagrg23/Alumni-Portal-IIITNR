@@ -3,14 +3,14 @@ import styles from './EmploymentInfoForm.module.css';
 
 const EmploymentInfoForm = ({ initialData = {}, onSave, onCancel }) => {
   const [formData, setFormData] = useState({
-    employment_status: initialData.employment_status || '',
-    current_employer: initialData.current_employer || '',
-    current_job_title: initialData.current_job_title || '',
-    industry_sector: initialData.industry_sector || '',
-    job_location: initialData.job_location || '',
-    job_start_year: initialData.job_start_year || '',
-    annual_salary_range: initialData.annual_salary_range || '',
-    job_type: initialData.job_type || 'Full-time',
+    employment_status: initialData.employment_status || initialData.employmentStatus || '',
+    current_employer: initialData.current_employer || initialData.currentEmployer || initialData.current_company || '',
+    current_job_title: initialData.current_job_title || initialData.currentJobTitle || initialData.current_position || '',
+    industry_sector: initialData.industry_sector || initialData.industrySector || '',
+    job_location: initialData.job_location || initialData.jobLocation || initialData.current_city || '',
+    job_start_year: initialData.job_start_year || initialData.jobStartYear || '',
+    annual_salary_range: initialData.annual_salary_range || initialData.annualSalaryRange || '',
+    job_type: initialData.job_type || initialData.jobType || 'Full-time',
   });
 
   const [errors, setErrors] = useState({});

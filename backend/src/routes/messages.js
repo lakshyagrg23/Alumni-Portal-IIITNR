@@ -1,6 +1,6 @@
 import express from "express";
 const router = express.Router();
-import { authenticate } from "../middleware/auth.js";
+import { authenticate } from "../models/middleware/auth.js";
 import Message from "../models/Message.js";
 import PublicKey from "../models/PublicKey.js";
 import AlumniProfile from "../models/AlumniProfile.js";

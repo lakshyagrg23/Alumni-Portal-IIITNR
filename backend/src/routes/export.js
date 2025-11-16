@@ -5,7 +5,7 @@
 
 import express from 'express';
 const router = express.Router();
-import { authenticate, requireAdmin } from '../middleware/auth.js';
+import { authenticate, requireAdmin } from '../models/middleware/auth.js';
 import reportQueries from '../utils/reportQueries.js';
 import exportHelpers from '../utils/exportHelpers.js';
 

@@ -12,12 +12,12 @@ const HigherEducationForm = ({ initialData = {}, onSave, onCancel }) => {
   };
 
   const [formData, setFormData] = useState({
-    higher_study_institution: initialData.higher_study_institution || '',
-    higher_study_program: initialData.higher_study_program || '',
-    higher_study_field: initialData.higher_study_field || '',
-    higher_study_country: initialData.higher_study_country || 'India',
-    higher_study_year: initialData.higher_study_year || '',
-    higher_study_status: mapStatus(initialData.higher_study_status),
+    higher_study_institution: initialData.higher_study_institution || initialData.higherStudyInstitution || '',
+    higher_study_program: initialData.higher_study_program || initialData.higherStudyProgram || '',
+    higher_study_field: initialData.higher_study_field || initialData.higherStudyField || '',
+    higher_study_country: initialData.higher_study_country || initialData.higherStudyCountry || 'India',
+    higher_study_year: initialData.higher_study_year || initialData.higherStudyYear || '',
+    higher_study_status: mapStatus(initialData.higher_study_status || initialData.higherStudyStatus),
   });
 
   const [errors, setErrors] = useState({});

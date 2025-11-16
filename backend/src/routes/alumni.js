@@ -2,7 +2,7 @@ import express from "express";
 const router = express.Router();
 import AlumniProfile from "../models/AlumniProfile.js";
 import { query } from "../config/database.js";
-import { authenticate } from "../middleware/auth.js";
+import { authenticate } from "../models/middleware/auth.js";
 
 /**
  * @route   GET /api/alumni
@@ -86,9 +86,11 @@ router.get("/profile", authenticate, async (req, res) => {
       });
     }
 
+    const profile = AlumniProfile.convertFromDbFormat(result.rows[0]);
+
     res.json({
       success: true,
-      profile: result.rows[0],
+      profile,
     });
   } catch (error) {
     console.error("Get profile error:", error);
@@ -388,10 +390,12 @@ router.put("/profile/employment", authenticate, async (req, res) => {
       });
     }
 
+    const profile = AlumniProfile.convertFromDbFormat(result.rows[0]);
+
     res.json({
       success: true,
       message: "Employment information updated successfully",
-      profile: result.rows[0],
+      profile,
     });
   } catch (error) {
     console.error("Update employment error:", error);
@@ -454,10 +458,12 @@ router.put("/profile/education", authenticate, async (req, res) => {
       });
     }
 
+    const profile = AlumniProfile.convertFromDbFormat(result.rows[0]);
+
     res.json({
       success: true,
       message: "Higher education information updated successfully",
-      profile: result.rows[0],
+      profile,
     });
   } catch (error) {
     console.error("Update education error:", error);
@@ -502,10 +508,12 @@ router.put("/profile/consent", authenticate, async (req, res) => {
       });
     }
 
+    const profile = AlumniProfile.convertFromDbFormat(result.rows[0]);
+
     res.json({
       success: true,
       message: consent ? "Consent granted successfully" : "Consent withdrawn",
-      profile: result.rows[0],
+      profile,
     });
   } catch (error) {
     console.error("Update consent error:", error);
