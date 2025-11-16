@@ -30,11 +30,47 @@ const Login = () => {
 
   const onSubmit = async (data) => {
     try {
-      await login(data);
+      const response = await login(data);
       toast.success('Login successful!');
-      navigate('/dashboard');
+      if (!response?.user?.hasAlumniProfile) {
+        navigate('/complete-profile');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (error) {
-      toast.error(error?.response?.data?.message || error?.message || 'Login failed. Please try again.');
+      const errorData = error?.response?.data;
+      
+      // Check if user needs to verify email
+      if (errorData?.requiresVerification) {
+        toast.error(
+          <div>
+            {errorData.message}
+            <br />
+            <button
+              onClick={() =>
+                navigate('/email-sent', {
+                  state: { email: errorData.email || data.email },
+                })
+              }
+              style={{
+                marginTop: '8px',
+                padding: '4px 12px',
+                background: '#f97316',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '12px',
+              }}
+            >
+              Resend verification email
+            </button>
+          </div>,
+          { duration: 6000 }
+        );
+      } else {
+        toast.error(errorData?.message || error?.message || 'Login failed. Please try again.');
+      }
     }
   };
 

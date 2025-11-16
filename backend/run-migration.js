@@ -1,39 +1,85 @@
-require('dotenv').config();
-const fs = require('fs');
-const path = require('path');
-const pool = require('./src/config/database');
+const { Pool } = require("pg");
+require("dotenv").config();
+
+// Database configuration
+const pool = new Pool({
+  user: process.env.DB_USER || "postgres",
+  host: process.env.DB_HOST || "localhost",
+  database: process.env.DB_NAME || "alumni_portal",
+  password: process.env.DB_PASSWORD || "password",
+  port: process.env.DB_PORT || 5432,
+});
 
 async function runMigration() {
-  const migrationPath = path.join(__dirname, '..', 'database', 'migrations', '001_add_accreditation_fields.sql');
-  
+  const client = await pool.connect();
+
   try {
-    console.log('Reading migration file...');
-    const sql = fs.readFileSync(migrationPath, 'utf8');
-    
-    console.log('Executing migration: 001_add_accreditation_fields.sql');
-    await pool.query(sql);
-    
-    console.log('✅ Migration completed successfully!');
-    
-    // Verify columns were added
-    console.log('\nVerifying new columns...');
-    const result = await pool.query(`
-      SELECT column_name, data_type, is_nullable, column_default
-      FROM information_schema.columns
-      WHERE table_name = 'alumni_profiles'
-      AND column_name IN ('employment_status', 'consent_for_accreditation', 'profile_verified_at', 'current_employer', 'higher_study_institution')
-      ORDER BY column_name;
+    console.log("Starting database migration...");
+
+    // Add first_name and last_name to users table
+    console.log("Adding first_name and last_name columns to users table...");
+    await client.query(
+      "ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(100)"
+    );
+    await client.query(
+      "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(100)"
+    );
+
+    // Add new fields to alumni_profiles table
+    console.log("Adding new fields to alumni_profiles table...");
+
+    // Create or update the trigger function for updated_at
+    console.log("Creating/updating trigger function...");
+    await client.query(`
+      CREATE OR REPLACE FUNCTION update_updated_at_column()
+      RETURNS TRIGGER AS $$
+      BEGIN
+          NEW.updated_at = CURRENT_TIMESTAMP;
+          RETURN NEW;
+      END;
+      $$ language 'plpgsql';
     `);
-    
-    console.log('\nNew columns added:');
-    console.table(result.rows);
-    
-    process.exit(0);
+
+    // Create triggers for users table
+    console.log("Creating triggers...");
+    await client.query(
+      "DROP TRIGGER IF EXISTS update_users_updated_at ON users"
+    );
+    await client.query(`
+      CREATE TRIGGER update_users_updated_at 
+      BEFORE UPDATE ON users 
+      FOR EACH ROW 
+      EXECUTE FUNCTION update_updated_at_column()
+    `);
+
+    // Create triggers for alumni_profiles table
+    await client.query(
+      "DROP TRIGGER IF EXISTS update_alumni_profiles_updated_at ON alumni_profiles"
+    );
+    await client.query(`
+      CREATE TRIGGER update_alumni_profiles_updated_at 
+      BEFORE UPDATE ON alumni_profiles 
+      FOR EACH ROW 
+      EXECUTE FUNCTION update_updated_at_column()
+    `);
+
+    console.log("Migration completed successfully!");
   } catch (error) {
-    console.error('❌ Migration failed:', error.message);
-    console.error(error.stack);
-    process.exit(1);
+    console.error("Migration failed:", error);
+    throw error;
+  } finally {
+    client.release();
+    await pool.end();
   }
 }
 
-runMigration();
+// Run the migration
+runMigration()
+  .then(() => {
+    console.log("All migrations completed successfully");
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error("Migration failed:", error);
+    process.exit(1);
+  });

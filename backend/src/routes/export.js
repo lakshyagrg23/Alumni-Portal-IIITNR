@@ -3,11 +3,11 @@
  * Handles CSV, JSON, and formatted exports (NAAC/NIRF/NBA)
  */
 
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { authenticate, requireAdmin } = require('../middleware/auth');
-const reportQueries = require('../utils/reportQueries');
-const exportHelpers = require('../utils/exportHelpers');
+import { authenticate, requireAdmin } from '../middleware/auth.js';
+import reportQueries from '../utils/reportQueries.js';
+import exportHelpers from '../utils/exportHelpers.js';
 
 // All export routes require authentication and admin role
 router.use(authenticate);
@@ -377,4 +377,4 @@ router.get('/complete', async (req, res, next) => {
     }
 });
 
-module.exports = router;
+export default router;

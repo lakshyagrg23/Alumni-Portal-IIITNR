@@ -66,7 +66,6 @@ CREATE TABLE alumni_profiles (
     
     -- Biography and Interests
     bio TEXT,
-    achievements TEXT,
     interests TEXT[],
     
     -- Privacy Settings

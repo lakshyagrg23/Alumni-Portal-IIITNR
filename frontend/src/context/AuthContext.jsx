@@ -91,12 +91,12 @@ export const AuthProvider = ({ children }) => {
           // Set token in auth service
           authService.setToken(token)
           
-          // Get user profile
-          const user = await authService.getProfile()
+          // Get user profile - the service returns full response
+          const response = await authService.getProfile()
           
           dispatch({
             type: authActions.LOAD_USER,
-            payload: user,
+            payload: response.data, // Extract data from response
           })
         } catch (error) {
           console.error('Error loading user:', error)
@@ -127,6 +127,17 @@ export const AuthProvider = ({ children }) => {
         type: authActions.LOGIN_SUCCESS,
         payload: response,
       })
+
+      // Eagerly load full profile so consumers have it without refresh
+      try {
+        const profile = await authService.getProfile()
+        if (profile?.success && profile?.data) {
+          dispatch({ type: authActions.LOAD_USER, payload: profile.data })
+        }
+      } catch (e) {
+        // non-fatal; components can still call getProfile themselves
+        console.warn('Post-login profile fetch failed', e?.message || e)
+      }
       
       return response
     } catch (error) {
@@ -199,6 +210,16 @@ export const AuthProvider = ({ children }) => {
         type: authActions.LOGIN_SUCCESS,
         payload: response,
       })
+
+      // Load profile details post-login
+      try {
+        const profile = await authService.getProfile()
+        if (profile?.success && profile?.data) {
+          dispatch({ type: authActions.LOAD_USER, payload: profile.data })
+        }
+      } catch (e) {
+        console.warn('Post-Google-login profile fetch failed', e?.message || e)
+      }
       
       return response
     } catch (error) {
@@ -221,6 +242,16 @@ export const AuthProvider = ({ children }) => {
         type: authActions.LOGIN_SUCCESS,
         payload: response,
       })
+
+      // Load profile details post-login
+      try {
+        const profile = await authService.getProfile()
+        if (profile?.success && profile?.data) {
+          dispatch({ type: authActions.LOAD_USER, payload: profile.data })
+        }
+      } catch (e) {
+        console.warn('Post-LinkedIn-login profile fetch failed', e?.message || e)
+      }
       
       return response
     } catch (error) {

@@ -1,7 +1,28 @@
-.profilePage {
+/* Profile.module.css */
+
+.container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
+  min-height: 80vh;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1e3a8a;
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  font-size: 1.1rem;
+  color: #6b7280;
+  margin: 0;
 }
 
 .loading {
@@ -9,263 +30,371 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 400px;
-  color: #6b7280;
+  padding: 4rem 2rem;
+  text-align: center;
 }
 
 .spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid #e5e7eb;
-  border-top-color: #1e3a8a;
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5e7eb;
+  border-top: 3px solid #1e3a8a;
   border-radius: 50%;
   animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-.saveMessage {
-  position: fixed;
-  top: 2rem;
-  right: 2rem;
-  padding: 1rem 1.5rem;
+.message {
+  padding: 1rem;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
-  animation: slideIn 0.3s ease-out;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-.saveMessage.success {
-  background: #10b981;
-  color: white;
-}
-
-.saveMessage.error {
-  background: #dc2626;
-  color: white;
-}
-
-.profileHeader {
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
-  color: white;
-  padding: 2rem;
-  border-radius: 12px;
-  margin-bottom: 2rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
-}
-
-.headerContent {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-
-.profileAvatar {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-  font-weight: bold;
-  border: 3px solid rgba(255, 255, 255, 0.3);
-}
-
-.profileInfo h1 {
-  margin: 0 0 0.5rem 0;
-  font-size: 2rem;
-}
-
-.program {
-  margin: 0.25rem 0;
-  opacity: 0.9;
-  font-size: 1.1rem;
-}
-
-.studentId {
-  margin: 0.25rem 0 0 0;
-  opacity: 0.8;
-  font-size: 0.9rem;
-}
-
-.completenessCard {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  padding: 1.25rem;
-  border-radius: 12px;
-  min-width: 200px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.completenessLabel {
-  font-size: 0.9rem;
-  opacity: 0.9;
-  margin-bottom: 0.75rem;
-}
-
-.completenessBar {
-  height: 8px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  overflow: hidden;
-  margin-bottom: 0.5rem;
-}
-
-.completenessProgress {
-  height: 100%;
-  background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
-  transition: width 0.5s ease;
-  border-radius: 4px;
-}
-
-.completenessValue {
-  font-size: 1.5rem;
-  font-weight: bold;
-  text-align: right;
-}
-
-.profileSections {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-.section {
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.sectionHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid #e5e7eb;
-}
-
-.sectionHeader h2 {
-  color: #1e3a8a;
-  margin: 0;
-  font-size: 1.5rem;
-}
-
-.editButton {
-  padding: 0.5rem 1.25rem;
-  background: #1e3a8a;
-  color: white;
-  border: none;
-  border-radius: 6px;
   font-weight: 500;
-  cursor: pointer;
+  text-align: center;
+}
+
+.message.success {
+  background-color: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.message.error {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.noProfileNotice {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #0284c7;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.noticeContent h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #0369a1;
+  margin: 0 0 1rem 0;
+}
+
+.noticeContent p {
+  font-size: 1rem;
+  color: #0f172a;
+  margin: 0 0 1.5rem 0;
+  line-height: 1.6;
+}
+
+.completeProfileButton {
+  display: inline-block;
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+  color: white;
+  text-decoration: none;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-weight: 600;
   transition: all 0.2s;
 }
 
-.editButton:hover {
-  background: #1e40af;
+.completeProfileButton:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
 }
 
-.infoGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+.profileCard {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.profileHeader {
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+  color: white;
+  padding: 2rem;
+}
+
+.avatarSection {
+  display: flex;
+  align-items: center;
   gap: 1.5rem;
 }
 
-.infoItem {
+.avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: 4px solid white;
+  object-fit: cover;
+}
+
+.userInfo h2 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+}
+
+.email {
+  font-size: 1rem;
+  opacity: 0.9;
+  margin: 0 0 0.25rem 0;
+}
+
+.position {
+  font-size: 1rem;
+  opacity: 0.8;
+  margin: 0;
+}
+
+.tabNav {
+  display: flex;
+  background-color: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  overflow-x: auto;
+}
+
+.tab {
+  background: none;
+  border: none;
+  padding: 1rem 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: #1e3a8a;
+  background-color: #f3f4f6;
+}
+
+.tab.active {
+  color: #1e3a8a;
+  border-bottom-color: #f97316;
+  background-color: white;
+}
+
+.form {
+  padding: 2rem;
+}
+
+.tabContent {
+  min-height: 400px;
+}
+
+.tabContent h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 1.5rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #f3f4f6;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.formGroup {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
 }
 
-.infoItem label {
-  color: #6b7280;
-  font-size: 0.875rem;
+.formGroup label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.formGroup input,
+.formGroup select,
+.formGroup textarea {
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.formGroup input:focus,
+.formGroup select:focus,
+.formGroup textarea:focus {
+  outline: none;
+  border-color: #1e3a8a;
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+}
+
+.formGroup input.error,
+.formGroup select.error,
+.formGroup textarea.error {
+  border-color: #ef4444;
+}
+
+.errorText {
+  font-size: 0.8rem;
+  color: #ef4444;
+  margin-top: 0.25rem;
+}
+
+.checkboxGroup {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  cursor: pointer;
   font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: #374151;
+  margin-bottom: 0.5rem;
 }
 
-.infoItem span {
-  color: #1f2937;
-  font-size: 1.05rem;
+.checkboxLabel input[type="checkbox"] {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #d1d5db;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
-.emptyState {
-  grid-column: 1 / -1;
-  text-align: center;
-  padding: 2rem;
-  color: #9ca3af;
-  font-style: italic;
+.checkboxLabel input[type="checkbox"]:checked {
+  background-color: #1e3a8a;
+  border-color: #1e3a8a;
 }
 
+.checkboxLabel input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 6px;
+  width: 6px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.helpText {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.submitSection {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: center;
+}
+
+.submitButton {
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 120px;
+}
+
+.submitButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
+}
+
+.submitButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
-  .profilePage {
+  .container {
     padding: 1rem;
   }
-
+  
+  .title {
+    font-size: 2rem;
+  }
+  
+  .avatarSection {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+  
   .profileHeader {
-    flex-direction: column;
-    gap: 1.5rem;
-    text-align: center;
-  }
-
-  .headerContent {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .profileInfo h1 {
-    font-size: 1.5rem;
-  }
-
-  .completenessCard {
-    width: 100%;
-  }
-
-  .section {
     padding: 1.5rem;
   }
-
-  .sectionHeader {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: flex-start;
+  
+  .form {
+    padding: 1.5rem;
   }
-
-  .editButton {
-    width: 100%;
-  }
-
-  .infoGrid {
+  
+  .formRow {
     grid-template-columns: 1fr;
+    gap: 1rem;
   }
+  
+  .tabNav {
+    justify-content: flex-start;
+  }
+  
+  .tab {
+    padding: 0.75rem 1rem;
+    font-size: 0.8rem;
+  }
+}
 
-  .saveMessage {
-    left: 1rem;
-    right: 1rem;
-    top: 1rem;
+@media (max-width: 480px) {
+  .container {
+    padding: 0.5rem;
+  }
+  
+  .profileCard {
+    border-radius: 8px;
+  }
+  
+  .form {
+    padding: 1rem;
+  }
+  
+  .avatar {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .userInfo h2 {
+    font-size: 1.5rem;
   }
 }

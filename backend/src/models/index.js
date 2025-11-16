@@ -1,15 +1,10 @@
 /**
- * Models Index - Export all SQL-based models
+ * Models Index - Export all SQL-based models (ESM)
  */
 
-const User = require("./User");
-const AlumniProfile = require("./AlumniProfile");
-const News = require("./News");
-const Event = require("./Event");
+import User from "./User.js";
+import AlumniProfile from "./AlumniProfile.js";
+import News from "./News.js";
+import Event from "./Event.js";
 
-module.exports = {
-  User,
-  AlumniProfile,
-  News,
-  Event,
-};
+export { User, AlumniProfile, News, Event };

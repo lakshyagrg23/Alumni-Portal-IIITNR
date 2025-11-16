@@ -1,7 +1,7 @@
-const express = require("express");
+import express from "express";
 const router = express.Router();
-const User = require("../models/User");
-const { requireAdminAuth } = require("../middleware/auth");
+import User from "../models/User.js";
+import { requireAdminAuth } from "../middleware/auth.js";
 
 // Apply admin authentication to all routes in this router
 router.use(requireAdminAuth);
@@ -262,7 +262,7 @@ router.get("/stats/users", async (req, res) => {
  */
 router.get("/news", async (req, res) => {
   try {
-    const { query } = require("../config/database");
+    const { query } = await import("../config/database.js");
     
     const result = await query(`
       SELECT id, title, content, excerpt, featured_image_url, category, tags, 
@@ -292,7 +292,7 @@ router.get("/news", async (req, res) => {
  */
 router.post("/news", async (req, res) => {
   try {
-    const { query } = require("../config/database");
+    const { query } = await import("../config/database.js");
     const { title, content, excerpt, category = 'news', tags = [], isPublished = true } = req.body;
 
     if (!title || !content) {
@@ -338,7 +338,7 @@ router.post("/news", async (req, res) => {
  */
 router.put("/news/:id", async (req, res) => {
   try {
-    const { query } = require("../config/database");
+    const { query } = await import("../config/database.js");
     const { id } = req.params;
     const { title, content, excerpt, category, tags, isPublished } = req.body;
 
@@ -387,7 +387,7 @@ router.put("/news/:id", async (req, res) => {
  */
 router.delete("/news/:id", async (req, res) => {
   try {
-    const { query } = require("../config/database");
+    const { query } = await import("../config/database.js");
     const { id } = req.params;
 
     const result = await query("DELETE FROM news WHERE id = $1 RETURNING *", [id]);
@@ -421,7 +421,7 @@ router.delete("/news/:id", async (req, res) => {
  */
 router.get("/events", async (req, res) => {
   try {
-    const { query } = require("../config/database");
+    const { query } = await import("../config/database.js");
     
     const result = await query(`
       SELECT id, title, description, event_type, mode, location, 
@@ -453,7 +453,7 @@ router.get("/events", async (req, res) => {
  */
 router.post("/events", async (req, res) => {
   try {
-    const { query } = require("../config/database");
+    const { query } = await import("../config/database.js");
     const { 
       title, 
       description, 
@@ -516,7 +516,7 @@ router.post("/events", async (req, res) => {
  */
 router.put("/events/:id", async (req, res) => {
   try {
-    const { query } = require("../config/database");
+    const { query } = await import("../config/database.js");
     const { id } = req.params;
     const { 
       title, 
@@ -582,7 +582,7 @@ router.put("/events/:id", async (req, res) => {
  */
 router.delete("/events/:id", async (req, res) => {
   try {
-    const { query } = require("../config/database");
+    const { query } = await import("../config/database.js");
     const { id } = req.params;
 
     const result = await query("DELETE FROM events WHERE id = $1 RETURNING *", [id]);
@@ -607,4 +607,4 @@ router.delete("/events/:id", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

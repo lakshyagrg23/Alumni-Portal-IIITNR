@@ -11,6 +11,10 @@ import Home from '@pages/Home'
 import About from '@pages/About'
 import Login from '@pages/auth/Login'
 import Register from '@pages/auth/Register'
+import ProfileCompletion from '@pages/auth/ProfileCompletion'
+import LinkedInCallback from '@pages/auth/LinkedInCallback'
+import VerifyEmail from '@pages/auth/VerifyEmail'
+import EmailSent from '@pages/auth/EmailSent'
 import Dashboard from '@pages/Dashboard'
 import AlumniDirectory from '@pages/AlumniDirectory'
 import AlumniProfile from '@pages/AlumniProfile'
@@ -83,6 +87,23 @@ function App() {
             path="/register" 
             element={
               user ? <Dashboard /> : <Register />
+            } 
+          />
+          
+          {/* Email Verification Routes */}
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/email-sent" element={<EmailSent />} />
+          
+          {/* LinkedIn OAuth Callback */}
+          <Route path="/linkedin" element={<LinkedInCallback />} />
+          
+          {/* Profile Completion - Protected but allows incomplete profiles */}
+          <Route 
+            path="/complete-profile" 
+            element={
+              <ProtectedRoute>
+                <ProfileCompletion />
+              </ProtectedRoute>
             } 
           />
           

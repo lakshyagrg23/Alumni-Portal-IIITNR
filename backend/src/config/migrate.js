@@ -1,15 +1,16 @@
-require("dotenv").config();
-const { query, testConnection } = require("./database");
-const fs = require("fs");
-const path = require("path");
-const { spawn } = require("child_process");
+import 'dotenv/config';
+import { query, testConnection } from "./database.js";
+import fs from "fs";
+import path from "path";
+import { spawn } from "child_process";
+import { fileURLToPath } from 'url';
 
 /**
  * Database Migration Runner
  * Uses psql to execute SQL schema files directly
  */
 
-const runMigrations = async () => {
+export const runMigrations = async () => {
   try {
     console.log("🔄 Starting database migrations...");
 
@@ -17,6 +18,8 @@ const runMigrations = async () => {
     await testConnection();
 
     // Check if schema file exists
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
     const schemaPath = path.join(__dirname, "../../../database/schema.sql");
     if (!fs.existsSync(schemaPath)) {
       throw new Error(`Schema file not found: ${schemaPath}`);
@@ -31,6 +34,16 @@ const runMigrations = async () => {
 
     // Run additional setup queries if needed
     await runPostMigrationSetup();
+
+    // Execute additional SQL files (public keys table)
+    const publicKeysPath = path.join(__dirname, "../../../database/create_public_keys.sql");
+    if (fs.existsSync(publicKeysPath)) {
+      console.log('📋 Executing create_public_keys.sql...');
+      await executePsqlFile(publicKeysPath);
+      console.log('   ✅ create_public_keys.sql executed');
+    } else {
+      console.log('   ⚠ create_public_keys.sql not found, skipping');
+    }
   } catch (error) {
     console.error("❌ Migration failed:", error.message);
     throw error;
@@ -150,7 +163,7 @@ const runPostMigrationSetup = async () => {
 /**
  * Reset database (DROP and recreate all tables)
  */
-const resetDatabase = async () => {
+export const resetDatabase = async () => {
   try {
     console.log("🗑️  Resetting database...");
 
@@ -187,7 +200,7 @@ const resetDatabase = async () => {
 /**
  * Seed database with initial data
  */
-const seedDatabase = async () => {
+export const seedDatabase = async () => {
   try {
     console.log("🌱 Seeding database...");
 
@@ -200,7 +213,7 @@ const seedDatabase = async () => {
 
     if (adminCheck.rows.length === 0) {
       // Create admin user
-      const bcrypt = require("bcryptjs");
+      const { default: bcrypt } = await import("bcryptjs");
       const adminPassword = await bcrypt.hash("admin123", 12);
 
       await query(
@@ -226,7 +239,10 @@ const seedDatabase = async () => {
 };
 
 // Command line interface
-if (require.main === module) {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const isDirectRun = process.argv[1] && path.resolve(process.argv[1]) === __filename;
+if (isDirectRun) {
   const command = process.argv[2];
 
   const commands = {
@@ -260,9 +276,3 @@ if (require.main === module) {
     process.exit(1);
   }
 }
-
-module.exports = {
-  runMigrations,
-  resetDatabase,
-  seedDatabase,
-};

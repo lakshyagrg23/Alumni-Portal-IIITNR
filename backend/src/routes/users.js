@@ -1,6 +1,6 @@
-const express = require("express");
+import express from "express";
 const router = express.Router();
-const User = require("../models/User");
+import User from "../models/User.js";
 
 /**
  * @route   GET /api/users
@@ -193,4 +193,4 @@ router.put("/:id/deactivate", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

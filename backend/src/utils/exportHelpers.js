@@ -3,7 +3,7 @@
  * Handles CSV and JSON exports
  */
 
-const { Parser } = require('json2csv');
+import { Parser } from 'json2csv';
 
 /**
  * Convert data to CSV format
@@ -257,7 +257,7 @@ function generateFilename(prefix, extension = 'csv') {
     return `${sanitizeFilename(prefix)}_${timestamp}.${extension}`;
 }
 
-module.exports = {
+export default {
     toCSV,
     formatPlacementForExport,
     formatHigherEducationForExport,

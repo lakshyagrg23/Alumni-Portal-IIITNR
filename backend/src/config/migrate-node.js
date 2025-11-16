@@ -1,14 +1,15 @@
-require("dotenv").config();
-const { query, testConnection, getClient } = require("./database");
-const fs = require("fs");
-const path = require("path");
+import 'dotenv/config';
+import { query, testConnection, getClient } from "./database.js";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from 'url';
 
 /**
  * Node.js Database Migration Runner
  * Executes SQL schema directly through Node.js pg client
  */
 
-const runMigrations = async () => {
+export const runMigrations = async () => {
   try {
     console.log("🔄 Starting database migrations...");
 
@@ -16,6 +17,8 @@ const runMigrations = async () => {
     await testConnection();
 
     // Check if schema file exists
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
     const schemaPath = path.join(__dirname, "../../../database/schema.sql");
     if (!fs.existsSync(schemaPath)) {
       throw new Error(`Schema file not found: ${schemaPath}`);
@@ -102,7 +105,7 @@ const runPostMigrationSetup = async () => {
 /**
  * Seed database with initial data
  */
-const seedDatabase = async () => {
+export const seedDatabase = async () => {
   try {
     console.log("🌱 Seeding database with initial data...");
 
@@ -139,7 +142,7 @@ const seedDatabase = async () => {
 /**
  * Reset database (drop all tables)
  */
-const resetDatabase = async () => {
+export const resetDatabase = async () => {
   try {
     console.log("🗑️  Resetting database...");
     
@@ -197,12 +200,8 @@ const main = async () => {
   }
 };
 
-if (require.main === module) {
+const __filename2 = fileURLToPath(import.meta.url);
+const isDirectRun = process.argv[1] && path.resolve(process.argv[1]) === __filename2;
+if (isDirectRun) {
   main();
 }
-
-module.exports = {
-  runMigrations,
-  seedDatabase,
-  resetDatabase,
-};

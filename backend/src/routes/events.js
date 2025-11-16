@@ -1,6 +1,6 @@
-const express = require("express");
+import express from "express";
 const router = express.Router();
-const Event = require("../models/Event");
+import Event from "../models/Event.js";
 
 /**
  * @route   GET /api/events/upcoming
@@ -446,4 +446,4 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

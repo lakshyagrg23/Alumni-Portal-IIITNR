@@ -1,4 +1,4 @@
-const {
+import {
   findOne,
   findMany,
   insertOne,
@@ -7,7 +7,7 @@ const {
   count,
   query,
   executeTransaction,
-} = require("../utils/sqlHelpers");
+} from "../utils/sqlHelpers.js";
 
 /**
  * Event Model - SQL-based operations for events table
@@ -528,4 +528,4 @@ class Event {
   }
 }
 
-module.exports = Event;
+export default Event;

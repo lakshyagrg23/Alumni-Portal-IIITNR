@@ -1,4 +1,4 @@
-const {
+import {
   findOne,
   findMany,
   insertOne,
@@ -7,7 +7,7 @@ const {
   count,
   query,
   executeTransaction,
-} = require("../utils/sqlHelpers");
+} from "../utils/sqlHelpers.js";
 
 /**
  * Alumni Profile Model - SQL-based operations for alumni_profiles table
@@ -42,6 +42,7 @@ class AlumniProfile {
       firstName,
       lastName,
       middleName,
+      profilePictureUrl,
       phone,
       dateOfBirth,
       gender,
@@ -65,12 +66,13 @@ class AlumniProfile {
       hometownCity,
       hometownState,
       bio,
-      achievements,
       interests = [],
       isProfilePublic = true,
       showContactInfo = false,
       showWorkInfo = true,
       showAcademicInfo = true,
+      isOpenToWork = false,
+      isAvailableForMentorship = false,
     } = profileData;
 
     const data = {
@@ -78,6 +80,7 @@ class AlumniProfile {
       first_name: firstName,
       last_name: lastName,
       middle_name: middleName,
+      profile_picture_url: profilePictureUrl,
       phone,
       date_of_birth: dateOfBirth,
       gender,
@@ -101,7 +104,6 @@ class AlumniProfile {
       hometown_city: hometownCity,
       hometown_state: hometownState,
       bio,
-      achievements,
       interests,
       is_profile_public: isProfilePublic,
       show_contact_info: showContactInfo,
@@ -113,6 +115,34 @@ class AlumniProfile {
     Object.keys(data).forEach((key) => {
       if (data[key] === undefined) {
         delete data[key];
+      }
+    });
+
+    // Handle array fields properly for PostgreSQL
+    const arrayFields = ["skills", "interests"];
+    arrayFields.forEach((field) => {
+      if (data.hasOwnProperty(field)) {
+        if (
+          data[field] === "" ||
+          data[field] === null ||
+          data[field] === undefined
+        ) {
+          // Convert empty/null values to empty arrays
+          data[field] = [];
+        } else if (typeof data[field] === "string") {
+          // Convert comma-separated string to array
+          if (data[field].trim() === "") {
+            data[field] = [];
+          } else {
+            data[field] = data[field]
+              .split(",")
+              .map((item) => item.trim())
+              .filter((item) => item.length > 0);
+          }
+        } else if (!Array.isArray(data[field])) {
+          // Ensure it's an array
+          data[field] = [];
+        }
       }
     });
 
@@ -128,6 +158,34 @@ class AlumniProfile {
   static async update(id, updateData) {
     // Convert camelCase keys to snake_case for database
     const dbData = this.convertToDbFormat(updateData);
+
+    // Handle array fields properly for PostgreSQL
+    const arrayFields = ["skills", "interests"];
+    arrayFields.forEach((field) => {
+      if (dbData.hasOwnProperty(field)) {
+        if (
+          dbData[field] === "" ||
+          dbData[field] === null ||
+          dbData[field] === undefined
+        ) {
+          // Convert empty/null values to empty arrays
+          dbData[field] = [];
+        } else if (typeof dbData[field] === "string") {
+          // Convert comma-separated string to array
+          if (dbData[field].trim() === "") {
+            dbData[field] = [];
+          } else {
+            dbData[field] = dbData[field]
+              .split(",")
+              .map((item) => item.trim())
+              .filter((item) => item.length > 0);
+          }
+        } else if (!Array.isArray(dbData[field])) {
+          // Ensure it's an array
+          dbData[field] = [];
+        }
+      }
+    });
 
     // Remove undefined values
     Object.keys(dbData).forEach((key) => {
@@ -178,17 +236,22 @@ class AlumniProfile {
 
     // Only show public profiles by default
     if (publicOnly) {
-      whereConditions.push(`is_profile_public = $${paramIndex}`);
+      whereConditions.push(`ap.is_profile_public = $${paramIndex}`);
       queryParams.push(true);
       paramIndex++;
     }
 
+    // Only show alumni role users (not admin users)
+    whereConditions.push(`u.role = $${paramIndex}`);
+    queryParams.push("alumni");
+    paramIndex++;
+
     // Search in name, company, or skills
     if (search) {
       whereConditions.push(`(
-        LOWER(first_name || ' ' || last_name) LIKE LOWER($${paramIndex}) OR
-        LOWER(current_company) LIKE LOWER($${paramIndex}) OR
-        EXISTS (SELECT 1 FROM unnest(skills) AS skill WHERE LOWER(skill) LIKE LOWER($${paramIndex}))
+        LOWER(ap.first_name || ' ' || ap.last_name) LIKE LOWER($${paramIndex}) OR
+        LOWER(ap.current_company) LIKE LOWER($${paramIndex}) OR
+        EXISTS (SELECT 1 FROM unnest(ap.skills) AS skill WHERE LOWER(skill) LIKE LOWER($${paramIndex}))
       )`);
       queryParams.push(`%${search}%`);
       paramIndex++;
@@ -196,47 +259,47 @@ class AlumniProfile {
 
     // Filter by graduation year
     if (graduationYear) {
-      whereConditions.push(`graduation_year = $${paramIndex}`);
+      whereConditions.push(`ap.graduation_year = $${paramIndex}`);
       queryParams.push(graduationYear);
       paramIndex++;
     }
 
     // Filter by branch
     if (branch) {
-      whereConditions.push(`LOWER(branch) = LOWER($${paramIndex})`);
+      whereConditions.push(`LOWER(ap.branch) = LOWER($${paramIndex})`);
       queryParams.push(branch);
       paramIndex++;
     }
 
     // Filter by current location
     if (currentCity) {
-      whereConditions.push(`LOWER(current_city) = LOWER($${paramIndex})`);
+      whereConditions.push(`LOWER(ap.current_city) = LOWER($${paramIndex})`);
       queryParams.push(currentCity);
       paramIndex++;
     }
 
     if (currentState) {
-      whereConditions.push(`LOWER(current_state) = LOWER($${paramIndex})`);
+      whereConditions.push(`LOWER(ap.current_state) = LOWER($${paramIndex})`);
       queryParams.push(currentState);
       paramIndex++;
     }
 
     if (currentCountry) {
-      whereConditions.push(`LOWER(current_country) = LOWER($${paramIndex})`);
+      whereConditions.push(`LOWER(ap.current_country) = LOWER($${paramIndex})`);
       queryParams.push(currentCountry);
       paramIndex++;
     }
 
     // Filter by industry
     if (industry) {
-      whereConditions.push(`LOWER(industry) = LOWER($${paramIndex})`);
+      whereConditions.push(`LOWER(ap.industry) = LOWER($${paramIndex})`);
       queryParams.push(industry);
       paramIndex++;
     }
 
     // Filter by company
     if (company) {
-      whereConditions.push(`LOWER(current_company) = LOWER($${paramIndex})`);
+      whereConditions.push(`LOWER(ap.current_company) = LOWER($${paramIndex})`);
       queryParams.push(company);
       paramIndex++;
     }
@@ -245,6 +308,20 @@ class AlumniProfile {
       whereConditions.length > 0
         ? `WHERE ${whereConditions.join(" AND ")}`
         : "";
+
+    // Validate and sanitize ORDER BY clause to prevent SQL injection
+    const allowedOrderBy = {
+      "created_at DESC": "ap.created_at DESC",
+      "created_at ASC": "ap.created_at ASC",
+      "graduation_year DESC": "ap.graduation_year DESC",
+      "graduation_year ASC": "ap.graduation_year ASC",
+      "first_name ASC": "ap.first_name ASC",
+      "first_name DESC": "ap.first_name DESC",
+      "last_name ASC": "ap.last_name ASC",
+      "last_name DESC": "ap.last_name DESC",
+    };
+
+    const safeOrderBy = allowedOrderBy[orderBy] || "ap.created_at DESC";
 
     // Get profiles
     const profilesQuery = `
@@ -255,7 +332,7 @@ class AlumniProfile {
       FROM alumni_profiles ap
       JOIN users u ON ap.user_id = u.id
       ${whereClause}
-      ORDER BY ${orderBy}
+      ORDER BY ${safeOrderBy}
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
 
@@ -434,6 +511,9 @@ class AlumniProfile {
       showContactInfo: "show_contact_info",
       showWorkInfo: "show_work_info",
       showAcademicInfo: "show_academic_info",
+      // Legacy field mappings
+      profilePicture: "profile_picture_url",
+      rollNumber: "student_id",
     };
 
     Object.keys(data).forEach((key) => {
@@ -450,7 +530,9 @@ class AlumniProfile {
    * @returns {Object}
    */
   static convertFromDbFormat(data) {
-    if (!data) return null;
+    if (!data) {
+      return null;
+    }
 
     const apiData = {};
     const fieldMap = {
@@ -491,4 +573,4 @@ class AlumniProfile {
   }
 }
 
-module.exports = AlumniProfile;
+export default AlumniProfile;

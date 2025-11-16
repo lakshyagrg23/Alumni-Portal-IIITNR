@@ -80,13 +80,17 @@ export const authService = {
 
   // Get current user profile
   getProfile: async () => {
-    const response = await API.get("/auth/me");
-    return response.data; // Extract user data from the response
+    // Add cache-busting parameter to ensure fresh data
+    const timestamp = Date.now();
+    const response = await API.get(`/auth/profile?t=${timestamp}`);
+    return response; // Return the full response (already includes success and data)
   },
 
   // Update user profile
   updateProfile: async (profileData) => {
+    console.log("Calling API PUT /auth/profile with data:", profileData);
     const response = await API.put("/auth/profile", profileData);
+    console.log("API response:", response);
     return response;
   },
 
@@ -117,7 +121,7 @@ export const authService = {
 
   // Verify email
   verifyEmail: async (token) => {
-    const response = await API.post("/auth/verify-email", { token });
+    const response = await API.get(`/auth/verify-email?token=${token}`);
     return response;
   },
 

@@ -1,4 +1,4 @@
-const { query, getClient } = require("../config/database");
+import { query, getClient } from "../config/database.js";
 
 /**
  * SQL Helper functions for common database operations
@@ -10,7 +10,7 @@ const { query, getClient } = require("../config/database");
  * @param {number} startIndex - Starting parameter index (for $1, $2, etc.)
  * @returns {Object} { whereClause, values, nextIndex }
  */
-const buildWhereClause = (conditions = {}, startIndex = 1) => {
+export const buildWhereClause = (conditions = {}, startIndex = 1) => {
   const keys = Object.keys(conditions);
   if (keys.length === 0) {
     return { whereClause: "", values: [], nextIndex: startIndex };
@@ -40,7 +40,7 @@ const buildWhereClause = (conditions = {}, startIndex = 1) => {
  * @param {string} returning - Columns to return (default: '*')
  * @returns {Object} { query, values }
  */
-const buildInsertQuery = (table, data, returning = "*") => {
+export const buildInsertQuery = (table, data, returning = "*") => {
   const keys = Object.keys(data);
   const columns = keys.join(", ");
   const placeholders = keys.map((_, index) => `$${index + 1}`).join(", ");
@@ -63,7 +63,7 @@ const buildInsertQuery = (table, data, returning = "*") => {
  * @param {string} returning - Columns to return (default: '*')
  * @returns {Object} { query, values }
  */
-const buildUpdateQuery = (table, data, conditions, returning = "*") => {
+export const buildUpdateQuery = (table, data, conditions, returning = "*") => {
   const dataKeys = Object.keys(data);
   const setClause = dataKeys
     .map((key, index) => `${key} = $${index + 1}`)
@@ -91,7 +91,7 @@ const buildUpdateQuery = (table, data, conditions, returning = "*") => {
  * @param {Object} options - Query options
  * @returns {Object} { query, values }
  */
-const buildSelectQuery = (table, options = {}) => {
+export const buildSelectQuery = (table, options = {}) => {
   const {
     columns = "*",
     where = {},
@@ -134,7 +134,7 @@ const buildSelectQuery = (table, options = {}) => {
  * @param {Function} callback - Function that receives client and returns promise
  * @returns {Promise} Result of the transaction
  */
-const executeTransaction = async (callback) => {
+export const executeTransaction = async (callback) => {
   const client = await getClient();
 
   try {
@@ -156,7 +156,7 @@ const executeTransaction = async (callback) => {
  * @param {Object} conditions - WHERE conditions
  * @returns {Promise<boolean>} True if record exists
  */
-const recordExists = async (table, conditions) => {
+export const recordExists = async (table, conditions) => {
   const { query: queryText, values } = buildSelectQuery(table, {
     columns: "1",
     where: conditions,
@@ -174,7 +174,7 @@ const recordExists = async (table, conditions) => {
  * @param {string} columns - Columns to select
  * @returns {Promise<Object|null>} Single record or null
  */
-const findOne = async (table, conditions, columns = "*") => {
+export const findOne = async (table, conditions, columns = "*") => {
   const { query: queryText, values } = buildSelectQuery(table, {
     columns,
     where: conditions,
@@ -191,7 +191,7 @@ const findOne = async (table, conditions, columns = "*") => {
  * @param {Object} options - Query options
  * @returns {Promise<Array>} Array of records
  */
-const findMany = async (table, options = {}) => {
+export const findMany = async (table, options = {}) => {
   const { query: queryText, values } = buildSelectQuery(table, options);
   const result = await query(queryText, values);
   return result.rows;
@@ -203,7 +203,7 @@ const findMany = async (table, options = {}) => {
  * @param {Object} data - Data to insert
  * @returns {Promise<Object>} Inserted record
  */
-const insertOne = async (table, data) => {
+export const insertOne = async (table, data) => {
   const { query: queryText, values } = buildInsertQuery(table, data);
   const result = await query(queryText, values);
   return result.rows[0];
@@ -216,7 +216,7 @@ const insertOne = async (table, data) => {
  * @param {Object} conditions - WHERE conditions
  * @returns {Promise<Array>} Updated records
  */
-const updateMany = async (table, data, conditions) => {
+export const updateMany = async (table, data, conditions) => {
   const { query: queryText, values } = buildUpdateQuery(
     table,
     data,
@@ -232,7 +232,7 @@ const updateMany = async (table, data, conditions) => {
  * @param {Object} conditions - WHERE conditions
  * @returns {Promise<number>} Number of deleted records
  */
-const deleteMany = async (table, conditions) => {
+export const deleteMany = async (table, conditions) => {
   const { whereClause, values } = buildWhereClause(conditions);
 
   if (!whereClause) {
@@ -250,7 +250,7 @@ const deleteMany = async (table, conditions) => {
  * @param {Object} conditions - WHERE conditions
  * @returns {Promise<number>} Count of records
  */
-const count = async (table, conditions = {}) => {
+export const count = async (table, conditions = {}) => {
   const { query: queryText, values } = buildSelectQuery(table, {
     columns: "COUNT(*) as count",
     where: conditions,
@@ -260,18 +260,4 @@ const count = async (table, conditions = {}) => {
   return parseInt(result.rows[0].count);
 };
 
-module.exports = {
-  buildWhereClause,
-  buildInsertQuery,
-  buildUpdateQuery,
-  buildSelectQuery,
-  executeTransaction,
-  recordExists,
-  findOne,
-  findMany,
-  insertOne,
-  updateMany,
-  deleteMany,
-  count,
-  query, // Re-export the base query function
-};
+export { query };

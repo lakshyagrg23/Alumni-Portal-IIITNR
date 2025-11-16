@@ -3,7 +3,7 @@
  * Contains all database queries for generating accreditation reports
  */
 
-const { query: dbQuery } = require('../config/database');
+import { query as dbQuery } from '../config/database.js';
 
 /**
  * Get dashboard overview KPIs
@@ -863,7 +863,7 @@ async function getProgramOutcomes(program, graduationYear) {
     return result.rows[0];
 }
 
-module.exports = {
+export default {
     getOverviewKPIs,
     getPlacementDetails,
     getPlacementTrends,

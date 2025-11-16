@@ -1,4 +1,4 @@
-const { Pool } = require("pg");
+import { Pool } from "pg";
 
 // Database configuration using PostgreSQL connection pool
 const pool = new Pool({
@@ -19,7 +19,7 @@ const pool = new Pool({
 const rawQuery = pool.query.bind(pool);
 
 // Database query function with error handling
-const query = async (text, params = []) => {
+export const query = async (text, params = []) => {
   const start = Date.now();
   try {
     const res = await rawQuery(text, params);
@@ -41,7 +41,7 @@ const query = async (text, params = []) => {
 };
 
 // Get a client from the pool for transactions
-const getClient = async () => {
+export const getClient = async () => {
   try {
     const client = await pool.connect();
     return client;
@@ -52,7 +52,7 @@ const getClient = async () => {
 };
 
 // Test database connection
-const testConnection = async () => {
+export const testConnection = async () => {
   try {
     const result = await query("SELECT NOW() as current_time");
     console.log("Database connection has been established successfully.");
@@ -64,7 +64,7 @@ const testConnection = async () => {
 };
 
 // Graceful shutdown
-const closePool = async () => {
+export const closePool = async () => {
   try {
     await pool.end();
     console.log("Database pool has been closed.");
@@ -79,4 +79,4 @@ pool.getClient = getClient;
 pool.testConnection = testConnection;
 pool.closePool = closePool;
 
-module.exports = pool;
+export default pool;

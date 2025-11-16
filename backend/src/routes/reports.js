@@ -3,10 +3,11 @@
  * Provides endpoints for generating accreditation reports
  */
 
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { authenticate, requireAdmin } = require('../middleware/auth');
-const reportQueries = require('../utils/reportQueries');
+import { authenticate, requireAdmin } from '../middleware/auth.js';
+import reportQueries from '../utils/reportQueries.js';
+import pool from '../config/database.js';
 
 // All report routes require authentication and admin role
 router.use(authenticate);
@@ -366,7 +367,8 @@ router.get('/summary', async (req, res, next) => {
  */
 router.get('/filters/options', async (req, res, next) => {
     try {
-        const pool = require('../config/database');
+        // use the imported pool instance
+        // const pool = require('../config/database'); (converted to ES module import at top)
         
         const [programs, departments, years] = await Promise.all([
             pool.query(`
@@ -416,4 +418,4 @@ router.get('/filters/options', async (req, res, next) => {
     }
 });
 
-module.exports = router;
+export default router;

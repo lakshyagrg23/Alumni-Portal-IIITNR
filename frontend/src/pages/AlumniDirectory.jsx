@@ -62,7 +62,7 @@ const AlumniDirectory = () => {
 
   // Extract unique batches and branches for filters
   useEffect(() => {
-    const uniqueBatches = [...new Set(alumni.map(a => a.graduation_year))].sort((a, b) => b - a)
+    const uniqueBatches = [...new Set(alumni.map(a => a.graduationYear))].sort((a, b) => b - a)
     const uniqueBranches = [...new Set(alumni.map(a => a.branch))].sort()
     setBatches(uniqueBatches)
     setBranches(uniqueBranches)
@@ -210,39 +210,52 @@ const AlumniDirectory = () => {
             </div>
 
             <div className={styles.alumniGrid}>
-              {alumni.map((alum) => (
+              {alumni.map((alum) => {
+                // Backend converts `user_id` -> `userId` in API responses.
+                // Use `userId` (camelCase) primarily and fall back to `user_id` if present.
+                const userId = alum.userId || alum.user_id || null;
+                return (
                 <div key={alum.id} className={styles.alumniCard}>
                   <div className={styles.cardHeader}>
                     <div className={styles.avatar}>
-                      {alum.profile_picture_url ? (
-                        <img src={alum.profile_picture_url} alt={`${alum.first_name} ${alum.last_name}`} />
-                      ) : (
-                        <div className={styles.avatarInitials}>
-                          {alum.first_name?.charAt(0)}{alum.last_name?.charAt(0)}
-                        </div>
-                      )}
+                      {alum.profilePictureUrl ? (
+                        <img 
+                          src={alum.profilePictureUrl} 
+                          alt={`${alum.firstName} ${alum.lastName}`}
+                          onError={(e) => {
+                            e.target.style.display = 'none'
+                            e.target.nextSibling.style.display = 'flex'
+                          }}
+                        />
+                      ) : null}
+                      <div 
+                        className={styles.avatarInitials}
+                        style={{ display: alum.profilePictureUrl ? 'none' : 'flex' }}
+                      >
+                        {alum.firstName?.charAt(0)}{alum.lastName?.charAt(0)}
+                      </div>
                     </div>
                     <div className={styles.basicInfo}>
                       <h3 className={styles.name}>
-                        {alum.first_name} {alum.last_name}
+                        {alum.firstName} {alum.lastName}
                       </h3>
                       <p className={styles.batch}>
-                        {alum.degree} {alum.branch} • {alum.graduation_year}
+                        {alum.degree} {alum.branch} • {alum.graduationYear}
                       </p>
                     </div>
                   </div>
 
                   <div className={styles.cardBody}>
-                    {alum.current_company && (
+                    {alum.currentCompany && (
                       <div className={styles.workInfo}>
-                        <p className={styles.position}>{alum.current_position}</p>
-                        <p className={styles.company}>at {alum.current_company}</p>
+                        <p className={styles.position}>{alum.currentPosition}</p>
+                        <p className={styles.company}>at {alum.currentCompany}</p>
                       </div>
                     )}
 
-                    {alum.current_city && (
+                    {alum.currentCity && (
                       <p className={styles.location}>
-                        📍 {alum.current_city}, {alum.current_state}
+                        📍 {alum.currentCity}, {alum.currentState}
                       </p>
                     )}
 
@@ -267,9 +280,18 @@ const AlumniDirectory = () => {
                     >
                       View Profile
                     </button>
-                    {alum.linkedin_url && (
+                    <button
+                      className={styles.messageButton}
+                      onClick={() => userId && navigate(`/messages?to=${userId}`)}
+                      data-user-id={userId}
+                      disabled={!userId}
+                      title={userId ? 'Message this alumnus' : 'Recipient has not enabled messaging (no user id)'}
+                    >
+                      Message
+                    </button>
+                    {alum.linkedinUrl && (
                       <a
-                        href={alum.linkedin_url}
+                        href={alum.linkedinUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className={styles.linkedinButton}
@@ -279,7 +301,8 @@ const AlumniDirectory = () => {
                     )}
                   </div>
                 </div>
-              ))}
+                  )
+              })}
             </div>
 
             {/* Pagination */}

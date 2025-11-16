@@ -4,8 +4,9 @@ import { Helmet } from 'react-helmet-async';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '@hooks/useAuth';
 import styles from './Register.module.css';
 import GoogleLogin from '../../services/google_login';
 import LinkedInLogin from '../../services/linked_in';
@@ -46,6 +47,8 @@ const schema = yup.object().shape({
 });
 
 const Register = () => {
+  const navigate = useNavigate();
+  const { register: registerUser } = useAuth();
   const {
     register,
     handleSubmit,
@@ -64,15 +67,37 @@ const Register = () => {
       return;
     }
     try {
-      // TODO: Implement registration API call here
-      console.log('Form data:', data);
-      const response = await axios.post('api/auth/register', { ...data, captcha });
-      console.log(response);
-      toast.success('Registration successful! Please check your email to verify your account.');
-      reset();
-      setCaptcha(null);
+      // Register user
+      const response = await registerUser({
+        email: data.email,
+        password: data.password,
+        firstName: data.firstName,
+        lastName: data.lastName,
+      });
+      
+      // Check if email verification is required
+      if (response.requiresVerification) {
+        toast.success('Registration successful! Please check your email.');
+        
+        // Redirect to email sent page
+        navigate('/email-sent', {
+          state: { email: response.email || data.email },
+        });
+      } else {
+        // OAuth users or already verified users
+        toast.success('Registration successful! Please complete your profile.');
+        navigate('/complete-profile');
+      }
+      
     } catch (error) {
-      toast.error(error.message || 'Registration failed. Please try again.');
+      // Check if user already exists but needs verification
+      if (error.response?.data?.canResendVerification) {
+        navigate('/email-sent', {
+          state: { email: error.response.data.email || data.email },
+        });
+      } else {
+        toast.error(error.message || 'Registration failed. Please try again.');
+      }
     }
   };
 
