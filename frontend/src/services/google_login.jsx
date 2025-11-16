@@ -11,7 +11,7 @@ export default function GoogleLoginButton() {
   const navigate = useNavigate();
 
   return (
-    <GoogleOAuthProvider clientId="531367954621-ep7nrnul0laar0qlsmicau1kg216nc7m.apps.googleusercontent.com">
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
       <GoogleLogin
         onSuccess={async (credentialResponse) => {
           try {

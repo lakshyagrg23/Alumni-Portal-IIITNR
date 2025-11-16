@@ -87,12 +87,12 @@ router.post("/register", async (req, res) => {
         email,
         verificationToken,
         // Use email prefix if name not available
-        (email.split("@")[0])
+        email.split("@")[0]
       );
     } catch (emailError) {
       console.error("Error sending verification email:", emailError);
       // Delete the created user if email fails
-      await query('DELETE FROM users WHERE id = $1', [user.id]);
+      await query("DELETE FROM users WHERE id = $1", [user.id]);
 
       return res.status(500).json({
         success: false,
@@ -249,10 +249,7 @@ router.get("/verify-email", async (req, res) => {
 
     // Send welcome email
     try {
-      await emailService.sendWelcomeEmail(
-        user.email,
-        user.email.split("@")[0]
-      );
+      await emailService.sendWelcomeEmail(user.email, user.email.split("@")[0]);
     } catch (error) {
       console.error("Error sending welcome email:", error);
       // Don't fail verification if welcome email fails
@@ -511,7 +508,10 @@ router.post("/linkedin/callback", async (req, res) => {
     }
 
     // Use the EXACT redirect URI from frontend (must match authorization request)
-    const finalRedirectUri = redirectUri || "http://localhost:3000/linkedin";
+    const finalRedirectUri =
+      redirectUri ||
+      process.env.LINKEDIN_REDIRECT_URI ||
+      "http://localhost:3000/linkedin";
 
     console.log("LinkedIn token exchange:", {
       code: code.substring(0, 10) + "...",
@@ -838,13 +838,17 @@ router.put("/profile", authenticate, async (req, res) => {
           "Updating existing profile with ID:",
           existingProfile.rows[0].id
         );
-        const { default: AlumniProfile } = await import("../models/AlumniProfile.js");
+        const { default: AlumniProfile } = await import(
+          "../models/AlumniProfile.js"
+        );
         await AlumniProfile.update(existingProfile.rows[0].id, alumniData);
         console.log("Profile updated successfully");
       } else {
         // Create new profile
         console.log("Creating new profile");
-        const { default: AlumniProfile } = await import("../models/AlumniProfile.js");
+        const { default: AlumniProfile } = await import(
+          "../models/AlumniProfile.js"
+        );
         alumniData.userId = userId;
         await AlumniProfile.create(alumniData);
         console.log("New profile created");

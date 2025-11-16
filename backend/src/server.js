@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -6,9 +6,9 @@ import compression from "compression";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 import path from "path";
-import { fileURLToPath } from 'url';
-import { createServer } from 'http';
-import { Server as IOServer } from 'socket.io';
+import { fileURLToPath } from "url";
+import { createServer } from "http";
+import { Server as IOServer } from "socket.io";
 
 // Import database connection
 import { testConnection, closePool } from "./config/database.js";
@@ -26,7 +26,7 @@ import adminRoutes from "./routes/admin.js";
 // Import middleware
 import errorHandler from "./middleware/errorHandler.js";
 import notFound from "./middleware/notFound.js";
-import setupSocket from './socket.js';
+import setupSocket from "./socket.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -68,9 +68,13 @@ app.use("/api/auth/forgot-password", authLimiter);
 // CORS configuration
 const corsOptions = {
   origin:
-    process.env.NODE_ENV === "production"
-      ? process.env.CORS_ORIGINS?.split(',') || ["https://alumni.iiitnr.ac.in", "https://www.iiitnr.ac.in"]
-      : process.env.CORS_ORIGINS?.split(',') || ["http://localhost:3000", "http://127.0.0.1:3000"],
+    process.env.CORS_ORIGINS?.split(",") ||
+    (process.env.NODE_ENV === "production"
+      ? ["https://alumni.iiitnr.ac.in", "https://www.iiitnr.ac.in"]
+      : [
+          `${process.env.FRONTEND_URL || "http://localhost:3000"}`,
+          "http://127.0.0.1:3000",
+        ]),
   credentials: true,
   optionsSuccessStatus: 200,
 };
@@ -146,9 +150,10 @@ const startServer = async () => {
       io = new IOServer(server, {
         cors: {
           origin:
-            process.env.NODE_ENV === "production"
+            process.env.CORS_ORIGINS?.split(",") ||
+            (process.env.NODE_ENV === "production"
               ? ["https://alumni.iiitnr.ac.in"]
-              : ["http://localhost:3000"],
+              : [process.env.FRONTEND_URL || "http://localhost:3000"]),
           methods: ["GET", "POST"],
         },
       });
@@ -157,10 +162,14 @@ const startServer = async () => {
       setupSocket(io);
 
       server.listen(PORT, () => {
+        const serverUrl =
+          process.env.NODE_ENV === "production"
+            ? `https://api.alumni.iiitnr.ac.in`
+            : `http://localhost:${PORT}`;
         console.log(`🚀 Server is running on port ${PORT}`);
         console.log(`🌐 Environment: ${process.env.NODE_ENV || "development"}`);
-        console.log(`📝 API Documentation: http://localhost:${PORT}/api/docs`);
-        console.log(`❤️  Health Check: http://localhost:${PORT}/health`);
+        console.log(`📝 API Documentation: ${serverUrl}/api/docs`);
+        console.log(`❤️  Health Check: ${serverUrl}/health`);
         resolve();
       });
     });
