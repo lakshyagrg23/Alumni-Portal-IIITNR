@@ -75,6 +75,11 @@ class User {
         if (typeof updateData.email_verified !== 'undefined') db.email_verified = updateData.email_verified;
         if (typeof updateData.emailVerified !== 'undefined') db.email_verified = updateData.emailVerified;
 
+        if (typeof updateData.email_verification_token !== 'undefined') db.email_verification_token = updateData.email_verification_token;
+        if (typeof updateData.emailVerificationToken !== 'undefined') db.email_verification_token = updateData.emailVerificationToken;
+        if (typeof updateData.email_verification_token_expires !== 'undefined') db.email_verification_token_expires = updateData.email_verification_token_expires;
+        if (typeof updateData.emailVerificationTokenExpires !== 'undefined') db.email_verification_token_expires = updateData.emailVerificationTokenExpires;
+
         if (updateData.password) {
             const salt = await bcrypt.genSalt(10);
             db.password_hash = await bcrypt.hash(updateData.password, salt);
