@@ -4,9 +4,9 @@
  * Usage: node backend/scripts/run-migrations.js
  */
 
-const fs = require('fs').promises;
-const path = require('path');
-const pool = require('../src/config/database');
+import fs from 'fs/promises';
+import path from 'path';
+import pool from '../src/config/database.js';
 
 const MIGRATIONS_DIR = path.join(__dirname, '../../database/migrations');
 

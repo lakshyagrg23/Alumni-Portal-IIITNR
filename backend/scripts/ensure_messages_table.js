@@ -1,6 +1,6 @@
 // Ensure messaging tables exist for the messaging feature
-const path = require('path');
-const { query, closePool, testConnection } = require('../src/config/database');
+import path from 'path';
+import { query, closePool, testConnection } from '../src/config/database.js';
 
 async function ensureMessagingTables() {
   try {

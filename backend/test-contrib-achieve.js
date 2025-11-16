@@ -1,5 +1,5 @@
-require('dotenv').config({ path: '.env' });
-const queries = require('./src/utils/reportQueries');
+import 'dotenv/config';
+import queries from './src/utils/reportQueries.js';
 
 async function test() {
     try {

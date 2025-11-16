@@ -1,7 +1,7 @@
-require('dotenv').config();
-const fs = require('fs');
-const path = require('path');
-const pool = require('./src/config/database');
+import 'dotenv/config';
+import fs from 'fs';
+import path from 'path';
+import pool from './src/config/database.js';
 
 const migrations = [
   '002_create_alumni_contributions.sql',

@@ -1,6 +1,6 @@
-require('dotenv').config();
-const db = require('./src/config/database');
-const crypto = require('crypto');
+import 'dotenv/config';
+import db from './src/config/database.js';
+import crypto from 'crypto';
 
 /**
  * Generate a dummy but valid base64-encoded ECDH P-256 public key for testing

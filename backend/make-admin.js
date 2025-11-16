@@ -1,6 +1,6 @@
-require('dotenv').config();
-const { query } = require('./src/config/database');
-const bcrypt = require('bcryptjs');
+import 'dotenv/config';
+import { query } from './src/config/database.js';
+import bcrypt from 'bcryptjs';
 
 async function makeUserAdmin() {
   try {

@@ -1,5 +1,5 @@
-require('dotenv').config();
-const pool = require('./src/config/database');
+import 'dotenv/config';
+import pool from './src/config/database.js';
 
 const placementData = [
   { company_name: 'Google', job_title: 'Software Engineer', salary_package: 24.5, placement_year: 2024, industry_sector: 'Technology', verification_status: 'verified' },

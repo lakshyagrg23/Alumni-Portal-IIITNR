@@ -1,5 +1,5 @@
-require('dotenv').config();
-const db = require('./src/config/database');
+import 'dotenv/config';
+import db from './src/config/database.js';
 
 const userId = '8cfeb9f6-e712-427a-91db-dabcb7d067fb';
 

@@ -1,4 +1,4 @@
-const { query } = require('./src/config/database');
+import { query } from './src/config/database.js';
 
 async function testProfileFetch() {
   try {

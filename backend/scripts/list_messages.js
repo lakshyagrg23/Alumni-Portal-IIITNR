@@ -1,4 +1,4 @@
-const { query, closePool } = require('../src/config/database');
+import { query, closePool } from '../src/config/database.js';
 
 async function listRecent(limit = 20) {
   try {

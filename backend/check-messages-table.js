@@ -1,5 +1,5 @@
-require("dotenv").config();
-const { query, closePool } = require("./src/config/database");
+import 'dotenv/config';
+import { query, closePool } from './src/config/database.js';
 
 async function checkMessagesTable() {
   try {

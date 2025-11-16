@@ -4,7 +4,7 @@
  * Run with: node backend/scripts/seed-accreditation-data.js
  */
 
-const pool = require('../src/config/database');
+import pool from '../src/config/database.js';
 
 // Sample data generators
 const companies = [

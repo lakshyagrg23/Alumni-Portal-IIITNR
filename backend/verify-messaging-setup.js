@@ -1,7 +1,7 @@
-require("dotenv").config();
-const { query, closePool } = require("./src/config/database");
-const fs = require("fs");
-const path = require("path");
+import 'dotenv/config';
+import { query, closePool } from './src/config/database.js';
+import fs from 'fs';
+import path from 'path';
 
 async function verifyMessagingSetup() {
   console.log("🔍 MESSAGING & PUBLIC KEY VERIFICATION REPORT");

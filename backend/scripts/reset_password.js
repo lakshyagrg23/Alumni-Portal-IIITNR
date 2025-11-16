@@ -2,9 +2,9 @@
 // Script to reset a user's password by email using the project's DB config
 // Usage: node scripts/reset_password.js user@example.com NewP@ssw0rd
 
-require('dotenv').config()
-const bcrypt = require('bcryptjs')
-const { query, closePool } = require('../src/config/database')
+import 'dotenv/config';
+import bcrypt from 'bcryptjs';
+import { query, closePool } from '../src/config/database.js';
 
 async function resetPassword(email, newPassword) {
   if (!email || !newPassword) {

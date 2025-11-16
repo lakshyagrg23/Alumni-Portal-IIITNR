@@ -1,5 +1,5 @@
-require('dotenv').config();
-const { query } = require('../src/config/database');
+import 'dotenv/config';
+import { query } from '../src/config/database.js';
 
 const id = process.argv[2];
 if (!id) {
