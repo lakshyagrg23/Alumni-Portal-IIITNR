@@ -1,23 +1,35 @@
 import React, { useState } from 'react';
 import { submitEventProposal } from '../../services/eventService';
 import styles from './VolunteerProposal.module.css';
+import { useAuth } from '../../context/AuthContext';
 
 /**
  * VolunteerProposal Component - Form for alumni to propose conducting events
  */
 const VolunteerProposal = ({ onClose, onSuccess }) => {
+  const { user } = useAuth() || {};
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     event_type: 'workshop',
     mode: 'hybrid',
-    duration_hours: 2,
-    experience_level: 'intermediate',
-    max_participants: 30,
+    // admin-like fields
+    startDate: '',
+    startTime: '',
+    endDate: '',
+    endTime: '',
+    location: '',
+    capacity: 30,
+    registrationRequired: false,
+    registrationDeadline: '',
     required_resources: '',
     proposed_dates: '',
     motivation: '',
-    relevant_experience: ''
+    relevant_experience: '',
+    // legacy fields used by inputs
+    duration_hours: 2,
+    experience_level: 'intermediate',
+    max_participants: 30,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -34,7 +46,6 @@ const VolunteerProposal = ({ onClose, onSuccess }) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
     try {
       // Validate required fields
       if (!formData.title.trim() || !formData.description.trim() || !formData.motivation.trim()) {
@@ -43,8 +54,35 @@ const VolunteerProposal = ({ onClose, onSuccess }) => {
         return;
       }
 
-      const response = await submitEventProposal(formData);
-      
+      // Map form values to backend expected fields
+      const payload = {
+        title: formData.title,
+        description: formData.description,
+        eventType: formData.event_type, // backend expects camelCase
+        mode: formData.mode,
+        location: formData.location || null,
+        // combine date + time into ISO-like strings similar to admin form
+        startDateTime: formData.startDate ? (formData.startDate + (formData.startTime ? 'T' + formData.startTime : 'T00:00')) : null,
+        endDateTime: formData.endDate ? (formData.endDate + (formData.endTime ? 'T' + formData.endTime : 'T23:59')) : null,
+        registrationDeadline: formData.registrationRequired && formData.registrationDeadline ? formData.registrationDeadline : null,
+        maxParticipants: formData.max_participants ? parseInt(formData.max_participants) : (formData.capacity ? parseInt(formData.capacity) : null),
+        requiredSkills: formData.required_resources ? formData.required_resources.split(',').map(s => s.trim()).filter(Boolean) : [],
+        experienceLevel: formData.experience_level || 'all',
+        agenda: '',
+        requirements: '',
+        benefits: '',
+        contactEmail: user?.email || null,
+        contactPhone: null,
+        organizerId: user?.id || null,
+        organizerName: (user && (user.first_name || user.name || user.email)) || null,
+        // keep as a proposal
+        status: 'pending',
+        isPublished: false,
+        requiresApproval: true,
+      };
+
+      const response = await submitEventProposal(payload);
+
       if (response.success) {
         onSuccess && onSuccess(response.data);
         onClose && onClose();
@@ -197,6 +235,60 @@ const VolunteerProposal = ({ onClose, onSuccess }) => {
                   className={styles.formTextarea}
                 />
               </div>
+
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label htmlFor="startDate">Start Date *</label>
+                  <input
+                    id="startDate"
+                    name="startDate"
+                    type="date"
+                    value={formData.startDate}
+                    onChange={handleInputChange}
+                    className={styles.formInput}
+                    required
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label htmlFor="startTime">Start Time</label>
+                  <input
+                    id="startTime"
+                    name="startTime"
+                    type="time"
+                    value={formData.startTime}
+                    onChange={handleInputChange}
+                    className={styles.formInput}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label htmlFor="endDate">End Date *</label>
+                  <input
+                    id="endDate"
+                    name="endDate"
+                    type="date"
+                    value={formData.endDate}
+                    onChange={handleInputChange}
+                    className={styles.formInput}
+                    required
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label htmlFor="endTime">End Time</label>
+                  <input
+                    id="endTime"
+                    name="endTime"
+                    type="time"
+                    value={formData.endTime}
+                    onChange={handleInputChange}
+                    className={styles.formInput}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Logistics */}
@@ -204,7 +296,20 @@ const VolunteerProposal = ({ onClose, onSuccess }) => {
               <h3>Logistics</h3>
               
               <div className={styles.formGroup}>
-                <label htmlFor="required_resources">Required Resources</label>
+                  <label htmlFor="location">Location</label>
+                  <input
+                    id="location"
+                    name="location"
+                    type="text"
+                    value={formData.location}
+                    onChange={handleInputChange}
+                    placeholder="Venue or online link"
+                    className={styles.formInput}
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label htmlFor="required_resources">Required Resources</label>
                 <textarea
                   id="required_resources"
                   name="required_resources"

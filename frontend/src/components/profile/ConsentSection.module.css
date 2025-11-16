@@ -1,0 +1,183 @@
+.consentSection {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.header {
+  margin-bottom: 1.5rem;
+}
+
+.header h3 {
+  color: #1e3a8a;
+  margin-bottom: 0.5rem;
+  font-size: 1.5rem;
+}
+
+.subtitle {
+  color: #6b7280;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.consentBox {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 2px solid #10b981;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.consentLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  cursor: pointer;
+}
+
+.checkbox {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.checkboxText {
+  flex: 1;
+}
+
+.checkboxText strong {
+  display: block;
+  color: #064e3b;
+  font-size: 1.05rem;
+  margin-bottom: 0.25rem;
+}
+
+.consentSubtext {
+  display: block;
+  color: #065f46;
+  font-size: 0.9rem;
+}
+
+.consentStatus {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 6px;
+  color: #059669;
+  font-size: 0.9rem;
+  border-left: 4px solid #10b981;
+}
+
+.detailsToggle {
+  width: 100%;
+  padding: 0.75rem;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  color: #374151;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.detailsToggle:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+.detailsPanel {
+  margin-top: 1.5rem;
+  border-top: 2px solid #e5e7eb;
+  padding-top: 1.5rem;
+}
+
+.detailsContent {
+  color: #374151;
+}
+
+.detailsContent h4 {
+  color: #1e3a8a;
+  font-size: 1.1rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.detailsContent h4:first-child {
+  margin-top: 0;
+}
+
+.detailsContent ul {
+  margin: 0.5rem 0 1rem 1.5rem;
+  line-height: 1.8;
+}
+
+.detailsContent li {
+  margin-bottom: 0.5rem;
+}
+
+.detailsContent p {
+  line-height: 1.7;
+  margin: 0.5rem 0 1rem 0;
+}
+
+.highlightBox {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-left: 4px solid #f59e0b;
+  padding: 1rem 1.25rem;
+  border-radius: 6px;
+  margin-top: 1.5rem;
+}
+
+.highlightBox strong {
+  color: #92400e;
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 1.05rem;
+}
+
+.highlightBox p {
+  color: #78350f;
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.footer {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #fef2f2;
+  border-radius: 6px;
+  border-left: 4px solid #f97316;
+}
+
+.footer p {
+  margin: 0;
+  color: #7c2d12;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.footer strong {
+  color: #9a3412;
+}
+
+@media (max-width: 768px) {
+  .consentSection {
+    padding: 1.5rem;
+  }
+
+  .consentBox {
+    padding: 1rem;
+  }
+
+  .consentLabel {
+    gap: 0.75rem;
+  }
+
+  .checkboxText strong {
+    font-size: 1rem;
+  }
+}

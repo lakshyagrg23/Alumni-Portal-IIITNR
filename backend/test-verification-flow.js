@@ -1,7 +1,8 @@
-require('dotenv').config();
-const axios = require('axios');
+import 'dotenv/config';
+import axios from 'axios';
+import { query } from './src/config/database.js';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = process.env.API_URL || 'http://localhost:5001/api';
 
 async function testFullFlow() {
   console.log('🧪 Testing Complete Email Verification Flow\n');
@@ -33,7 +34,6 @@ async function testFullFlow() {
     
     // Step 2: Get the verification token from database
     console.log('\n📧 Step 2: Getting verification token from database...');
-    const { query } = require('./src/config/database');
     const result = await query(
       'SELECT email_verification_token FROM users WHERE email = $1',
       [testEmail.toLowerCase()]

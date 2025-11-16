@@ -4,8 +4,8 @@
  * Run this script ONCE to clean up the database
  */
 
-require("dotenv").config();
-const { query, testConnection, closePool } = require("./src/config/database");
+import 'dotenv/config';
+import { query, testConnection, closePool } from './src/config/database.js';
 
 async function cleanupDatabase() {
   try {

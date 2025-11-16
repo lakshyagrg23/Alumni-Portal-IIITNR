@@ -1,5 +1,5 @@
-require('dotenv').config();
-const nodemailer = require('nodemailer');
+import 'dotenv/config';
+import nodemailer from 'nodemailer';
 
 async function testEmail() {
   console.log('🔧 Testing Email Configuration...\n');

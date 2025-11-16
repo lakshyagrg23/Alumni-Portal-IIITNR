@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import { adminService } from '@services/adminService'
 import styles from '../AdminPanel.module.css'
+import EventProposals from './EventProposals'
 
 const EventsManagement = () => {
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [showForm, setShowForm] = useState(false)
+  const [showProposals, setShowProposals] = useState(false)
   const [editingEvent, setEditingEvent] = useState(null)
   const [formData, setFormData] = useState({
     title: '',
@@ -204,12 +206,21 @@ const EventsManagement = () => {
     <div className={styles.contentManagement}>
       <div className={styles.pageHeader}>
         <h2 className={styles.pageTitle}>Events Management</h2>
-        <button
-          className={styles.primaryButton}
-          onClick={() => setShowForm(!showForm)}
-        >
-          {showForm ? 'Cancel' : 'Add Event'}
-        </button>
+        <div className={styles.headerActions}>
+          <button
+            className={styles.primaryButton}
+            onClick={() => { setShowForm(!showForm); setShowProposals(false); }}
+          >
+            {showForm ? 'Cancel' : 'Add Event'}
+          </button>
+          <button
+            className={styles.secondaryButton}
+            onClick={() => { setShowProposals(!showProposals); setShowForm(false); }}
+            style={{ marginLeft: '0.5rem' }}
+          >
+            {showProposals ? 'Hide Proposals' : 'View Proposals'}
+          </button>
+        </div>
       </div>
 
       {/* Error Message */}
@@ -401,133 +412,140 @@ const EventsManagement = () => {
         </div>
       )}
 
-      {/* Upcoming Events Section */}
-      <div className={styles.upcomingEventsSection}>
-        <h3>Upcoming Events (4 next events)</h3>
-        {upcomingEvents.length === 0 ? (
-          <p className={styles.emptyState}>No upcoming events found</p>
-        ) : (
-          <div className={styles.eventsGrid}>
-            {upcomingEvents.map((event) => (
-              <div key={event.id} className={styles.eventCard}>
-                <div className={styles.eventCardHeader}>
-                  <h4>{event.title}</h4>
-                  <span className={`${styles.eventTypeBadge} ${styles[event.event_type]}`}>
-                    {event.event_type}
-                  </span>
-                </div>
-                <p className={styles.eventDescription}>
-                  {event.description.substring(0, 100) + '...'}
-                </p>
-                <div className={styles.eventDetails}>
-                  <div className={styles.eventDate}>
-                    📅 {formatEventDuration(event)}
-                  </div>
-                  {event.location && (
-                    <div className={styles.eventLocation}>
-                      📍 {event.location}
-                    </div>
-                  )}
-                  {event.max_participants && (
-                    <div className={styles.eventCapacity}>
-                      👥 Max {event.max_participants} attendees
-                    </div>
-                  )}
-                </div>
-                <div className={styles.eventCardFooter}>
-                  <span className={`${styles.statusBadge} ${event.is_published ? styles.published : styles.draft}`}>
-                    {event.is_published ? 'Published' : 'Draft'}
-                  </span>
-                  {event.registration_required && (
-                    <span className={styles.registrationBadge}>
-                      Registration Required
+      {/* Either show proposals or the events lists */}
+      {showProposals ? (
+        <EventProposals />
+      ) : (
+        <div>
+          {/* Upcoming Events Section */}
+          <div className={styles.upcomingEventsSection}>
+          <h3>Upcoming Events (4 next events)</h3>
+          {upcomingEvents.length === 0 ? (
+            <p className={styles.emptyState}>No upcoming events found</p>
+          ) : (
+            <div className={styles.eventsGrid}>
+              {upcomingEvents.map((event) => (
+                <div key={event.id} className={styles.eventCard}>
+                  <div className={styles.eventCardHeader}>
+                    <h4>{event.title}</h4>
+                    <span className={`${styles.eventTypeBadge} ${styles[event.event_type]}`}>
+                      {event.event_type}
                     </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* All Events List */}
-      <div className={styles.eventsListSection}>
-        <h3>All Events ({events.length})</h3>
-        
-        {loading ? (
-          <div className={styles.loadingSpinner}>
-            <div className={styles.spinner}></div>
-          </div>
-        ) : events.length === 0 ? (
-          <div className={styles.emptyState}>
-            <p>No events found. Create your first event!</p>
-          </div>
-        ) : (
-          <div className={styles.eventsTable}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Event</th>
-                  <th>Type</th>
-                  <th>Duration</th>
-                  <th>Location</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((event) => (
-                  <tr key={event.id}>
-                    <td>
-                      <div className={styles.eventTitle}>
-                        {event.title}
-                        <div className={styles.eventSubtitle}>
-                          {event.description.substring(0, 50) + '...'}
-                        </div>
+                  </div>
+                  <p className={styles.eventDescription}>
+                    {event.description.substring(0, 100) + '...'}
+                  </p>
+                  <div className={styles.eventDetails}>
+                    <div className={styles.eventDate}>
+                      📅 {formatEventDuration(event)}
+                    </div>
+                    {event.location && (
+                      <div className={styles.eventLocation}>
+                        📍 {event.location}
                       </div>
-                    </td>
-                    <td>
-                      <span className={`${styles.eventTypeBadge} ${styles[event.event_type]}`}>
-                        {event.event_type}
+                    )}
+                    {event.max_participants && (
+                      <div className={styles.eventCapacity}>
+                        👥 Max {event.max_participants} attendees
+                      </div>
+                    )}
+                  </div>
+                  <div className={styles.eventCardFooter}>
+                    <span className={`${styles.statusBadge} ${event.is_published ? styles.published : styles.draft}`}>
+                      {event.is_published ? 'Published' : 'Draft'}
+                    </span>
+                    {event.registration_required && (
+                      <span className={styles.registrationBadge}>
+                        Registration Required
                       </span>
-                    </td>
-                    <td>{formatEventDuration(event)}</td>
-                    <td>{event.location || 'TBD'}</td>
-                    <td>
-                      <div className={styles.statusColumn}>
-                        <span className={`${styles.statusBadge} ${event.is_published ? styles.published : styles.draft}`}>
-                          {event.is_published ? 'Published' : 'Draft'}
-                        </span>
-                        {event.registration_required && (
-                          <span className={styles.registrationBadge}>
-                            Reg. Required
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+          {/* All Events List */}
+          <div className={styles.eventsListSection}>
+            <h3>All Events ({events.length})</h3>
+            
+            {loading ? (
+              <div className={styles.loadingSpinner}>
+                <div className={styles.spinner}></div>
+              </div>
+            ) : events.length === 0 ? (
+              <div className={styles.emptyState}>
+                <p>No events found. Create your first event!</p>
+              </div>
+            ) : (
+              <div className={styles.eventsTable}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Event</th>
+                      <th>Type</th>
+                      <th>Duration</th>
+                      <th>Location</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {events.map((event) => (
+                      <tr key={event.id}>
+                        <td>
+                          <div className={styles.eventTitle}>
+                            {event.title}
+                            <div className={styles.eventSubtitle}>
+                              {event.description.substring(0, 50) + '...'}
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`${styles.eventTypeBadge} ${styles[event.event_type]}`}>
+                            {event.event_type}
                           </span>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <div className={styles.actionButtons}>
-                        <button
-                          onClick={() => handleEdit(event)}
-                          className={`${styles.actionButton} ${styles.edit}`}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(event.id)}
-                          className={`${styles.actionButton} ${styles.delete}`}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        </td>
+                        <td>{formatEventDuration(event)}</td>
+                        <td>{event.location || 'TBD'}</td>
+                        <td>
+                          <div className={styles.statusColumn}>
+                            <span className={`${styles.statusBadge} ${event.is_published ? styles.published : styles.draft}`}>
+                              {event.is_published ? 'Published' : 'Draft'}
+                            </span>
+                            {event.registration_required && (
+                              <span className={styles.registrationBadge}>
+                                Reg. Required
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          <div className={styles.actionButtons}>
+                            <button
+                              onClick={() => handleEdit(event)}
+                              className={`${styles.actionButton} ${styles.edit}`}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(event.id)}
+                              className={`${styles.actionButton} ${styles.delete}`}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

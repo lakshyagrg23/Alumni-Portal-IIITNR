@@ -15,11 +15,14 @@ const pool = new Pool({
   connectionTimeoutMillis: 2000, // Return error after 2 seconds if connection could not be established
 });
 
+// Preserve the original pool.query implementation to avoid accidental recursion
+const rawQuery = pool.query.bind(pool);
+
 // Database query function with error handling
 export const query = async (text, params = []) => {
   const start = Date.now();
   try {
-    const res = await pool.query(text, params);
+    const res = await rawQuery(text, params);
     const duration = Date.now() - start;
 
     if (process.env.NODE_ENV === "development") {
@@ -70,4 +73,10 @@ export const closePool = async () => {
   }
 };
 
-export { pool };
+// Export the pool instance and attach helper functions for backward compatibility
+pool.query = query;
+pool.getClient = getClient;
+pool.testConnection = testConnection;
+pool.closePool = closePool;
+
+export default pool;

@@ -14,11 +14,11 @@
  * - Security policies
  */
 
-const fs = require('fs');
-const path = require('path');
-require('dotenv').config();
+import fs from 'fs';
+import path from 'path';
+import 'dotenv/config';
 
-const { query, testConnection, closePool } = require('../src/config/database');
+import { query, testConnection, closePool } from '../src/config/database.js';
 
 async function runMigration() {
   console.log('🚀 Starting Messaging Feature Migration...\n');

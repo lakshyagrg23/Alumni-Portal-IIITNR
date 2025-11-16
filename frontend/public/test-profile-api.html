@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Profile API Test</title>
+</head>
+<body>
+    <h1>Profile API Test</h1>
+    <div id="output"></div>
+    
+    <script>
+        const output = document.getElementById('output');
+        
+        // Check if token exists
+        const token = localStorage.getItem('token');
+        output.innerHTML += `<p><strong>Token exists:</strong> ${!!token}</p>`;
+        if (token) {
+            output.innerHTML += `<p><strong>Token:</strong> ${token.substring(0, 20)}...</p>`;
+        }
+        
+        // Try to fetch profile
+        fetch('http://localhost:5000/api/alumni/profile', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            output.innerHTML += `<p><strong>Status:</strong> ${response.status}</p>`;
+            return response.json();
+        })
+        .then(data => {
+            output.innerHTML += `<p><strong>Response:</strong></p>`;
+            output.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        })
+        .catch(error => {
+            output.innerHTML += `<p><strong>Error:</strong> ${error.message}</p>`;
+        });
+    </script>
+</body>
+</html>

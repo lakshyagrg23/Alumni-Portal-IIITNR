@@ -22,6 +22,8 @@ import eventRoutes from "./routes/events.js";
 import connectionRoutes from "./routes/connections.js";
 import messageRoutes from "./routes/messages.js";
 import adminRoutes from "./routes/admin.js";
+import reportsRoutes from "./routes/reports.js";
+import exportRoutes from "./routes/export.js";
 
 // Import middleware
 import errorHandler from "./middleware/errorHandler.js";
@@ -29,7 +31,9 @@ import notFound from "./middleware/notFound.js";
 import setupSocket from "./socket.js";
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+// Allow overriding the port via environment. Default to 5001 to avoid
+// common conflicts during local development if 5000 is already used.
+const PORT = process.env.PORT || 5001;
 
 // Create HTTP server (for socket.io attachment)
 const server = createServer(app);
@@ -122,6 +126,8 @@ app.use("/api/events", eventRoutes);
 app.use("/api/connections", connectionRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/admin/reports", reportsRoutes);
+app.use("/api/admin/reports/export", exportRoutes);
 
 // Welcome route
 app.get("/", (req, res) => {
@@ -207,6 +213,5 @@ process.on("SIGINT", async () => {
 // Start the server
 startServer();
 
-// Export server and io for tests or external usage
-export { app, server };
-export const getIo = () => io;
+export default app;
+

@@ -1,5 +1,5 @@
-require('dotenv').config();
-const { query } = require('./src/utils/sqlHelpers');
+import 'dotenv/config';
+import { query } from './src/utils/sqlHelpers.js';
 
 /**
  * Seed events data for testing

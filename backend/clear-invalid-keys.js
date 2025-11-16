@@ -1,5 +1,5 @@
-require("dotenv").config();
-const db = require("./src/config/database");
+import 'dotenv/config';
+import db from './src/config/database.js';
 
 (async () => {
   try {

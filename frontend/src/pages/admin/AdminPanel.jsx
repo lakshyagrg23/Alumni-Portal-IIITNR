@@ -4,6 +4,7 @@ import { useAuth } from '@hooks/useAuth'
 import { adminService } from '@services/adminService'
 import NewsManagement from './components/NewsManagement'
 import EventsManagement from './components/EventsManagement'
+import AccreditationDashboard from './AccreditationDashboard'
 import styles from './AdminPanel.module.css'
 
 const AdminPanel = () => {
@@ -209,6 +210,15 @@ const AdminPanel = () => {
                 >
                   <span className={styles.sidebarNavIcon}>📅</span>
                   Events Management
+                </button>
+              </li>
+              <li className={styles.sidebarNavItem}>
+                <button
+                  className={`${styles.sidebarNavLink} ${activeTab === 'accreditation' ? styles.active : ''}`}
+                  onClick={() => setActiveTab('accreditation')}
+                >
+                  <span className={styles.sidebarNavIcon}>🏅</span>
+                  Accreditation
                 </button>
               </li>
             </ul>
@@ -438,6 +448,7 @@ const AdminPanel = () => {
           {activeTab === 'news' && <NewsManagement />}
 
           {activeTab === 'events' && <EventsManagement />}
+          {activeTab === 'accreditation' && <AccreditationDashboard />}
         </main>
       </div>
     </>
