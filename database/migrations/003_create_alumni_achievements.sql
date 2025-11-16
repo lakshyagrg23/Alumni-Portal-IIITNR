@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS alumni_achievements (
     alumni_id UUID REFERENCES alumni_profiles(id) ON DELETE CASCADE,
     
     -- Achievement Type
-    type VARCHAR(50) NOT NULL CHECK (type IN (
+    achievement_type VARCHAR(50) NOT NULL CHECK (achievement_type IN (
         'promotion',
         'award',
         'recognition',
@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS alumni_achievements (
         'verified',
         'rejected'
     )),
+    is_verified BOOLEAN DEFAULT FALSE,
     verified_by UUID REFERENCES users(id),
     verified_at TIMESTAMP,
     verification_notes TEXT,
