@@ -206,6 +206,7 @@ router.post("/login", async (req, res) => {
         role: user.role,
         isApproved: user.is_approved,
         isActive: user.is_active,
+        onboardingCompleted: user.onboarding_completed || false,
         hasAlumniProfile,
       },
     });
@@ -612,6 +613,7 @@ router.get("/me", authenticate, async (req, res) => {
         isActive: user.is_active,
         provider: user.provider,
         createdAt: user.created_at,
+        onboardingCompleted: user.onboarding_completed || false,
         hasAlumniProfile,
         needsProfileSetup: !hasAlumniProfile,
       },
@@ -882,6 +884,60 @@ router.put("/profile", authenticate, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error while updating profile",
+    });
+  }
+});
+
+/**
+ * @route   POST /api/auth/complete-onboarding
+ * @desc    Mark user onboarding as completed after profile submission
+ * @access  Private
+ */
+router.post("/complete-onboarding", authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Verify user has an alumni profile with required fields
+    const profileCheck = await query(
+      `SELECT first_name, last_name, graduation_year 
+       FROM alumni_profiles 
+       WHERE user_id = $1`,
+      [userId]
+    );
+
+    if (profileCheck.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Please complete your profile before finishing onboarding.",
+      });
+    }
+
+    const profile = profileCheck.rows[0];
+    if (!profile.first_name || !profile.last_name || !profile.graduation_year) {
+      return res.status(400).json({
+        success: false,
+        message: "Please fill in all required profile fields (name, graduation year).",
+      });
+    }
+
+    // Mark onboarding as complete
+    const updatedUser = await User.markOnboardingComplete(userId);
+
+    res.json({
+      success: true,
+      message: "Onboarding completed successfully!",
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        onboardingCompleted: updatedUser.onboarding_completed,
+      },
+    });
+  } catch (error) {
+    console.error("Complete onboarding error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while completing onboarding",
     });
   }
 });

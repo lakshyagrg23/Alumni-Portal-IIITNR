@@ -7,7 +7,7 @@ import styles from './ProfileCompletion.module.css'
 
 const ProfileCompletion = () => {
   const navigate = useNavigate()
-  const { user, updateProfile } = useAuth()
+  const { user, updateProfile, completeOnboarding } = useAuth()
   const [loading, setLoading] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
   const [errors, setErrors] = useState({})
@@ -181,9 +181,12 @@ const ProfileCompletion = () => {
       // Update auth context
       await updateProfile(formData)
       
+      // Mark onboarding as completed on the backend
+      await completeOnboarding()
+      
       // Navigate to dashboard
       navigate('/dashboard', { 
-        state: { message: 'Profile completed successfully!' }
+        state: { message: 'Profile completed successfully! Welcome to IIIT NR Alumni Portal.' }
       })
       
     } catch (error) {

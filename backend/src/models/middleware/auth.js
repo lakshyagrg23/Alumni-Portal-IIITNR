@@ -63,7 +63,31 @@ export const requireAdmin = (req, res, next) => {
 };
 
 /**
+ * Onboarding check middleware - ensures user has completed onboarding
+ * Use this for routes that require a completed profile
+ */
+export const requireOnboarding = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: "Authentication required.",
+    });
+  }
+
+  if (!req.user.onboarding_completed) {
+    return res.status(403).json({
+      success: false,
+      message: "Please complete your profile to access this feature.",
+      requiresOnboarding: true,
+    });
+  }
+
+  next();
+};
+
+/**
  * Combined middleware for admin-only routes
  */
 export const requireAuth = authenticate;
 export const requireAdminAuth = [authenticate, requireAdmin];
+export const requireOnboardedUser = [authenticate, requireOnboarding];

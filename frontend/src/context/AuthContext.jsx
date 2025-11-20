@@ -6,6 +6,7 @@ const initialState = {
   user: null,
   loading: true,
   isAuthenticated: false,
+  onboardingCompleted: false,
   token: localStorage.getItem('token'),
 }
 
@@ -18,6 +19,7 @@ const authActions = {
   LOAD_USER: 'LOAD_USER',
   UPDATE_PROFILE: 'UPDATE_PROFILE',
   CLEAR_LOADING: 'CLEAR_LOADING',
+  COMPLETE_ONBOARDING: 'COMPLETE_ONBOARDING',
 }
 
 // Auth reducer
@@ -34,6 +36,7 @@ const authReducer = (state, action) => {
         user: action.payload.user,
         token: action.payload.token,
         isAuthenticated: true,
+        onboardingCompleted: action.payload.user?.onboardingCompleted || false,
         loading: false,
       }
     case authActions.LOGIN_FAILURE:
@@ -50,6 +53,7 @@ const authReducer = (state, action) => {
         user: null,
         token: null,
         isAuthenticated: false,
+        onboardingCompleted: false,
         loading: false,
       }
     case authActions.LOAD_USER:
@@ -57,12 +61,19 @@ const authReducer = (state, action) => {
         ...state,
         user: action.payload,
         isAuthenticated: true,
+        onboardingCompleted: action.payload?.onboardingCompleted || false,
         loading: false,
       }
     case authActions.UPDATE_PROFILE:
       return {
         ...state,
         user: { ...state.user, ...action.payload },
+      }
+    case authActions.COMPLETE_ONBOARDING:
+      return {
+        ...state,
+        onboardingCompleted: true,
+        user: { ...state.user, onboardingCompleted: true },
       }
     case authActions.CLEAR_LOADING:
       return {
@@ -260,6 +271,22 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  // Complete onboarding function
+  const completeOnboarding = async () => {
+    try {
+      const response = await authService.completeOnboarding()
+      
+      if (response.success) {
+        dispatch({ type: authActions.COMPLETE_ONBOARDING })
+      }
+      
+      return response
+    } catch (error) {
+      console.error('Complete onboarding error:', error)
+      throw error
+    }
+  }
+
   const value = {
     ...state,
     login,
@@ -268,6 +295,7 @@ export const AuthProvider = ({ children }) => {
     updateProfile,
     loginWithGoogle,
     loginWithLinkedIn,
+    completeOnboarding,
   }
 
   return (

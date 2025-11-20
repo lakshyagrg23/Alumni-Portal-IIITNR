@@ -74,6 +74,8 @@ class User {
         if (typeof updateData.isActive !== 'undefined') db.is_active = updateData.isActive;
         if (typeof updateData.email_verified !== 'undefined') db.email_verified = updateData.email_verified;
         if (typeof updateData.emailVerified !== 'undefined') db.email_verified = updateData.emailVerified;
+        if (typeof updateData.onboarding_completed !== 'undefined') db.onboarding_completed = updateData.onboarding_completed;
+        if (typeof updateData.onboardingCompleted !== 'undefined') db.onboarding_completed = updateData.onboardingCompleted;
 
         if (updateData.password) {
             const salt = await bcrypt.genSalt(10);
@@ -166,6 +168,26 @@ class User {
         FROM users`;
         const result = await query(statsQuery);
         return result.rows[0];
+    }
+
+    /**
+     * Mark user onboarding as completed
+     * @param {string} userId - User UUID
+     * @returns {Promise<Object>}
+     */
+    static async markOnboardingComplete(userId) {
+        await this.update(userId, { onboarding_completed: true });
+        return await this.findById(userId);
+    }
+
+    /**
+     * Check if user has completed onboarding
+     * @param {string} userId - User UUID
+     * @returns {Promise<boolean>}
+     */
+    static async hasCompletedOnboarding(userId) {
+        const user = await this.findById(userId);
+        return user ? user.onboarding_completed === true : false;
     }
 }
 export default User;

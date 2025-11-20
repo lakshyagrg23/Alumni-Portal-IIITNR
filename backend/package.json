@@ -61,7 +61,9 @@
     "passport-jwt": "^4.0.1",
     "pg": "^8.11.3",
     "socket.io": "^4.7.0",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "vary": "^1.1.2",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "eslint": "^8.47.0",

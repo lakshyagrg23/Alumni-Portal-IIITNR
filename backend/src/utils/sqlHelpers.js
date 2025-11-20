@@ -65,10 +65,14 @@ export const buildInsertQuery = (table, data, returning = "*") => {
  */
 export const buildUpdateQuery = (table, data, conditions, returning = "*") => {
   const dataKeys = Object.keys(data);
-  const setClause = dataKeys
-    .map((key, index) => `${key} = $${index + 1}`)
-    .join(", ");
-  const dataValues = dataKeys.map((key) => data[key]);
+  const setClauses = Object.keys(data).map((key, i) => {
+    return `${key} = $${i + 1}`;
+  });
+
+  // Automatically set updated_at timestamp if not already present
+  if (!("updated_at" in data)) {
+    setClauses.push(`updated_at = CURRENT_TIMESTAMP`);
+  }
 
   const { whereClause, values: whereValues } = buildWhereClause(
     conditions,
@@ -77,12 +81,12 @@ export const buildUpdateQuery = (table, data, conditions, returning = "*") => {
 
   const queryText = `
     UPDATE ${table}
-    SET ${setClause}, updated_at = CURRENT_TIMESTAMP
+    SET ${setClauses.join(", ")}
     ${whereClause}
     RETURNING ${returning}
   `;
 
-  return { query: queryText, values: [...dataValues, ...whereValues] };
+  return { query: queryText, values: [...Object.values(data), ...whereValues] };
 };
 
 /**

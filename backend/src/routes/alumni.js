@@ -2,7 +2,7 @@ import express from "express";
 const router = express.Router();
 import AlumniProfile from "../models/AlumniProfile.js";
 import { query } from "../config/database.js";
-import { authenticate } from "../models/middleware/auth.js";
+import { authenticate, requireOnboardedUser } from "../models/middleware/auth.js";
 
 /**
  * @route   GET /api/alumni
@@ -60,9 +60,9 @@ router.get("/", async (req, res) => {
 /**
  * @route   GET /api/alumni/profile
  * @desc    Get current user's alumni profile
- * @access  Private (Alumni only)
+ * @access  Private (Requires completed onboarding)
  */
-router.get("/profile", authenticate, async (req, res) => {
+router.get("/profile", requireOnboardedUser, async (req, res) => {
   try {
     if (!req.user || !req.user.id) {
       return res.status(401).json({

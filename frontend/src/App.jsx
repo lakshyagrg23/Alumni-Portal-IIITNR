@@ -30,6 +30,7 @@ import NotFound from '@pages/NotFound'
 // Protected Route Component
 import ProtectedRoute from '@components/auth/ProtectedRoute'
 import AdminRoute from '@components/auth/AdminRoute'
+import OnboardingRoute from '@components/auth/OnboardingRoute'
 
 // Hooks
 import { useAuth } from '@hooks/useAuth'
@@ -107,12 +108,14 @@ function App() {
             } 
           />
           
-          {/* Protected Routes - Require Authentication */}
+          {/* Protected Routes - Require Authentication and Completed Onboarding */}
           <Route 
             path="/dashboard" 
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <OnboardingRoute>
+                  <Dashboard />
+                </OnboardingRoute>
               </ProtectedRoute>
             } 
           />
@@ -121,7 +124,9 @@ function App() {
             path="/connect" 
             element={
               <ProtectedRoute>
-                <Connect />
+                <OnboardingRoute>
+                  <Connect />
+                </OnboardingRoute>
               </ProtectedRoute>
             } 
           />
@@ -130,7 +135,9 @@ function App() {
             path="/messages" 
             element={
               <ProtectedRoute>
-                <Messages />
+                <OnboardingRoute>
+                  <Messages />
+                </OnboardingRoute>
               </ProtectedRoute>
             } 
           />
@@ -139,7 +146,9 @@ function App() {
             path="/profile" 
             element={
               <ProtectedRoute>
-                <Profile />
+                <OnboardingRoute>
+                  <Profile />
+                </OnboardingRoute>
               </ProtectedRoute>
             } 
           />

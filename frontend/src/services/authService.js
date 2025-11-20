@@ -130,6 +130,12 @@ export const authService = {
     const response = await API.post("/auth/resend-verification", { email });
     return response;
   },
+
+  // Complete onboarding after profile submission
+  completeOnboarding: async () => {
+    const response = await API.post("/auth/complete-onboarding");
+    return response;
+  },
 };
 
 export default API;
