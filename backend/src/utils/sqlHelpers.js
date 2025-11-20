@@ -65,6 +65,7 @@ export const buildInsertQuery = (table, data, returning = "*") => {
  */
 export const buildUpdateQuery = (table, data, conditions, returning = "*") => {
   const dataKeys = Object.keys(data);
+<<<<<<< HEAD
   const setClauses = Object.keys(data).map((key, i) => {
     return `${key} = $${i + 1}`;
   });
@@ -73,6 +74,15 @@ export const buildUpdateQuery = (table, data, conditions, returning = "*") => {
   if (!("updated_at" in data)) {
     setClauses.push(`updated_at = CURRENT_TIMESTAMP`);
   }
+=======
+  const setClauses = dataKeys.map((key, index) => `${key} = $${index + 1}`);
+  const dataValues = dataKeys.map((key) => data[key]);
+  const hasUpdatedAt = dataKeys.includes("updated_at");
+  if (!hasUpdatedAt) {
+    setClauses.push("updated_at = CURRENT_TIMESTAMP");
+  }
+  const setClause = setClauses.join(", ");
+>>>>>>> 443f42c9a4984703593db4ff0d44da6888178ac8
 
   const { whereClause, values: whereValues } = buildWhereClause(
     conditions,
@@ -81,7 +91,11 @@ export const buildUpdateQuery = (table, data, conditions, returning = "*") => {
 
   const queryText = `
     UPDATE ${table}
+<<<<<<< HEAD
     SET ${setClauses.join(", ")}
+=======
+    SET ${setClause}
+>>>>>>> 443f42c9a4984703593db4ff0d44da6888178ac8
     ${whereClause}
     RETURNING ${returning}
   `;

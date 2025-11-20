@@ -8,8 +8,8 @@ export default function LinkedInLoginButton() {
     // Build LinkedIn OAuth URL manually for redirect flow (no popup)
     const clientId = import.meta.env.VITE_LINKEDIN_CLIENT_ID;
     
-    // Use exact redirect URI - MUST match LinkedIn app settings
-    const redirectUri = 'http://localhost:3000/linkedin';
+    // Use redirect URI from env or fallback to localhost
+    const redirectUri = import.meta.env.VITE_LINKEDIN_REDIRECT_URI || 'http://localhost:3000/linkedin';
     const encodedRedirectUri = encodeURIComponent(redirectUri);
     
     const scope = encodeURIComponent('openid profile email');

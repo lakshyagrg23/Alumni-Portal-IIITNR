@@ -55,7 +55,9 @@ const LinkedInCallback = () => {
         console.log('LinkedIn authorization code received, exchanging for access token...');
 
         // Get the exact same redirect URI that was used for authorization
-        const redirectUri = sessionStorage.getItem('linkedin_redirect_uri') || 'http://localhost:3000/linkedin';
+        const redirectUri = sessionStorage.getItem('linkedin_redirect_uri') || 
+                           import.meta.env.VITE_LINKEDIN_REDIRECT_URI || 
+                           'http://localhost:3000/linkedin';
         
         // Check if this code has already been processed (prevent reuse)
         const processedCode = sessionStorage.getItem('linkedin_processed_code');

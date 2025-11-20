@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS alumni_contributions (
     alumni_id UUID REFERENCES alumni_profiles(id) ON DELETE CASCADE,
     
     -- Contribution Type
-    type VARCHAR(50) NOT NULL CHECK (type IN (
+    contribution_type VARCHAR(50) NOT NULL CHECK (contribution_type IN (
         'donation',
         'guest_lecture',
         'mentorship',
@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS alumni_contributions (
         'verified',
         'rejected'
     )),
+    is_verified BOOLEAN DEFAULT FALSE,
     verified_by UUID REFERENCES users(id),
     verified_at TIMESTAMP,
     verification_notes TEXT,

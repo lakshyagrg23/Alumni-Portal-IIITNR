@@ -11,11 +11,13 @@ Fixed all hardcoded `localhost` values throughout the project to enable flexible
 **File**: `frontend/.env`
 
 ✅ **Added/Updated**:
+
 - `VITE_API_WS_URL` - WebSocket URL for real-time messaging
 - `VITE_APP_URL` - Frontend URL configuration
 - Added comments to indicate which values need to be changed for different deployments
 
 **Current Configuration** (for local frontend + remote backend):
+
 ```env
 VITE_API_URL=http://172.16.61.39:5000
 VITE_API_WS_URL=http://172.16.61.39:5000
@@ -28,11 +30,13 @@ VITE_LINKEDIN_REDIRECT_URI=http://localhost:3000/linkedin
 **File**: `backend/.env`
 
 ✅ **Updated**:
+
 - Added clear comments for all URL-related configurations
 - Emphasized the importance of CORS_ORIGINS for cross-origin requests
 - Added notes about OAuth callback URL requirements
 
 **Critical Settings for Your Setup**:
+
 ```env
 CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 FRONTEND_URL=http://localhost:3000
@@ -45,12 +49,16 @@ LINKEDIN_REDIRECT_URI=http://localhost:3000/linkedin
 **File**: `backend/src/server.js`
 
 ✅ **Updated**: CORS configuration now reads from environment variable
+
 ```javascript
 const corsOptions = {
   origin:
     process.env.NODE_ENV === "production"
-      ? process.env.CORS_ORIGINS?.split(',') || ["https://alumni.iiitnr.ac.in"]
-      : process.env.CORS_ORIGINS?.split(',') || ["http://localhost:3000", "http://127.0.0.1:3000"],
+      ? process.env.CORS_ORIGINS?.split(",") || ["https://alumni.iiitnr.ac.in"]
+      : process.env.CORS_ORIGINS?.split(",") || [
+          "http://localhost:3000",
+          "http://127.0.0.1:3000",
+        ],
   credentials: true,
   optionsSuccessStatus: 200,
 };
@@ -59,10 +67,12 @@ const corsOptions = {
 ### 4. Template Files Created
 
 **Files Created**:
+
 - `frontend/.env.example` - Template with all frontend environment variables
 - `backend/.env.example` - Updated with comprehensive backend configuration
 
 These files serve as:
+
 - Documentation for all available configuration options
 - Templates for new developers
 - Reference for different deployment scenarios
@@ -72,6 +82,7 @@ These files serve as:
 **File Created**: `ENVIRONMENT_CONFIGURATION.md`
 
 Comprehensive guide covering:
+
 - ✅ 3 deployment scenarios (local, hybrid, production)
 - ✅ Step-by-step setup instructions
 - ✅ Troubleshooting guide for common issues
@@ -83,10 +94,12 @@ Comprehensive guide covering:
 ### 6. Quick Fix Scripts
 
 **Files Created**:
+
 - `backend/fix-cors.sh` - Bash script for Linux/Mac
 - `backend/fix-cors.ps1` - PowerShell script for Windows
 
 These scripts:
+
 - ✅ Automatically update CORS_ORIGINS in backend .env
 - ✅ Create backup before making changes
 - ✅ Provide clear instructions for restarting services
@@ -106,11 +119,13 @@ The following files already have proper fallback handling (no changes needed):
 ✅ `frontend/src/utils/socketClient.js`
 
 All these files use the pattern:
+
 ```javascript
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 ```
 
 This means they will:
+
 1. **First** try to use `VITE_API_URL` from `.env`
 2. **Fall back** to localhost only if not set
 
@@ -119,17 +134,20 @@ This means they will:
 ### On Your Remote Server (172.16.61.39)
 
 1. **Update the backend `.env` file**:
+
    ```bash
    cd backend
    nano .env  # or vim .env
    ```
 
 2. **Add/Update this line**:
+
    ```env
    CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
    ```
 
 3. **Restart your backend service**:
+
    ```bash
    # If using PM2:
    pm2 restart alumni-backend
@@ -142,18 +160,21 @@ This means they will:
 ### On Your Local Machine
 
 1. **Verify frontend `.env`** (should already be correct):
+
    ```bash
    cd frontend
    cat .env
    ```
 
    Should show:
+
    ```env
    VITE_API_URL=http://172.16.61.39:5000
    VITE_API_WS_URL=http://172.16.61.39:5000
    ```
 
 2. **Restart frontend** (if running):
+
    ```powershell
    # Stop current (Ctrl+C) then:
    npm run dev
@@ -170,6 +191,7 @@ This means they will:
 ### 1. Test Backend CORS
 
 From your local machine (PowerShell):
+
 ```powershell
 curl -Headers @{"Origin"="http://localhost:3000"} -Method OPTIONS http://172.16.61.39:5000/api/auth/login
 ```
@@ -194,6 +216,7 @@ Should return response with CORS headers (no errors).
 ### Issue 1: CORS Errors Still Appear
 
 **Solution**:
+
 - Verify `CORS_ORIGINS` is set correctly on backend
 - Restart backend server (must restart after .env changes!)
 - Clear browser cache (Ctrl+Shift+Delete)
@@ -202,6 +225,7 @@ Should return response with CORS headers (no errors).
 ### Issue 2: "Failed to fetch" Errors
 
 **Solution**:
+
 - Check if backend is running: `curl http://172.16.61.39:5000/health`
 - Check firewall: Port 5000 must be accessible
 - Verify `VITE_API_URL` in frontend `.env`
@@ -209,6 +233,7 @@ Should return response with CORS headers (no errors).
 ### Issue 3: OAuth Redirect Errors
 
 **Solution**:
+
 - Update Google Cloud Console with backend callback URL
 - Update LinkedIn Developer Portal with frontend redirect URL
 - Ensure URLs match exactly (including http/https)
@@ -225,12 +250,14 @@ Should return response with CORS headers (no errors).
 ## Files Modified/Created
 
 ### Modified:
+
 - ✏️ `frontend/.env`
 - ✏️ `backend/.env`
 - ✏️ `backend/.env.example`
 - ✏️ `backend/src/server.js`
 
 ### Created:
+
 - ✨ `frontend/.env.example`
 - ✨ `ENVIRONMENT_CONFIGURATION.md`
 - ✨ `backend/fix-cors.sh`
@@ -248,6 +275,7 @@ Should return response with CORS headers (no errors).
 ## Need More Help?
 
 Refer to:
+
 - `ENVIRONMENT_CONFIGURATION.md` - Comprehensive configuration guide
 - `frontend/.env.example` - All frontend configuration options
 - `backend/.env.example` - All backend configuration options
