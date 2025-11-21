@@ -172,5 +172,17 @@ class User {
         const result = await query(statsQuery);
         return result.rows[0];
     }
+
+    /**
+     * Mark onboarding as completed for a user.
+     */
+    static async markOnboardingComplete(userId) {
+        const rows = await updateMany(
+            'users',
+            { onboarding_completed: true },
+            { id: userId }
+        );
+        return rows[0] || null;
+    }
 }
 export default User;
