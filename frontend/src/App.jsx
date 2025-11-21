@@ -11,6 +11,9 @@ import Home from '@pages/Home'
 import About from '@pages/About'
 import Login from '@pages/auth/Login'
 import Register from '@pages/auth/Register'
+import RegisterMethodSelection from '@pages/auth/RegisterMethodSelection'
+import RegisterInstituteEmail from '@pages/auth/RegisterInstituteEmail'
+import RegisterPersonalEmail from '@pages/auth/RegisterPersonalEmail'
 import ProfileCompletion from '@pages/auth/ProfileCompletion'
 import LinkedInCallback from '@pages/auth/LinkedInCallback'
 import VerifyEmail from '@pages/auth/VerifyEmail'
@@ -86,6 +89,24 @@ function App() {
           />
           <Route 
             path="/register" 
+            element={
+              user ? <Dashboard /> : <RegisterMethodSelection />
+            } 
+          />
+          <Route 
+            path="/register/institute-email" 
+            element={
+              user ? <Dashboard /> : <RegisterInstituteEmail />
+            } 
+          />
+          <Route 
+            path="/register/personal-email" 
+            element={
+              user ? <Dashboard /> : <RegisterPersonalEmail />
+            } 
+          />
+          <Route 
+            path="/register-old" 
             element={
               user ? <Dashboard /> : <Register />
             } 

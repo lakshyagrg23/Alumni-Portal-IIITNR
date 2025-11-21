@@ -122,6 +122,362 @@ router.post("/register", async (req, res) => {
 });
 
 /**
+ * @route   POST /api/auth/verify-identity
+ * @desc    Verify user identity against institute records (Step 1 of personal email registration)
+ * @access  Public
+ */
+router.post("/verify-identity", async (req, res) => {
+  try {
+    // Accept both snake_case and camelCase payloads for compatibility with frontend
+    const roll_number = req.body.roll_number || req.body.rollNumber;
+    const full_name = req.body.full_name || req.body.fullName || req.body.name;
+    const date_of_birth = req.body.date_of_birth || req.body.dateOfBirth;
+
+    // Validate required fields
+    if (!roll_number || !full_name || !date_of_birth) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide roll number, name, and date of birth",
+      });
+    }
+
+    // Normalize name for comparison (case-insensitive, trim whitespace, collapse multiple spaces)
+    const normalizeName = (str) => {
+      return str.toLowerCase().trim().replace(/\s+/g, " "); // Replace multiple spaces with single space
+    };
+
+    const normalizedInputName = normalizeName(full_name);
+
+    // Query institute records
+    const result = await query(
+      `SELECT * FROM institute_records 
+       WHERE roll_number = $1 
+       AND date_of_birth = $2 
+       AND is_active = true`,
+      [roll_number.trim(), date_of_birth]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Could not verify your identity. Please check your roll number and date of birth.",
+        canRetry: true,
+      });
+    }
+
+    const record = result.rows[0];
+    const normalizedDbName = normalizeName(record.full_name);
+
+    // Check if names match (normalized comparison)
+    if (normalizedInputName !== normalizedDbName) {
+      return res.status(404).json({
+        success: false,
+        message: `Name does not match our records. Please enter your name exactly as registered in institute records.`,
+        canRetry: true,
+        hint: "Make sure to include your full name including middle name if applicable",
+      });
+    }
+
+    // Generate verification token (valid for 30 minutes)
+    const crypto = await import("crypto");
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+    const tokenExpiry = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+
+    // Store verification token temporarily in session or cache
+    // For now, we'll encode the record ID in JWT token
+    const tempToken = jwt.sign(
+      {
+        instituteRecordId: record.id,
+        rollNumber: record.roll_number,
+        fullName: record.full_name,
+        type: "identity_verification",
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "30m" }
+    );
+
+    res.json({
+      success: true,
+      message: "Identity verified successfully!",
+      verificationToken: tempToken,
+      userData: {
+        // Keep both naming styles for backward compatibility with UI
+        rollNumber: record.roll_number,
+        roll_number: record.roll_number,
+        fullName: record.full_name,
+        full_name: record.full_name,
+        graduationYear: record.graduation_year,
+        graduation_year: record.graduation_year,
+        degree: record.degree,
+        branch: record.branch,
+      },
+    });
+  } catch (error) {
+    console.error("Identity verification error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error during verification",
+    });
+  }
+});
+
+/**
+ * @route   POST /api/auth/register/institute-email
+ * @desc    Register with institute email (@iiitnr.edu.in or @iiitnr.ac.in)
+ * @access  Public
+ */
+router.post("/register/institute-email", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Validate required fields
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide email and password",
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid email address",
+      });
+    }
+
+    // Validate institute email domain
+    const emailLower = email.toLowerCase();
+    if (
+      !emailLower.endsWith("@iiitnr.edu.in") &&
+      !emailLower.endsWith("@iiitnr.ac.in")
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Please use your institute email address (@iiitnr.edu.in or @iiitnr.ac.in)",
+      });
+    }
+
+    // Validate password strength
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters long",
+      });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findByEmail(email);
+    if (existingUser) {
+      if (!existingUser.email_verified) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "An account with this email already exists but is not verified. Please check your email for the verification link.",
+          canResendVerification: true,
+          email: email,
+        });
+      }
+
+      return res.status(400).json({
+        success: false,
+        message: "User already exists with this email",
+      });
+    }
+
+    // Create new user
+    const userData = {
+      email: emailLower,
+      password,
+      role: "alumni",
+      provider: "local",
+      registration_path: "institute_email",
+      is_approved: true, // Auto-approve institute emails (no admin approval needed)
+      is_active: true,
+      email_verified: false, // Still requires email verification
+    };
+
+    const user = await User.create(userData);
+
+    // Generate verification token
+    const verificationToken = await User.generateVerificationToken(user.id);
+
+    // Send verification email
+    try {
+      await emailService.sendVerificationEmail(
+        email,
+        verificationToken,
+        email.split("@")[0]
+      );
+    } catch (emailError) {
+      console.error("Error sending verification email:", emailError);
+      await query("DELETE FROM users WHERE id = $1", [user.id]);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send verification email. Please try again.",
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      message:
+        "Registration successful! Please check your email to verify your account.",
+      requiresVerification: true,
+      email: email,
+    });
+  } catch (error) {
+    console.error("Institute email registration error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error during registration",
+    });
+  }
+});
+
+/**
+ * @route   POST /api/auth/register/personal-email
+ * @desc    Register with personal email after identity verification
+ * @access  Public
+ */
+router.post("/register/personal-email", async (req, res) => {
+  try {
+    const { email, password, verificationToken } = req.body;
+
+    // Validate required fields
+    if (!email || !password || !verificationToken) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide email, password, and verification token",
+      });
+    }
+
+    // Verify the identity verification token
+    let tokenData;
+    try {
+      tokenData = jwt.verify(verificationToken, process.env.JWT_SECRET);
+      if (tokenData.type !== "identity_verification") {
+        throw new Error("Invalid token type");
+      }
+    } catch (err) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid or expired verification token. Please verify your identity again.",
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid email address",
+      });
+    }
+
+    // Validate password strength
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters long",
+      });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findByEmail(email);
+    if (existingUser) {
+      if (!existingUser.email_verified) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "An account with this email already exists but is not verified. Please check your email for the verification link.",
+          canResendVerification: true,
+          email: email,
+        });
+      }
+
+      return res.status(400).json({
+        success: false,
+        message: "User already exists with this email",
+      });
+    }
+
+    // Check if someone already registered with this institute record
+    const existingRecord = await query(
+      "SELECT id FROM users WHERE institute_record_id = $1",
+      [tokenData.instituteRecordId]
+    );
+
+    if (existingRecord.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "An account has already been registered with this roll number. Please contact support if this is an error.",
+      });
+    }
+
+    // Create new user linked to institute record
+    const userData = {
+      email: email.toLowerCase(),
+      password,
+      role: "alumni",
+      provider: "local",
+      registration_path: "personal_email",
+      institute_record_id: tokenData.instituteRecordId,
+      is_approved: true, // Auto-approve (identity was verified)
+      is_active: true,
+      email_verified: false, // Still requires email verification
+    };
+
+    const user = await User.create(userData);
+
+    // Generate verification token
+    const emailVerificationToken = await User.generateVerificationToken(
+      user.id
+    );
+
+    // Send verification email
+    try {
+      await emailService.sendVerificationEmail(
+        email,
+        emailVerificationToken,
+        tokenData.fullName
+      );
+    } catch (emailError) {
+      console.error("Error sending verification email:", emailError);
+      await query("DELETE FROM users WHERE id = $1", [user.id]);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send verification email. Please try again.",
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      message:
+        "Registration successful! Please check your email to verify your account.",
+      requiresVerification: true,
+      email: email,
+      userData: {
+        rollNumber: tokenData.rollNumber,
+        fullName: tokenData.fullName,
+      },
+    });
+  } catch (error) {
+    console.error("Personal email registration error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error during registration",
+    });
+  }
+});
+
+/**
  * @route   POST /api/auth/login
  * @desc    Login user
  * @access  Public
@@ -346,12 +702,12 @@ router.post("/resend-verification", async (req, res) => {
 
 /**
  * @route   POST /api/auth/google
- * @desc    Google OAuth login
+ * @desc    Google OAuth login/registration (supports both institute and personal email paths)
  * @access  Public
  */
 router.post("/google", async (req, res) => {
   try {
-    const { email, googleId, name } = req.body;
+    const { email, googleId, name, verificationToken } = req.body;
     if (!email || !googleId) {
       return res.status(400).json({
         success: false,
@@ -363,13 +719,60 @@ router.post("/google", async (req, res) => {
     let isNewUser = false;
 
     if (!user) {
+      // Determine registration path based on email domain or verification token
+      const emailLower = email.toLowerCase();
+      const isInstituteEmail =
+        emailLower.endsWith("@iiitnr.edu.in") ||
+        emailLower.endsWith("@iiitnr.ac.in");
+
+      let registrationPath = "oauth";
+      let instituteRecordId = null;
+
+      // If verification token provided, this is personal email path
+      if (verificationToken) {
+        try {
+          const tokenData = jwt.verify(
+            verificationToken,
+            process.env.JWT_SECRET
+          );
+          if (tokenData.type === "identity_verification") {
+            registrationPath = "personal_email";
+            instituteRecordId = tokenData.instituteRecordId;
+
+            // Check if someone already registered with this institute record
+            const existingRecord = await query(
+              "SELECT id FROM users WHERE institute_record_id = $1",
+              [instituteRecordId]
+            );
+
+            if (existingRecord.rows.length > 0) {
+              return res.status(400).json({
+                success: false,
+                message:
+                  "An account has already been registered with this roll number.",
+              });
+            }
+          }
+        } catch (err) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid or expired verification token.",
+          });
+        }
+      } else if (isInstituteEmail) {
+        registrationPath = "institute_email";
+      }
+
       // Register new user with Google provider
       const userData = {
-        email: email.toLowerCase(),
+        email: emailLower,
         provider: "google",
         providerId: googleId,
         role: "alumni",
-        isApproved: true,
+        isApproved: true, // OAuth users are auto-approved
+        email_verified: true, // OAuth emails are pre-verified by Google
+        registration_path: registrationPath,
+        institute_record_id: instituteRecordId,
       };
       user = await User.create(userData);
       isNewUser = true;
@@ -408,6 +811,7 @@ router.post("/google", async (req, res) => {
         provider: user.provider,
         hasAlumniProfile,
         needsProfileSetup: !hasAlumniProfile,
+        onboardingCompleted: user.onboarding_completed || false,
       },
     });
   } catch (error) {
@@ -713,6 +1117,82 @@ router.get("/profile", authenticate, async (req, res) => {
 });
 
 /**
+ * @route   GET /api/auth/onboarding-data
+ * @desc    Get pre-fill data for onboarding form based on registration path
+ * @access  Private
+ */
+router.get("/onboarding-data", authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Get user data
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    let preFillData = {
+      registrationPath: user.registration_path || "institute_email",
+      rollNumber: null,
+      rollNumberLocked: false,
+      firstName: "",
+      lastName: "",
+      graduationYear: null,
+      degree: null,
+      branch: null,
+    };
+
+    // If user registered via personal email, fetch institute record data
+    if (user.institute_record_id) {
+      try {
+        const recordResult = await query(
+          "SELECT * FROM institute_records WHERE id = $1",
+          [user.institute_record_id]
+        );
+
+        if (recordResult.rows.length > 0) {
+          const record = recordResult.rows[0];
+
+          // Split full name into first and last name
+          const nameParts = record.full_name.trim().split(/\s+/);
+          const firstName = nameParts[0] || "";
+          const lastName =
+            nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
+
+          preFillData = {
+            registrationPath: "personal_email",
+            rollNumber: record.roll_number,
+            rollNumberLocked: true, // Lock roll number for verified users
+            firstName: firstName,
+            lastName: lastName,
+            fullName: record.full_name,
+            graduationYear: record.graduation_year,
+            degree: record.degree,
+            branch: record.branch,
+          };
+        }
+      } catch (error) {
+        console.error("Error fetching institute record:", error);
+      }
+    }
+
+    res.json({
+      success: true,
+      data: preFillData,
+    });
+  } catch (error) {
+    console.error("Get onboarding data error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+
+/**
  * @route   PUT /api/auth/profile
  * @desc    Update current user profile
  * @access  Private
@@ -788,7 +1268,7 @@ router.put("/profile", authenticate, async (req, res) => {
       "currentAddress",
       "permanentAddress",
       "profileVerifiedAt",
-      "verificationSource"
+      "verificationSource",
     ];
 
     alumniFields.forEach((field) => {
@@ -945,7 +1425,8 @@ router.post("/complete-onboarding", authenticate, async (req, res) => {
     if (!profile.first_name || !profile.last_name || !profile.graduation_year) {
       return res.status(400).json({
         success: false,
-        message: "Please complete all required fields in your profile (name, graduation year).",
+        message:
+          "Please complete all required fields in your profile (name, graduation year).",
       });
     }
 

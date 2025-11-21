@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { useAuth } from '@hooks/useAuth'
@@ -9,7 +9,10 @@ const ProfileCompletion = () => {
   const navigate = useNavigate()
   const { user, updateProfile, completeOnboarding } = useAuth()
   const [loading, setLoading] = useState(false)
+  const [fetchingData, setFetchingData] = useState(true)
   const [errors, setErrors] = useState({})
+  const [rollNumberLocked, setRollNumberLocked] = useState(false)
+  const [preFillInfo, setPreFillInfo] = useState(null)
   
   const [formData, setFormData] = useState({
     // Basic Information
@@ -30,6 +33,49 @@ const ProfileCompletion = () => {
     // Privacy
     is_profile_public: true,
   })
+
+  // Fetch onboarding pre-fill data on component mount
+  useEffect(() => {
+    const fetchOnboardingData = async () => {
+      try {
+        setFetchingData(true)
+        const response = await API.get('/auth/onboarding-data')
+        
+        if (response.data.success && response.data.data) {
+          const data = response.data.data
+          
+          // Update form with pre-filled data
+          setFormData(prev => ({
+            ...prev,
+            first_name: data.firstName || prev.first_name,
+            last_name: data.lastName || prev.last_name,
+            roll_number: data.rollNumber || prev.roll_number,
+            degree: data.degree || prev.degree,
+            branch: data.branch || prev.branch,
+            graduation_year: data.graduationYear || prev.graduation_year,
+          }))
+          
+          // Set roll number lock state
+          setRollNumberLocked(data.rollNumberLocked || false)
+          
+          // Store pre-fill info for display
+          if (data.registrationPath === 'personal_email' && data.rollNumber) {
+            setPreFillInfo({
+              path: 'personal_email',
+              message: 'Your information has been pre-filled from verified institute records'
+            })
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching onboarding data:', error)
+        // Continue with normal flow if fetch fails
+      } finally {
+        setFetchingData(false)
+      }
+    }
+
+    fetchOnboardingData()
+  }, [])
 
   const employmentStatusOptions = [
     { value: 'Employed', label: 'Employed' },
@@ -181,7 +227,21 @@ const ProfileCompletion = () => {
             <p>Help us know you better by filling in these essential details</p>
           </div>
 
-          <form onSubmit={handleSubmit} className={styles.form}>
+          {/* Pre-fill notification */}
+          {preFillInfo && (
+            <div className={styles.infoNotification}>
+              <div className={styles.notificationIcon}>✓</div>
+              <p>{preFillInfo.message}</p>
+            </div>
+          )}
+
+          {/* Loading state */}
+          {fetchingData ? (
+            <div className={styles.loadingState}>
+              <p>Loading your information...</p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className={styles.form}>
             {/* Basic Information Section */}
             <div className={styles.section}>
               <h3 className={styles.sectionTitle}>Basic Information</h3>
@@ -221,7 +281,10 @@ const ProfileCompletion = () => {
               </div>
 
               <div className={styles.formGroup}>
-                <label htmlFor="roll_number">Roll Number (Optional)</label>
+                <label htmlFor="roll_number">
+                  Roll Number {rollNumberLocked ? '' : '(Optional)'}
+                  {rollNumberLocked && <span className={styles.lockedBadge}>✓ Verified</span>}
+                </label>
                 <input
                   type="text"
                   id="roll_number"
@@ -229,9 +292,14 @@ const ProfileCompletion = () => {
                   value={formData.roll_number}
                   onChange={handleInputChange}
                   placeholder="e.g., 19115001"
+                  readOnly={rollNumberLocked}
+                  className={rollNumberLocked ? styles.readOnly : ''}
                 />
                 <small className={styles.helpText}>
-                  Your institute roll number (leave blank if you don't remember)
+                  {rollNumberLocked 
+                    ? 'Roll number verified from institute records'
+                    : 'Your institute roll number (leave blank if you don\'t remember)'
+                  }
                 </small>
               </div>
             </div>
@@ -413,6 +481,7 @@ const ProfileCompletion = () => {
               * Required fields. You can add more details to your profile later.
             </p>
           </form>
+          )}
         </div>
       </div>
     </>

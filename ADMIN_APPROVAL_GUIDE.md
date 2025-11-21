@@ -9,11 +9,13 @@ The registration system has been simplified for better security and user experie
 ## 🔄 New Registration Flow
 
 ### **Before:**
+
 - Institute email (@iiitnr.edu.in) → Auto-approved ✅
 - Personal email → Auto-approved ✅
 - OAuth (Google) → Auto-approved ✅
 
 ### **After:**
+
 - Institute email (@iiitnr.edu.in) → **Requires admin approval** ⏳
 - Personal email → **Requires admin approval** ⏳
 - OAuth (Google) → Auto-approved ✅ (unchanged)
@@ -29,6 +31,7 @@ As an admin, you now need to:
 Navigate to: **Admin Panel → User Management**
 
 You'll see users with status:
+
 - 🟡 **Pending Approval** - Email verified, awaiting your review
 - 🔴 **Not Verified** - Registered but haven't verified email yet
 - 🟢 **Approved** - Active users
@@ -36,12 +39,14 @@ You'll see users with status:
 ### **2. Approve/Reject Users**
 
 **When to Approve:**
+
 - Email looks legitimate
 - Name seems genuine
 - User has completed onboarding
 - No suspicious activity
 
 **When to Reject:**
+
 - Obviously fake email/name
 - Spam account
 - Duplicate registration
@@ -50,6 +55,7 @@ You'll see users with status:
 ### **3. Notification Timeline**
 
 When you approve a user:
+
 1. System updates `is_approved = TRUE` in database
 2. User receives approval email notification
 3. User can now login and access the portal
@@ -59,27 +65,33 @@ When you approve a user:
 ## 📊 Current User States
 
 ### **State 1: Registered, Not Verified**
+
 ```
 email_verified: FALSE
 is_approved: FALSE
 ```
+
 **Status:** Waiting for user to click verification link
 **Action:** None needed, automatic
 
 ### **State 2: Verified, Pending Approval**
+
 ```
 email_verified: TRUE
 is_approved: FALSE
 ```
+
 **Status:** ⚠️ **Requires your action!**
 **Action:** Review and approve/reject from admin panel
 
 ### **State 3: Approved & Active**
+
 ```
 email_verified: TRUE
 is_approved: TRUE
 onboarding_completed: TRUE
 ```
+
 **Status:** ✅ Full access granted
 **Action:** None needed
 
@@ -109,6 +121,7 @@ onboarding_completed: TRUE
 ### **OAuth Users (Google Sign-In)**
 
 These users are **auto-approved** because:
+
 - Google verifies their email
 - Trusted authentication provider
 - Lower risk of spam
@@ -120,6 +133,7 @@ You don't need to approve OAuth users manually.
 You cannot approve a user who hasn't verified their email yet.
 
 The system will show:
+
 - ✅ Email Verified → Can be approved
 - ❌ Email Not Verified → Cannot approve yet
 
@@ -136,6 +150,7 @@ However, they won't be able to access protected features until onboarding is com
 ### **User Receives:**
 
 1. **Registration Email** (automatic)
+
    - "Verify your email address"
    - Contains verification link
 
@@ -155,11 +170,13 @@ However, they won't be able to access protected features until onboarding is com
 ### **Red Flags to Watch:**
 
 1. **Email Patterns:**
+
    - Random characters (e.g., xj29dks@gmail.com)
    - Disposable email services (tempmail, guerrillamail)
    - Pattern matching existing spam
 
 2. **Name Patterns:**
+
    - Single letter names
    - Numbers in names
    - Obvious fake names
@@ -182,6 +199,7 @@ However, they won't be able to access protected features until onboarding is com
 ## 📊 Admin Dashboard Metrics
 
 You can track:
+
 - Total pending approvals
 - Approval rate (approved vs rejected)
 - Average approval time
@@ -196,11 +214,13 @@ You can track:
 ### **Issue: User says they can't login**
 
 **Check:**
+
 1. Is email verified? (Check `email_verified` column)
 2. Is user approved? (Check `is_approved` column)
 3. Is account active? (Check `is_active` column)
 
 **Solution:**
+
 - If not verified → Ask user to check email/resend verification
 - If not approved → Approve from admin panel
 - If not active → Activate from admin panel
@@ -208,21 +228,24 @@ You can track:
 ### **Issue: User didn't receive approval email**
 
 **Check:**
+
 1. Verify email service is configured correctly
 2. Check spam folder
 3. Resend notification manually
 
 **Solution:**
+
 ```sql
 -- Check user email status
-SELECT email, email_verified, is_approved 
-FROM users 
+SELECT email, email_verified, is_approved
+FROM users
 WHERE email = 'user@example.com';
 ```
 
 ### **Issue: Too many pending approvals**
 
 **Solution:**
+
 1. Set aside dedicated time daily for approvals
 2. Enable bulk approval feature
 3. Consider auto-approval for @iiitnr.edu.in (code change needed)
@@ -234,6 +257,7 @@ WHERE email = 'user@example.com';
 ### **Q: Why remove auto-approval for institute emails?**
 
 **A:** For better quality control. Even institute email holders should be verified manually to prevent:
+
 - Fake accounts using old/inactive emails
 - Students who aren't actually alumni yet
 - Accounts created for testing/spam
@@ -289,16 +313,19 @@ User Accesses Portal ✅
 ## 📞 Need Help?
 
 **Technical Issues:**
+
 - Check server logs: `/var/log/alumni-portal/`
 - Database issues: Contact database admin
 - Email service issues: Check SMTP configuration
 
 **Policy Questions:**
+
 - Who qualifies as alumni?
 - Approval criteria?
 - Rejection policy?
 
 **Contact Developer:**
+
 - For feature requests
 - Bug reports
 - System modifications
@@ -307,12 +334,12 @@ User Accesses Portal ✅
 
 ## ✅ Quick Reference
 
-| User State | Email Verified | Approved | Can Login? | Action Needed |
-|-----------|----------------|----------|------------|---------------|
-| Registered | ❌ | ❌ | ❌ | Wait for user |
-| Verified | ✅ | ❌ | ❌ | **Approve user** |
-| Approved | ✅ | ✅ | ✅ | None |
-| OAuth User | ✅ | ✅ | ✅ | None |
+| User State | Email Verified | Approved | Can Login? | Action Needed    |
+| ---------- | -------------- | -------- | ---------- | ---------------- |
+| Registered | ❌             | ❌       | ❌         | Wait for user    |
+| Verified   | ✅             | ❌       | ❌         | **Approve user** |
+| Approved   | ✅             | ✅       | ✅         | None             |
+| OAuth User | ✅             | ✅       | ✅         | None             |
 
 ---
 

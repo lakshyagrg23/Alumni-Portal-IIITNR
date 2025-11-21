@@ -69,26 +69,30 @@ Redirect to: Onboarding form (if first time)
 ### **Single Page - Essential Fields Only**
 
 #### **1. Basic Information**
-- ✅ First Name* (required)
-- ✅ Last Name* (required)
+
+- ✅ First Name\* (required)
+- ✅ Last Name\* (required)
 - ⚪ Roll Number (optional - user can enter if they remember)
 
 #### **2. Academic Information**
-- ✅ Degree* (BTech, MTech, PhD, Integrated MTech)
-- ✅ Branch* (CSE, ECE, DSAI, IT)
-- ✅ Graduation Year* (2010-2030)
+
+- ✅ Degree\* (BTech, MTech, PhD, Integrated MTech)
+- ✅ Branch\* (CSE, ECE, DSAI, IT)
+- ✅ Graduation Year\* (2010-2030)
 
 #### **3. Current Status**
-- ✅ Employment Status* (dropdown):
+
+- ✅ Employment Status\* (dropdown):
   - Employed
   - Higher Studies
   - Entrepreneur
   - Looking for Opportunities
   - Other
-- ✅ Currently At* (Company/University name)
-- ✅ Current City* (Location)
+- ✅ Currently At\* (Company/University name)
+- ✅ Current City\* (Location)
 
 #### **4. Privacy**
+
 - ⚪ Make profile public (checkbox, default: true)
 
 **Total Required Fields:** 8
@@ -105,33 +109,33 @@ Redirect to: Onboarding form (if first time)
    ├─ Email: john.doe@gmail.com
    ├─ Password: ********
    └─ Submit
-   
+
 2. Email Sent Confirmation
    └─ "Check your email for verification link"
-   
+
 3. Email Verification
    └─ Click link in email
-   
+
 4. Verification Success Page
    └─ "Email verified! Your account is pending admin approval."
-   
+
 5. Admin Approves (happens in background)
-   
+
 6. Approval Email Received
    └─ "Your account has been approved! Please login."
-   
+
 7. Login Page
    ├─ Email: john.doe@gmail.com
    ├─ Password: ********
    └─ Submit
-   
+
 8. Onboarding Form (First Login)
    ├─ Basic Info
    ├─ Academic Info
    ├─ Current Status
    ├─ Privacy
    └─ Submit
-   
+
 9. Dashboard (Welcome!)
 ```
 
@@ -140,17 +144,17 @@ Redirect to: Onboarding form (if first time)
 ```
 1. Login Page
    └─ Click "Sign in with Google"
-   
+
 2. Google OAuth Consent
    └─ Approve
-   
+
 3. Onboarding Form (if new user)
    ├─ Basic Info (name pre-filled from Google)
    ├─ Academic Info
    ├─ Current Status
    ├─ Privacy
    └─ Submit
-   
+
 4. Dashboard (Welcome!)
 ```
 
@@ -194,20 +198,22 @@ phone, date_of_birth, profile_picture_url, etc.
 #### 1. **User Model** (`backend/src/models/User.js`)
 
 **Before:**
+
 ```javascript
 // Auto-approve institute emails
-if (email.endsWith('@iiitnr.edu.in')) {
-    is_approved = true;
-    email_verified = true;
+if (email.endsWith("@iiitnr.edu.in")) {
+  is_approved = true;
+  email_verified = true;
 }
 ```
 
 **After:**
+
 ```javascript
 // OAuth providers are auto-approved and email-verified
-if (provider === 'google' || provider === 'linkedin') {
-    is_approved = true;
-    email_verified = true;
+if (provider === "google" || provider === "linkedin") {
+  is_approved = true;
+  email_verified = true;
 }
 // Local email users require manual admin approval
 ```
@@ -215,6 +221,7 @@ if (provider === 'google' || provider === 'linkedin') {
 #### 2. **Registration Endpoint** (`backend/src/routes/auth.js`)
 
 **Updated Response:**
+
 ```json
 {
   "success": true,
@@ -228,6 +235,7 @@ if (provider === 'google' || provider === 'linkedin') {
 #### 3. **Onboarding Validation**
 
 **Simplified to only check:**
+
 - first_name (required)
 - last_name (required)
 - graduation_year (required)
@@ -241,6 +249,7 @@ if (provider === 'google' || provider === 'linkedin') {
 **After:** Single-page form with 10 fields (8 required, 2 optional)
 
 **Key Features:**
+
 - Dynamic label change based on employment status
   - "University Name" for Higher Studies
   - "Company Name" for Employed/Entrepreneur
@@ -251,12 +260,12 @@ if (provider === 'google' || provider === 'linkedin') {
 
 ```javascript
 // Employment Status Logic
-const isEmployed = formData.employment_status === 'Employed'
-const isStudying = formData.employment_status === 'Higher Studies'
+const isEmployed = formData.employment_status === "Employed";
+const isStudying = formData.employment_status === "Higher Studies";
 
 const profileData = {
   // ... basic fields ...
-  
+
   // Conditional mapping
   ...(isEmployed && {
     currentCompany: formData.currently_at,
@@ -264,7 +273,7 @@ const profileData = {
   ...(isStudying && {
     higherStudyInstitution: formData.currently_at,
   }),
-}
+};
 ```
 
 ---
@@ -272,12 +281,14 @@ const profileData = {
 ## 🎨 User Experience Improvements
 
 ### **Before:**
+
 - ✗ Institute emails auto-approved (security risk)
 - ✗ 4-step onboarding form (high abandonment)
 - ✗ Too many required fields (friction)
 - ✗ Bio, LinkedIn, GitHub required (unnecessary)
 
 ### **After:**
+
 - ✓ All users verified by admin (quality control)
 - ✓ Single-page onboarding (low abandonment)
 - ✓ Only 8 essential fields required
@@ -288,21 +299,25 @@ const profileData = {
 ## 🔐 Security & Privacy
 
 ### **Email Verification**
+
 - All email/password registrations require email verification
 - Token expires in 24 hours
 - Token is single-use and deleted after verification
 
 ### **Admin Approval**
+
 - Manual approval workflow for quality control
 - Admin can approve/reject from admin panel
 - Users notified via email when approved
 
 ### **OAuth Security**
+
 - Google OAuth handles email verification
 - No password stored for OAuth users
 - OAuth users auto-approved (trusted provider)
 
 ### **Privacy Controls**
+
 - Users can choose profile visibility during onboarding
 - Can update privacy settings anytime from profile
 - Granular controls: contact info, work info, academic info visibility
@@ -314,16 +329,19 @@ const profileData = {
 These features are NOT part of the MVP but can be added later:
 
 1. **Institute Email Verification**
+
    - Roll number + name + DOB verification
    - Integration with institute database
    - Auto-fill academic details
 
 2. **Batch Upload**
+
    - Admin can upload CSV of verified alumni
    - Bulk account creation
    - Pre-approved accounts
 
 3. **Alumni Referral**
+
    - Existing alumni can vouch for new registrations
    - Faster approval process
    - Community-driven verification
@@ -379,6 +397,7 @@ These features are NOT part of the MVP but can be added later:
 ## ✅ Testing Checklist
 
 ### **Email Registration Flow**
+
 - [ ] User can register with valid email
 - [ ] Duplicate email shows error
 - [ ] Verification email is sent
@@ -388,12 +407,14 @@ These features are NOT part of the MVP but can be added later:
 - [ ] Can login after both verification + approval
 
 ### **OAuth Flow**
+
 - [ ] Google login creates new user
 - [ ] Google login returns existing user
 - [ ] OAuth users can login immediately
 - [ ] OAuth users redirected to onboarding if new
 
 ### **Onboarding Flow**
+
 - [ ] Form validation works correctly
 - [ ] All required fields enforced
 - [ ] Optional fields can be skipped
@@ -403,6 +424,7 @@ These features are NOT part of the MVP but can be added later:
 - [ ] User redirected to dashboard after completion
 
 ### **Admin Approval Flow**
+
 - [ ] Admin can see pending users
 - [ ] Admin can approve users
 - [ ] Admin can reject users
@@ -434,16 +456,19 @@ JWT_EXPIRES_IN=7d
 ## 🐛 Known Limitations
 
 1. **Roll Number Not Verified**
+
    - Users self-enter roll number
    - No validation against institute records
    - Can be left blank
 
 2. **Manual Admin Approval**
+
    - Requires admin intervention
    - May cause delays for legitimate users
    - No automated verification
 
 3. **Single Employment Status**
+
    - Users can only select one status
    - Doesn't handle dual situations (e.g., working + studying)
 
@@ -456,6 +481,7 @@ JWT_EXPIRES_IN=7d
 ## 📞 Support & Contact
 
 For implementation questions or issues:
+
 1. Check admin panel for pending approvals
 2. Verify email service is configured correctly
 3. Check database constraints (email uniqueness, etc.)
@@ -478,6 +504,7 @@ For implementation questions or issues:
 ## 🎯 Success Metrics
 
 **Target KPIs:**
+
 - Registration completion rate: >80%
 - Onboarding completion rate: >90%
 - Time to complete onboarding: <3 minutes
