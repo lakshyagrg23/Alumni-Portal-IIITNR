@@ -83,7 +83,8 @@ DELETE FROM schema_migrations WHERE migration_name IN (
     '003_create_alumni_achievements',
     '004_enhance_event_registrations',
     '005_create_placement_data',
-    '006_create_higher_education_data'
+    '006_create_higher_education_data',
+    '007_extend_alumni_profiles'
 );
 
 COMMIT;

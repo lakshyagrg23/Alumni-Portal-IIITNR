@@ -32,6 +32,9 @@ BEGIN;
 \echo 'Running migration 006: Create higher education data table...'
 \i 006_create_higher_education_data.sql
 
+\echo 'Running migration 007: Extend alumni_profiles with onboarding fields...'
+\i 007_extend_alumni_profiles.sql
+
 -- Create migration tracking table
 CREATE TABLE IF NOT EXISTS schema_migrations (
     id SERIAL PRIMARY KEY,
@@ -47,7 +50,8 @@ INSERT INTO schema_migrations (migration_name) VALUES
     ('003_create_alumni_achievements'),
     ('004_enhance_event_registrations'),
     ('005_create_placement_data'),
-    ('006_create_higher_education_data')
+    ('006_create_higher_education_data'),
+    ('007_extend_alumni_profiles')
 ON CONFLICT (migration_name) DO NOTHING;
 
 -- Commit transaction

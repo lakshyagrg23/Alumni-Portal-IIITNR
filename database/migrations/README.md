@@ -11,6 +11,7 @@ This directory contains SQL migration scripts to enhance the Alumni Portal datab
 4. **004_enhance_event_registrations.sql** - Enhances event tracking with attendance verification and certificates
 5. **005_create_placement_data.sql** - Dedicated table for detailed placement records
 6. **006_create_higher_education_data.sql** - Tracks alumni pursuing Masters, PhD, etc.
+7. **007_extend_alumni_profiles.sql** - Adds onboarding/profile fields (employment status, higher studies, verification, consent) and supporting indexes
 
 ### Utility Scripts
 - **run_all_migrations.sql** - Master script to run all migrations in order

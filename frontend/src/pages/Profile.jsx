@@ -56,13 +56,20 @@ const Profile = () => {
         const { data } = response
         console.log('Profile data:', data)
         
+        const alumni = data.alumniProfile || {}
+        const gradYear = alumni.graduationYear ?? alumni.graduation_year
+        const branch = alumni.branch
+        const degree = alumni.degree
+        const bio = alumni.bio
+        
         // Check if profile is complete (has essential alumni information)
-        const profileComplete = data.alumniProfile && 
-          data.alumniProfile.graduation_year && 
-          data.alumniProfile.branch && 
-          data.alumniProfile.degree && 
-          data.alumniProfile.bio && 
-          data.alumniProfile.bio.trim().length > 0;
+        const profileComplete = Boolean(
+          gradYear &&
+          branch &&
+          degree &&
+          bio &&
+          bio.trim().length > 0
+        );
         
         console.log('Profile complete:', profileComplete)
         setHasAlumniProfile(profileComplete)
@@ -74,26 +81,26 @@ const Profile = () => {
           profilePicture: data.profilePicture || '',
           
           // Alumni profile data - convert to camelCase
-          graduationYear: data.alumniProfile?.graduation_year || '',
-          branch: data.alumniProfile?.branch || '',
-          degree: data.alumniProfile?.degree || '',
-          studentId: data.alumniProfile?.student_id || '',
-          bio: data.alumniProfile?.bio || '',
-          currentCompany: data.alumniProfile?.current_company || '',
-          currentPosition: data.alumniProfile?.current_position || '',
-          currentCity: data.alumniProfile?.current_city || '',
-          currentState: data.alumniProfile?.current_state || '',
-          currentCountry: data.alumniProfile?.current_country || '',
-          linkedinUrl: data.alumniProfile?.linkedin_url || '',
-          githubUrl: data.alumniProfile?.github_url || '',
-          portfolioUrl: data.alumniProfile?.portfolio_url || '',
-          skills: Array.isArray(data.alumniProfile?.skills) 
-            ? data.alumniProfile.skills.join(', ') 
-            : data.alumniProfile?.skills || '',
-          interests: Array.isArray(data.alumniProfile?.interests) 
-            ? data.alumniProfile.interests.join(', ') 
-            : data.alumniProfile?.interests || '',
-          isProfilePublic: data.alumniProfile?.is_profile_public ?? true,
+          graduationYear: gradYear || '',
+          branch: branch || '',
+          degree: degree || '',
+          studentId: alumni.studentId ?? alumni.student_id ?? '',
+          bio: bio || '',
+          currentCompany: alumni.currentCompany ?? alumni.currentEmployer ?? alumni.current_company ?? '',
+          currentPosition: alumni.currentPosition ?? alumni.currentJobTitle ?? alumni.current_position ?? '',
+          currentCity: alumni.currentCity ?? alumni.current_city ?? '',
+          currentState: alumni.currentState ?? alumni.current_state ?? '',
+          currentCountry: alumni.currentCountry ?? alumni.current_country ?? '',
+          linkedinUrl: alumni.linkedinUrl ?? alumni.linkedin_url ?? '',
+          githubUrl: alumni.githubUrl ?? alumni.github_url ?? '',
+          portfolioUrl: alumni.portfolioUrl ?? alumni.portfolio_url ?? '',
+          skills: Array.isArray(alumni?.skills) 
+            ? alumni.skills.join(', ') 
+            : alumni?.skills || '',
+          interests: Array.isArray(alumni?.interests) 
+            ? alumni.interests.join(', ') 
+            : alumni?.interests || '',
+          isProfilePublic: alumni.isProfilePublic ?? alumni.is_profile_public ?? true,
         }
         
         console.log('Setting new profile data:', newProfileData)

@@ -66,15 +66,15 @@ router.post("/register", async (req, res) => {
     // Determine provider (should be 'local' for email/password registration)
     const providerName = provider === "google" ? "google" : "local";
 
-    // Create new user WITHOUT auto-approval
+    // Create new user - requires email verification, then admin approval
     const userData = {
       email: email.toLowerCase(),
       password,
       role: "alumni",
       provider: providerName,
-      is_approved: false, // ❌ Not approved until verified
+      is_approved: false, // ❌ Requires admin approval (for all users)
       is_active: true,
-      email_verified: false, // ❌ Not verified yet
+      email_verified: false, // ❌ Requires email verification first
     };
 
     const user = await User.create(userData);
@@ -107,8 +107,9 @@ router.post("/register", async (req, res) => {
     res.status(201).json({
       success: true,
       message:
-        "Registration successful! Please check your email to verify your account.",
+        "Registration successful! Please check your email to verify your account. After verification, an admin will review your account.",
       requiresVerification: true,
+      requiresAdminApproval: true,
       email: email,
     });
   } catch (error) {
@@ -672,6 +673,7 @@ router.get("/profile", authenticate, async (req, res) => {
           isActive: user.is_active,
           provider: user.provider,
           createdAt: user.created_at,
+          onboardingCompleted: user.onboarding_completed || false,
           // Name comes from alumni_profiles, empty if no profile
           firstName: "",
           lastName: "",
@@ -692,6 +694,7 @@ router.get("/profile", authenticate, async (req, res) => {
         isActive: user.is_active,
         provider: user.provider,
         createdAt: user.created_at,
+        onboardingCompleted: user.onboarding_completed || false,
         // Get primary profile data from converted alumni profile
         firstName: alumniProfile?.firstName || "",
         lastName: alumniProfile?.lastName || "",
@@ -748,6 +751,14 @@ router.put("/profile", authenticate, async (req, res) => {
       "cgpa",
       "currentCompany",
       "currentPosition",
+      "employmentStatus",
+      "currentEmployer",
+      "currentJobTitle",
+      "industrySector",
+      "jobLocation",
+      "jobStartYear",
+      "annualSalaryRange",
+      "jobType",
       "industry",
       "workExperienceYears",
       "skills",
@@ -765,6 +776,19 @@ router.put("/profile", authenticate, async (req, res) => {
       "showContactInfo",
       "showWorkInfo",
       "showAcademicInfo",
+      "higherStudyInstitution",
+      "higherStudyProgram",
+      "higherStudyField",
+      "higherStudyCountry",
+      "higherStudyYear",
+      "higherStudyStatus",
+      "program",
+      "department",
+      "alternateEmail",
+      "currentAddress",
+      "permanentAddress",
+      "profileVerifiedAt",
+      "verificationSource"
     ];
 
     alumniFields.forEach((field) => {
@@ -917,10 +941,11 @@ router.post("/complete-onboarding", authenticate, async (req, res) => {
     }
 
     const profile = profileCheck.rows[0];
+    // Simplified validation - only require name and graduation year
     if (!profile.first_name || !profile.last_name || !profile.graduation_year) {
       return res.status(400).json({
         success: false,
-        message: "Please fill in all required profile fields (name, graduation year).",
+        message: "Please complete all required fields in your profile (name, graduation year).",
       });
     }
 

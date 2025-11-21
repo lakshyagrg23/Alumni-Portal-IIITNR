@@ -195,7 +195,7 @@ const Register = () => {
               )}
             </div>
             {/* reCAPTCHA aligned and styled */}
-            {/* <Recaptcha onChange={setCaptcha} /> */}
+            <Recaptcha onChange={setCaptcha} />
             <button
               type="submit"
               className={styles.submitButton}

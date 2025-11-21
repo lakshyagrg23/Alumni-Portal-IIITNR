@@ -37,8 +37,9 @@ class User {
         let email_verified = data.email_verified;
         if (typeof email_verified === 'undefined') email_verified = data.emailVerified ?? false;
 
-        // Auto-approve institute emails
-        if (email.endsWith('@iiitnr.edu.in')) {
+        // OAuth providers (Google) are auto-approved and email-verified
+        // Local email/password registrations require manual admin approval after email verification
+        if (provider === 'google' || provider === 'linkedin') {
             is_approved = true;
             email_verified = true;
         }
