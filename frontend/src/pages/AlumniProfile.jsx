@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import axios from 'axios'
+import { getAvatarUrl, handleAvatarError } from '@utils/avatarUtils'
 import styles from './AlumniProfile.module.css'
 
 const AlumniProfile = () => {
@@ -79,6 +80,10 @@ const AlumniProfile = () => {
     )
   }
 
+  const profileImageUrl = alumni.profilePictureUrl
+    ? getAvatarUrl(alumni.profilePictureUrl)
+    : null
+
   return (
     <>
       <Helmet>
@@ -98,11 +103,12 @@ const AlumniProfile = () => {
         {/* Profile Header */}
         <div className={styles.profileHeader}>
           <div className={styles.profilePicture}>
-            {alumni.profilePictureUrl ? (
+            {profileImageUrl ? (
               <img 
-                src={alumni.profilePictureUrl} 
+                src={profileImageUrl} 
                 alt={`${alumni.firstName} ${alumni.lastName}`}
                 className={styles.profileImage}
+                onError={handleAvatarError}
               />
             ) : (
               <div className={styles.avatarInitials}>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@hooks/useAuth'
+import { getAvatarUrl, handleAvatarError } from '@utils/avatarUtils'
 import styles from './Header.module.css'
 
 const Header = () => {
@@ -42,6 +43,12 @@ const Header = () => {
   const isActiveLink = (path) => {
     return location.pathname === path
   }
+
+  const userAvatar = getAvatarUrl(
+    user?.profilePicture ||
+    user?.profilePictureUrl ||
+    user?.alumniProfile?.profilePictureUrl
+  )
 
   return (
     <header className={styles.header}>
@@ -138,12 +145,10 @@ const Header = () => {
               <div className={styles.userMenu}>
                 <button className={styles.userButton} onClick={toggleUserDropdown}>
                 <img 
-                  src={user?.profilePicture || '/default-avatar.svg'}
+                  src={userAvatar}
                   alt={`${user?.firstName} ${user?.lastName}`}
                   className={styles.userAvatar}
-                  onError={(e) => {
-                    e.target.src = '/default-avatar.svg'
-                  }}
+                  onError={handleAvatarError}
                 />
                 <span className={styles.userName}>
                   {user?.firstName} {user?.lastName}

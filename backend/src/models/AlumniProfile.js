@@ -566,7 +566,6 @@ class AlumniProfile {
       // Accreditation / profile canonical mappings
       employmentStatus: 'employment_status',
       currentEmployer: 'current_employer',
-      currentCompany: 'current_employer',
       currentJobTitle: 'current_job_title',
       currentPosition: 'current_job_title',
       industrySector: 'industry_sector',
@@ -684,6 +683,11 @@ class AlumniProfile {
       const apiKey = fieldMap[key] || key;
       apiData[apiKey] = data[key];
     });
+
+    // Ensure currentCompany is populated even if only currentEmployer is set
+    if (!apiData.currentCompany && apiData.currentEmployer) {
+      apiData.currentCompany = apiData.currentEmployer;
+    }
 
     return apiData;
   }

@@ -38,9 +38,7 @@ const FILTER_OPTIONS = {
   course: [
     'Computer Science & Engineering',
     'Electronics & Communication',
-    'Information Technology',
-    'Data Science & AI',
-    'Cybersecurity'
+    'Data Science and Artificial Intelligence',
   ],
   location: ['Bangalore', 'Hyderabad', 'Mumbai', 'Delhi', 'Pune', 'Other'],
   company: ['Google', 'Microsoft', 'Amazon', 'Meta', 'Apple', 'Other'],

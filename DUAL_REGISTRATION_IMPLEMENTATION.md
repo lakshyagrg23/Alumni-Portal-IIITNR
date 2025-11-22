@@ -526,7 +526,6 @@ The migration includes **16 sample alumni records** covering:
   - Computer Science & Engineering
   - Electronics & Communication Engineering
   - Data Science & Artificial Intelligence
-  - Information Technology
 
 Example records for testing:
 

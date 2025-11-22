@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import { getAvatarUrl, handleAvatarError } from '@utils/avatarUtils'
 import styles from './AlumniDirectory.module.css'
 
 const AlumniDirectory = () => {
@@ -153,8 +154,7 @@ const AlumniDirectory = () => {
               <option value="">All Branches</option>
               <option value="Computer Science Engineering">CSE</option>
               <option value="Electronics and Communication Engineering">ECE</option>
-              <option value="Information Technology">IT</option>
-              <option value="Electrical Engineering">EE</option>
+              <option value="Data Science and Artificial Intelligence">DSAI</option>
             </select>
 
             <select
@@ -214,23 +214,29 @@ const AlumniDirectory = () => {
                 // Backend converts `user_id` -> `userId` in API responses.
                 // Use `userId` (camelCase) primarily and fall back to `user_id` if present.
                 const userId = alum.userId || alum.user_id || null;
+                const profileImageUrl = alum.profilePictureUrl
+                  ? getAvatarUrl(alum.profilePictureUrl)
+                  : null;
                 return (
                 <div key={alum.id} className={styles.alumniCard}>
                   <div className={styles.cardHeader}>
                     <div className={styles.avatar}>
-                      {alum.profilePictureUrl ? (
+                      {profileImageUrl ? (
                         <img 
-                          src={alum.profilePictureUrl} 
+                          src={profileImageUrl} 
                           alt={`${alum.firstName} ${alum.lastName}`}
                           onError={(e) => {
+                            handleAvatarError(e)
                             e.target.style.display = 'none'
-                            e.target.nextSibling.style.display = 'flex'
+                            if (e.target.nextSibling) {
+                              e.target.nextSibling.style.display = 'flex'
+                            }
                           }}
                         />
                       ) : null}
                       <div 
                         className={styles.avatarInitials}
-                        style={{ display: alum.profilePictureUrl ? 'none' : 'flex' }}
+                        style={{ display: profileImageUrl ? 'none' : 'flex' }}
                       >
                         {alum.firstName?.charAt(0)}{alum.lastName?.charAt(0)}
                       </div>

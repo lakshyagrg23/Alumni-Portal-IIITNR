@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet-async'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@hooks/useAuth'
 import { authService } from '../services/authService'
+import ProfilePictureUpload from '../components/profile/ProfilePictureUpload'
 import styles from './Profile.module.css'
 
 const Profile = () => {
@@ -40,10 +41,31 @@ const Profile = () => {
   const [activeTab, setActiveTab] = useState('basic')
   const [hasAlumniProfile, setHasAlumniProfile] = useState(false)
 
+  // Use the same branch values as onboarding so saved selections render correctly
+  const branchOptions = [
+    'Computer Science & Engineering',
+    'Electronics & Communication Engineering',
+    'Data Science & Artificial Intelligence',
+  ]
+  const displayedBranchOptions =
+    profileData.branch && !branchOptions.includes(profileData.branch)
+      ? [profileData.branch, ...branchOptions]
+      : branchOptions
+
   // Load profile data on component mount
   useEffect(() => {
     loadProfileData()
   }, [])
+
+  // Handle profile picture upload success
+  const handlePictureUploadSuccess = (newPictureUrl) => {
+    setProfileData(prev => ({
+      ...prev,
+      profilePicture: newPictureUrl
+    }))
+    setMessage('Profile picture updated successfully!')
+    setTimeout(() => setMessage(''), 3000)
+  }
 
   const loadProfileData = async () => {
     try {
@@ -78,7 +100,7 @@ const Profile = () => {
           firstName: data.firstName || '',
           lastName: data.lastName || '',
           email: data.email || '',
-          profilePicture: data.profilePicture || '',
+          profilePicture: alumni.profilePictureUrl ?? alumni.profile_picture_url ?? data.profilePicture ?? '',
           
           // Alumni profile data - convert to camelCase
           graduationYear: gradYear || '',
@@ -280,7 +302,11 @@ const Profile = () => {
           <div className={styles.profileHeader}>
             <div className={styles.avatarSection}>
               <img 
-                src={profileData.profilePicture || '/default-avatar.svg'}
+                src={profileData.profilePicture 
+                  ? (profileData.profilePicture.startsWith('http') 
+                      ? profileData.profilePicture 
+                      : `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${profileData.profilePicture}`)
+                  : '/default-avatar.svg'}
                 alt={`${profileData.firstName} ${profileData.lastName}`}
                 className={styles.avatar}
                 onError={(e) => {
@@ -340,6 +366,16 @@ const Profile = () => {
               <div className={styles.tabContent}>
                 <h3>Basic Information</h3>
                 
+                {/* Profile Picture Upload Section */}
+                <div className={styles.formGroup}>
+                  <label>Profile Picture</label>
+                  <ProfilePictureUpload
+                    currentPictureUrl={profileData.profilePicture}
+                    onUploadSuccess={handlePictureUploadSuccess}
+                    allowDelete={false}
+                  />
+                </div>
+
                 <div className={styles.formRow}>
                   <div className={styles.formGroup}>
                     <label htmlFor="firstName">First Name *</label>
@@ -379,18 +415,6 @@ const Profile = () => {
                     onChange={handleInputChange}
                     rows="4"
                     placeholder="Tell us about yourself..."
-                  />
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label htmlFor="profilePicture">Profile Picture URL</label>
-                  <input
-                    type="url"
-                    id="profilePicture"
-                    name="profilePicture"
-                    value={profileData.profilePicture}
-                    onChange={handleInputChange}
-                    placeholder="https://example.com/your-photo.jpg"
                   />
                 </div>
               </div>
@@ -440,10 +464,11 @@ const Profile = () => {
                       onChange={handleInputChange}
                     >
                       <option value="">Select Branch</option>
-                      <option value="Computer Science">Computer Science</option>
-                      <option value="Electronics & Communication">Electronics & Communication</option>
-                      <option value="Data Science">Data Science</option>
-                      <option value="Information Technology">Information Technology</option>
+                      {displayedBranchOptions.map(branch => (
+                        <option key={branch} value={branch}>
+                          {branch}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   

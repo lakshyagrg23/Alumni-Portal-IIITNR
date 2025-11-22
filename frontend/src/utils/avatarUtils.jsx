@@ -2,13 +2,32 @@
  * Avatar utility functions for consistent avatar handling across the app
  */
 
+// Base API host without the /api suffix, used for resolving uploaded image URLs
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api')
+  .replace(/\/api\/?$/, '')
+
+/**
+ * Normalize a profile picture path into an absolute URL.
+ * Keeps fully qualified URLs as-is and prefixes backend host for stored uploads.
+ * @param {string} profilePictureUrl - User's profile picture URL
+ * @returns {string} Resolved URL or empty string if none provided
+ */
+export const resolveAvatarUrl = (profilePictureUrl) => {
+  if (!profilePictureUrl) return ''
+  if (/^https?:\/\//i.test(profilePictureUrl)) return profilePictureUrl
+  const normalizedPath = profilePictureUrl.startsWith('/')
+    ? profilePictureUrl
+    : `/${profilePictureUrl}`
+  return `${API_BASE_URL}${normalizedPath}`
+}
+
 /**
  * Get avatar URL with fallback to default avatar
  * @param {string} profilePictureUrl - User's profile picture URL
  * @returns {string} Avatar URL or default avatar path
  */
 export const getAvatarUrl = (profilePictureUrl) => {
-  return profilePictureUrl || '/default-avatar.svg'
+  return resolveAvatarUrl(profilePictureUrl) || '/default-avatar.svg'
 }
 
 /**

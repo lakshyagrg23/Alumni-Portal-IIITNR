@@ -104,8 +104,13 @@ app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Static file serving
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+// Static file serving with CORS headers
+app.use("/uploads", (req, res, next) => {
+  // Set CORS headers for static files
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Cross-Origin-Resource-Policy", "cross-origin");
+  next();
+}, express.static(path.join(__dirname, "../uploads")));
 
 // Health check endpoint
 app.get("/health", (req, res) => {

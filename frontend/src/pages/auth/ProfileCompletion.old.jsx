@@ -288,7 +288,6 @@ const ProfileCompletion = () => {
                   <option value="Computer Science">Computer Science</option>
                   <option value="Electronics & Communication">Electronics & Communication</option>
                   <option value="Data Science">Data Science</option>
-                  <option value="Information Technology">Information Technology</option>
                 </select>
                 {errors.branch && <span className={styles.errorText}>{errors.branch}</span>}
               </div>

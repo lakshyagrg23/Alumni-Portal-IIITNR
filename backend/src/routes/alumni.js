@@ -3,6 +3,13 @@ const router = express.Router();
 import AlumniProfile from "../models/AlumniProfile.js";
 import { query } from "../config/database.js";
 import { authenticate, requireOnboardedUser } from "../models/middleware/auth.js";
+import { uploadProfilePicture, handleUploadError } from "../models/middleware/upload.js";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * @route   GET /api/alumni
@@ -520,6 +527,221 @@ router.put("/profile/consent", authenticate, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error while updating consent",
+    });
+  }
+});
+
+/**
+ * @route   POST /api/alumni/profile/upload-picture
+ * @desc    Upload profile picture for current user
+ * @access  Private (Requires authentication)
+ */
+router.post(
+  "/profile/upload-picture",
+  authenticate,
+  uploadProfilePicture.single("profilePicture"),
+  handleUploadError,
+  async (req, res) => {
+    console.log("=== PROFILE PICTURE UPLOAD REQUEST RECEIVED ===");
+    console.log("User:", req.user);
+    console.log("File:", req.file);
+    console.log("Body:", req.body);
+    
+    try {
+      if (!req.user || !req.user.id) {
+        console.log("❌ Authentication failed - no user");
+        // Clean up uploaded file if authentication fails
+        if (req.file) {
+          fs.unlinkSync(req.file.path);
+        }
+        return res.status(401).json({
+          success: false,
+          message: "Not authenticated",
+        });
+      }
+
+      if (!req.file) {
+        console.log("❌ No file in request");
+        return res.status(400).json({
+          success: false,
+          message: "No file uploaded. Please select an image file.",
+        });
+      }
+
+      console.log("✅ File received:", req.file.filename);
+      console.log("File path:", req.file.path);
+      console.log("File size:", req.file.size);
+
+      // Get user's current profile to check for existing picture
+      const profileResult = await query(
+        "SELECT profile_picture_url FROM alumni_profiles WHERE user_id = $1",
+        [req.user.id]
+      );
+
+      console.log("Current profile picture:", profileResult.rows[0]?.profile_picture_url);
+
+      // Delete old profile picture if exists
+      if (profileResult.rows.length > 0 && profileResult.rows[0].profile_picture_url) {
+        const oldPicturePath = profileResult.rows[0].profile_picture_url;
+        // Extract filename from URL (e.g., /uploads/profile_pics/filename.jpg)
+        const oldFileName = oldPicturePath.split("/").pop();
+        const oldFilePath = path.join(
+          __dirname,
+          "../../uploads/profile_pics",
+          oldFileName
+        );
+
+        // Delete old file if it exists
+        if (fs.existsSync(oldFilePath)) {
+          try {
+            fs.unlinkSync(oldFilePath);
+            console.log(`Deleted old profile picture: ${oldFileName}`);
+          } catch (err) {
+            console.error("Error deleting old profile picture:", err);
+            // Don't fail the upload if we can't delete the old file
+          }
+        }
+      }
+
+      // Generate the URL path for the uploaded file
+      const fileUrl = `/uploads/profile_pics/${req.file.filename}`;
+
+      let uploadResult = profileResult;
+
+      // If no profile exists yet (common during onboarding), create a minimal one
+      if (profileResult.rows.length === 0) {
+        // Fetch basic user info to satisfy NOT NULL constraints
+        const userInfo = await query(
+          "SELECT first_name, last_name FROM users WHERE id = $1",
+          [req.user.id]
+        );
+
+        const firstName =
+          userInfo.rows[0]?.first_name?.trim() || "Alumni";
+        const lastName =
+          userInfo.rows[0]?.last_name?.trim() || "User";
+
+        uploadResult = await query(
+          `INSERT INTO alumni_profiles (
+            user_id,
+            first_name,
+            last_name,
+            profile_picture_url,
+            is_profile_public,
+            created_at,
+            updated_at
+          )
+          VALUES ($1, $2, $3, $4, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          RETURNING id, profile_picture_url`,
+          [req.user.id, firstName, lastName, fileUrl]
+        );
+      } else {
+        // Update profile picture URL in database
+        uploadResult = await query(
+          `UPDATE alumni_profiles 
+           SET profile_picture_url = $1, updated_at = CURRENT_TIMESTAMP 
+           WHERE user_id = $2 
+           RETURNING id, profile_picture_url`,
+          [fileUrl, req.user.id]
+        );
+      }
+
+      res.json({
+        success: true,
+        message: "Profile picture uploaded successfully",
+        data: {
+          profilePictureUrl: uploadResult.rows[0].profile_picture_url || fileUrl,
+          filename: req.file.filename,
+        },
+      });
+    } catch (error) {
+      // Clean up uploaded file on error
+      if (req.file && fs.existsSync(req.file.path)) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (err) {
+          console.error("Error cleaning up file:", err);
+        }
+      }
+
+      console.error("Upload profile picture error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Server error while uploading profile picture",
+        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  }
+);
+
+/**
+ * @route   DELETE /api/alumni/profile/delete-picture
+ * @desc    Delete profile picture for current user
+ * @access  Private (Requires authentication)
+ */
+router.delete("/profile/delete-picture", authenticate, async (req, res) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Not authenticated",
+      });
+    }
+
+    // Get current profile picture URL
+    const profileResult = await query(
+      "SELECT profile_picture_url FROM alumni_profiles WHERE user_id = $1",
+      [req.user.id]
+    );
+
+    if (profileResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Profile not found",
+      });
+    }
+
+    const currentPictureUrl = profileResult.rows[0].profile_picture_url;
+
+    if (!currentPictureUrl) {
+      return res.status(400).json({
+        success: false,
+        message: "No profile picture to delete",
+      });
+    }
+
+    // Delete file from filesystem
+    const fileName = currentPictureUrl.split("/").pop();
+    const filePath = path.join(__dirname, "../../uploads/profile_pics", fileName);
+
+    if (fs.existsSync(filePath)) {
+      try {
+        fs.unlinkSync(filePath);
+        console.log(`Deleted profile picture: ${fileName}`);
+      } catch (err) {
+        console.error("Error deleting file:", err);
+        // Continue even if file deletion fails
+      }
+    }
+
+    // Remove profile picture URL from database
+    await query(
+      `UPDATE alumni_profiles 
+       SET profile_picture_url = NULL, updated_at = CURRENT_TIMESTAMP 
+       WHERE user_id = $1`,
+      [req.user.id]
+    );
+
+    res.json({
+      success: true,
+      message: "Profile picture deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete profile picture error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while deleting profile picture",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 });

@@ -52,7 +52,7 @@ const Footer = () => {
             <h3 className={styles.sectionTitle}>Follow IIIT NR</h3>
             <div className={styles.socialLinks}>
               <a 
-                href="https://www.facebook.com/iiitnr21/" 
+                href="https://www.facebook.com/IIITNROfficial" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className={styles.socialLink}
