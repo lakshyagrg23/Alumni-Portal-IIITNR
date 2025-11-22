@@ -32,7 +32,10 @@ const Login = () => {
     try {
       const response = await login(data);
       toast.success('Login successful!');
-      if (!response?.user?.hasAlumniProfile) {
+      const userRole = response?.user?.role;
+      if (userRole === 'admin') {
+        navigate('/admin');
+      } else if (!response?.user?.hasAlumniProfile) {
         navigate('/complete-profile');
       } else {
         navigate('/dashboard');
