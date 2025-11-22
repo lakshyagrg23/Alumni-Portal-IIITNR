@@ -21,7 +21,49 @@
 .subtitle {
   font-size: 1.125rem;
   color: #6b7280;
-  margin: 0;
+  margin: 0 0 1.5rem 0;
+}
+
+/* Toggle Container */
+.toggleContainer {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 1.5rem;
+  padding: 0.5rem;
+  background: #f3f4f6;
+  border-radius: 12px;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.toggleButton {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: transparent;
+  color: #6b7280;
+}
+
+.toggleButton:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.toggleButton.active {
+  background: #1e3a8a;
+  color: white;
+  box-shadow: 0 2px 4px rgba(30, 58, 138, 0.2);
+}
+
+.toggleButton.active:hover {
+  background: #1e40af;
 }
 
 /* Search and Filters */

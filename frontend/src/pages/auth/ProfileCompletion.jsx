@@ -423,7 +423,7 @@ const ProfileCompletion = () => {
                   value={formData.graduation_year}
                   onChange={handleInputChange}
                   min="2019"
-                  max={new Date().getFullYear() + 5}
+                  max={new Date().getFullYear() + 6}
                   className={errors.graduation_year ? styles.error : ''}
                   placeholder="e.g., 2023"
                 />

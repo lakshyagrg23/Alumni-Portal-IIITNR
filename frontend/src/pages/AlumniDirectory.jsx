@@ -20,6 +20,7 @@ const AlumniDirectory = () => {
   const [selectedBranch, setSelectedBranch] = useState('')
   const [sortBy, setSortBy] = useState('graduation_year')
   const [sortOrder, setSortOrder] = useState('DESC')
+  const [studentType, setStudentType] = useState('alumni') // 'alumni' or 'current'
 
   // Get available batches and branches for filters
   const [batches, setBatches] = useState([])
@@ -41,6 +42,7 @@ const AlumniDirectory = () => {
       if (searchTerm) params.append('search', searchTerm)
       if (selectedBatch) params.append('batch', selectedBatch)
       if (selectedBranch) params.append('branch', selectedBranch)
+      if (studentType) params.append('studentType', studentType)
 
       const response = await axios.get(`${API_URL}/alumni?${params}`)
       
@@ -72,7 +74,7 @@ const AlumniDirectory = () => {
   // Initial fetch
   useEffect(() => {
     fetchAlumni(1)
-  }, [searchTerm, selectedBatch, selectedBranch, sortBy, sortOrder])
+  }, [searchTerm, selectedBatch, selectedBranch, sortBy, sortOrder, studentType])
 
   // Handle page change
   const handlePageChange = (page) => {
@@ -96,6 +98,7 @@ const AlumniDirectory = () => {
     setSelectedBranch('')
     setSortBy('graduation_year')
     setSortOrder('DESC')
+    setStudentType('alumni')
     setCurrentPage(1)
   }
 
@@ -111,10 +114,31 @@ const AlumniDirectory = () => {
 
       <div className={styles.directoryContainer}>
         <div className={styles.header}>
-          <h1 className={styles.title}>Alumni Directory</h1>
+          <h1 className={styles.title}>
+            {studentType === 'alumni' ? 'Alumni Directory' : 'Current Students'}
+          </h1>
           <p className={styles.subtitle}>
-            Discover and connect with {totalRecords} IIIT NR alumni worldwide
+            {studentType === 'alumni' 
+              ? `Discover and connect with ${totalRecords} IIIT NR alumni worldwide`
+              : `View ${totalRecords} current IIIT NR students`
+            }
           </p>
+          
+          {/* Toggle between Alumni and Current Students */}
+          <div className={styles.toggleContainer}>
+            <button
+              className={`${styles.toggleButton} ${studentType === 'alumni' ? styles.active : ''}`}
+              onClick={() => setStudentType('alumni')}
+            >
+              Alumni
+            </button>
+            <button
+              className={`${styles.toggleButton} ${studentType === 'current' ? styles.active : ''}`}
+              onClick={() => setStudentType('current')}
+            >
+              Current Students
+            </button>
+          </div>
         </div>
 
         {/* Search and Filters */}

@@ -74,12 +74,33 @@ const Header = () => {
 
         {/* Desktop Navigation */}
         <nav className={styles.desktopNav}>
-          <Link 
-            to="/" 
-            className={`${styles.navLink} ${isActiveLink('/') ? styles.active : ''}`}
-          >
-            Home
-          </Link>
+          {!isAuthenticated && (
+            <Link 
+              to="/" 
+              className={`${styles.navLink} ${isActiveLink('/') ? styles.active : ''}`}
+            >
+              Home
+            </Link>
+          )}
+          
+          {isAuthenticated && user?.role === 'admin' && (
+            <Link 
+              to="/admin" 
+              className={`${styles.navLink} ${isActiveLink('/admin') ? styles.active : ''}`}
+            >
+              Admin Panel
+            </Link>
+          )}
+          
+          {isAuthenticated && user?.role !== 'admin' && (
+            <Link 
+              to="/dashboard" 
+              className={`${styles.navLink} ${isActiveLink('/dashboard') ? styles.active : ''}`}
+            >
+              Dashboard
+            </Link>
+          )}
+          
           <Link 
             to="/about" 
             className={`${styles.navLink} ${isActiveLink('/about') ? styles.active : ''}`}
@@ -100,20 +121,12 @@ const Header = () => {
           </Link>
           
           {isAuthenticated && (
-            <>
-              <Link 
-                to="/directory" 
-                className={`${styles.navLink} ${isActiveLink('/directory') ? styles.active : ''}`}
-              >
-                Directory
-              </Link>
-              <Link 
-                to="/dashboard" 
-                className={`${styles.navLink} ${isActiveLink('/dashboard') ? styles.active : ''}`}
-              >
-                Dashboard
-              </Link>
-            </>
+            <Link 
+              to="/directory" 
+              className={`${styles.navLink} ${isActiveLink('/directory') ? styles.active : ''}`}
+            >
+              Directory
+            </Link>
           )}
         </nav>
 
@@ -168,11 +181,6 @@ const Header = () => {
                   <Link to="/profile" className={styles.dropdownItem} onClick={closeAllMenus}>
                     My Profile
                   </Link>
-                  {user?.role === 'admin' && (
-                    <Link to="/admin" className={styles.dropdownItem} onClick={closeAllMenus}>
-                      Admin Panel
-                    </Link>
-                  )}
                   <hr className={styles.divider} />
                   <button className={styles.dropdownItem} onClick={handleLogout}>
                     Logout
@@ -209,9 +217,24 @@ const Header = () => {
       {isMobileMenuOpen && (
         <div className={styles.mobileNav}>
           <div className={styles.mobileNavContent}>
-            <Link to="/" className={styles.mobileNavLink} onClick={closeAllMenus}>
-              Home
-            </Link>
+            {!isAuthenticated && (
+              <Link to="/" className={styles.mobileNavLink} onClick={closeAllMenus}>
+                Home
+              </Link>
+            )}
+            
+            {isAuthenticated && user?.role === 'admin' && (
+              <Link to="/admin" className={styles.mobileNavLink} onClick={closeAllMenus}>
+                Admin Panel
+              </Link>
+            )}
+            
+            {isAuthenticated && user?.role !== 'admin' && (
+              <Link to="/dashboard" className={styles.mobileNavLink} onClick={closeAllMenus}>
+                Dashboard
+              </Link>
+            )}
+            
             <Link to="/about" className={styles.mobileNavLink} onClick={closeAllMenus}>
               About
             </Link>
@@ -222,13 +245,10 @@ const Header = () => {
               Events
             </Link>
             
-            {isAuthenticated ? (
+            {isAuthenticated && (
               <>
                 <Link to="/directory" className={styles.mobileNavLink} onClick={closeAllMenus}>
                   Directory
-                </Link>
-                <Link to="/dashboard" className={styles.mobileNavLink} onClick={closeAllMenus}>
-                  Dashboard
                 </Link>
                 <Link to="/profile" className={styles.mobileNavLink} onClick={closeAllMenus}>
                   My Profile
@@ -236,16 +256,13 @@ const Header = () => {
                 <Link to="/messages" className={styles.mobileNavLink} onClick={closeAllMenus}>
                   Messages
                 </Link>
-                {user?.role === 'admin' && (
-                  <Link to="/admin" className={styles.mobileNavLink} onClick={closeAllMenus}>
-                    Admin Panel
-                  </Link>
-                )}
                 <button className={styles.mobileLogoutButton} onClick={handleLogout}>
                   Logout
                 </button>
               </>
-            ) : (
+            )}
+            
+            {!isAuthenticated && (
               <div className={styles.mobileAuthButtons}>
                 <Link to="/login" className={styles.mobileLoginButton} onClick={closeAllMenus}>
                   Login

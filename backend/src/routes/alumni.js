@@ -29,7 +29,10 @@ router.get("/", async (req, res) => {
       limit = 20,
       sortBy = "graduation_year",
       sortOrder = "DESC",
+      studentType = "alumni", // 'alumni' or 'current'
     } = req.query;
+
+    const currentYear = new Date().getFullYear();
 
     // Use AlumniProfile.findAll to get only alumni (not admin) users
     const result = await AlumniProfile.findAll({
@@ -42,6 +45,8 @@ router.get("/", async (req, res) => {
       currentCity: location, // Map location to currentCity
       orderBy: `ap.${sortBy} ${sortOrder}`,
       publicOnly: true, // Only show public profiles for privacy
+      studentType, // Filter by alumni or current students
+      currentYear, // Pass current year for filtering
     });
 
     res.json({

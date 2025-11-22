@@ -276,6 +276,8 @@ class AlumniProfile {
       company,
       orderBy = "created_at DESC",
       publicOnly = true,
+      studentType = "alumni",
+      currentYear = new Date().getFullYear(),
     } = options;
 
     const offset = (page - 1) * limit;
@@ -294,6 +296,19 @@ class AlumniProfile {
     whereConditions.push(`u.role = $${paramIndex}`);
     queryParams.push("alumni");
     paramIndex++;
+
+    // Filter by student type (alumni vs current students)
+    if (studentType === "alumni") {
+      // Alumni: graduation year <= current year
+      whereConditions.push(`ap.graduation_year <= $${paramIndex}`);
+      queryParams.push(currentYear);
+      paramIndex++;
+    } else if (studentType === "current") {
+      // Current students: graduation year > current year
+      whereConditions.push(`ap.graduation_year > $${paramIndex}`);
+      queryParams.push(currentYear);
+      paramIndex++;
+    }
 
     // Search in name, company, or skills
     if (search) {
