@@ -103,6 +103,8 @@ const ProfilePictureUpload = ({ currentPictureUrl, onUploadSuccess, allowDelete 
       console.error("Error response:", err.response?.data);
       console.error("Error status:", err.response?.status);
       console.error("Error message:", err.message);
+      console.error("Request URL was:", `${API_BASE_URL}/api/alumni/profile/upload-picture`);
+      console.error("Full error object:", JSON.stringify(err.response, null, 2));
       setError(
         err.response?.data?.message ||
           err.response?.data?.error ||

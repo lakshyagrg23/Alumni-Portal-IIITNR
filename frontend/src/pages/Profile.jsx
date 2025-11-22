@@ -41,17 +41,6 @@ const Profile = () => {
   const [activeTab, setActiveTab] = useState('basic')
   const [hasAlumniProfile, setHasAlumniProfile] = useState(false)
 
-  // Use the same branch values as onboarding so saved selections render correctly
-  const branchOptions = [
-    'Computer Science & Engineering',
-    'Electronics & Communication Engineering',
-    'Data Science & Artificial Intelligence',
-  ]
-  const displayedBranchOptions =
-    profileData.branch && !branchOptions.includes(profileData.branch)
-      ? [profileData.branch, ...branchOptions]
-      : branchOptions
-
   // Load profile data on component mount
   useEffect(() => {
     loadProfileData()
@@ -282,7 +271,7 @@ const Profile = () => {
           </div>
         )}
 
-        {!hasAlumniProfile && (
+        {/* {!hasAlumniProfile && (
           <div className={styles.noProfileNotice}>
             <div className={styles.noticeContent}>
               <h3>Complete Your Alumni Profile</h3>
@@ -295,7 +284,7 @@ const Profile = () => {
               </Link>
             </div>
           </div>
-        )}
+        )} */}
 
         <div className={styles.profileCard}>
           {/* Profile Header */}
@@ -464,11 +453,9 @@ const Profile = () => {
                       onChange={handleInputChange}
                     >
                       <option value="">Select Branch</option>
-                      {displayedBranchOptions.map(branch => (
-                        <option key={branch} value={branch}>
-                          {branch}
-                        </option>
-                      ))}
+                      <option value="Computer Science & Engineering">Computer Science & Engineering</option>
+                      <option value="Electronics & Communication Engineering">Electronics & Communication Engineering</option>
+                      <option value="Data Science & Artificial Intelligence">Data Science & Artificial Intelligence</option>
                     </select>
                   </div>
                   
