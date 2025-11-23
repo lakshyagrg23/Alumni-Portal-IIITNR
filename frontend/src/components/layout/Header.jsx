@@ -1,15 +1,23 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@hooks/useAuth'
 import { getAvatarUrl, handleAvatarError } from '@utils/avatarUtils'
+import { initSocket, getSocket } from '@utils/socketClient'
+import axios from 'axios'
+import { useMessaging } from '../../context/MessagingContext'
 import styles from './Header.module.css'
 
 const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false)
-  const { user, logout, isAuthenticated } = useAuth()
+  const { user, logout, isAuthenticated, token } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const { totalUnread } = useMessaging()
+  // Toast queue for multiple incoming messages while user away from /messages
+  const [toastQueue, setToastQueue] = useState([]) // [{ id, text, senderId, ts }]
+  const [activeToast, setActiveToast] = useState(null)
+  const toastTimerRef = useRef(null)
 
   const handleLogout = () => {
     logout()
@@ -49,6 +57,38 @@ const Header = () => {
     user?.profilePictureUrl ||
     user?.alumniProfile?.profilePictureUrl
   )
+
+  // Helper: push toast removed (alerts disabled per rebuild spec)
+  const enqueueToast = () => {}
+
+  // Effect: manage active toast display lifecycle
+  useEffect(() => {
+    if (!activeToast && toastQueue.length > 0) {
+      setActiveToast(toastQueue[0])
+    }
+    if (activeToast) {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+      toastTimerRef.current = setTimeout(() => {
+        setToastQueue((q) => q.filter((t) => t.id !== activeToast.id))
+        setActiveToast(null)
+      }, 3000)
+    }
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    }
+  }, [activeToast, toastQueue])
+
+  // Clear toasts when user views messages (any conversation)
+  useEffect(() => {
+    if (location.pathname.startsWith('/messages')) {
+      setToastQueue([])
+      setActiveToast(null)
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    }
+  }, [location.pathname])
+
+  // Unread messages badge: fetch on load and update on socket events
+  // Removed internal unread logic; now driven entirely by MessagingContext.
 
   return (
     <header className={styles.header}>
@@ -151,8 +191,9 @@ const Header = () => {
                     d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" 
                   />
                 </svg>
-                {/* Notification Badge - placeholder count */}
-                <span className={styles.notificationBadge}>0</span>
+                {totalUnread > 0 && (
+                  <span className={styles.notificationBadge} aria-label={`${totalUnread} unread messages`}>{totalUnread}</span>
+                )}
               </Link>
 
               <div className={styles.userMenu}>
@@ -275,8 +316,13 @@ const Header = () => {
           </div>
         </div>
       )}
+
+      {/* Toast alerts removed per rebuild specification */}
     </header>
   )
 }
+
+// Inline toast renderer (simple): place near the end of header if needed
+// Render toast container at fixed position
 
 export default Header

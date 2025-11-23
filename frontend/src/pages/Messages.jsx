@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useAuth } from '../context/AuthContext'
-import { initSocket, getSocket, closeSocket } from '../utils/socketClient'
+import { useMessaging } from '../context/MessagingContext'
+import { getSocket, closeSocket, getLastSocketUrl } from '../utils/socketClient'
 import * as crypto from '../utils/crypto'
 import axios from 'axios'
 import { useLocation } from 'react-router-dom'
@@ -14,6 +15,8 @@ function useQuery() {
 
 const Messages = () => {
   const { user, token } = useAuth()
+  // Fallback to port 5000 to match backend default
+  const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
   const query = useQuery()
   const preTo = query.get('to')
   const [connected, setConnected] = useState(false)
@@ -29,19 +32,32 @@ const Messages = () => {
   const typingTimerRef = useRef(null)
   const localKeysRef = useRef(null)
   const aesKeyRef = useRef(null)
+  const markedReadRef = useRef(new Set())
   const [sending, setSending] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const messagesListRef = useRef(null)
   const messagesEndRef = useRef(null)
   const [showSidebar, setShowSidebar] = useState(true)
-  const [unreadMap, setUnreadMap] = useState({})
+  // Use global messaging context for unread counts
+  const { conversationUnreadMap, clearConversationUnread, setActiveConversationUserId } = useMessaging()
 
   useEffect(() => {
     if (!user || !token) {
+      try {
+        console.warn('[Messages] missing user/token. user?', !!user, 'token?', !!token)
+      } catch {}
       return;
     }
 
     (async () => {
+      try {
+        console.group('[Messages] mount/init')
+        console.log('env VITE_API_URL=', import.meta.env.VITE_API_URL)
+        console.log('env VITE_API_WS_URL=', import.meta.env.VITE_API_WS_URL)
+        console.log('computed API=', API)
+        console.log('preTo=', preTo, 'userId=', user?.id, 'tokenLen=', token?.length)
+        console.groupEnd()
+      } catch {}
       // load or generate keys and publish public key
       let kp = null
       let publicKeyBase64 = null
@@ -70,10 +86,11 @@ const Messages = () => {
         // Always upload public key to server (in case it's missing or outdated)
         if (publicKeyBase64) {
           try {
-            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/messages/public-key`, { publicKey: publicKeyBase64 }, { headers: { Authorization: `Bearer ${token}` }})
-            console.log('✅ Public key uploaded successfully')
+            console.log('[Messages] POST public-key ...')
+            const resp = await axios.post(`${API}/messages/public-key`, { publicKey: publicKeyBase64 }, { headers: { Authorization: `Bearer ${token}` }})
+            console.log('✅ public-key uploaded', resp?.status)
           } catch (err) {
-            console.warn('Failed to publish public key', err)
+            console.error('❌ public-key upload failed', err?.message || err)
           }
         }
       } catch (err) {
@@ -82,11 +99,18 @@ const Messages = () => {
       }
       localKeysRef.current = kp
 
-      const socket = initSocket(token)
-      socket.on('connect', () => setConnected(true))
-      socket.on('disconnect', () => setConnected(false))
+      const socket = getSocket()
+      if (!socket) {
+        try { console.warn('[Messages] socket not ready yet (context will initialize). Skipping listeners this cycle.') } catch {}
+      }
+      if (!socket) return; // Defer until MessagingContext initializes
+      try { console.log('[Messages] socket url=', getLastSocketUrl()) } catch {}
+      // Connection lifecycle now handled in MessagingContext; keep minimal connected state mirror
+      socket.on('connect', () => { setConnected(true) })
+      socket.on('disconnect', () => { setConnected(false) })
 
       socket.on('secure:receive', async (payload) => {
+        try { console.log('[Messages] secure:receive payload', payload) } catch {}
         try {
           // server may send { message: <savedMessage>, from: <users.id>, clientId }
           const saved = payload.message || payload;
@@ -114,7 +138,8 @@ const Messages = () => {
           if (!usedAes) {
             if (!aesKeyRef.current || aesKeyRef.current.peer !== from) {
               try {
-                const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/messages/public-key/${from}`, { headers: { Authorization: `Bearer ${token}` }})
+                console.log('[Messages] GET sender public-key for from=', from)
+                const res = await axios.get(`${API}/messages/public-key/${from}`, { headers: { Authorization: `Bearer ${token}` }})
                 const theirPub = res.data?.data?.public_key || res.data?.publicKey || res.data?.public_key
                 if (theirPub) {
                   const imported = await crypto.importPublicKey(theirPub)
@@ -123,7 +148,7 @@ const Messages = () => {
                   aesKeyRef.current = { key: aes, peer: from }
                 }
               } catch (err) {
-                console.warn("Couldn't fetch sender public key for realtime message", err)
+                console.warn("Couldn't fetch sender public key for realtime message", err?.message || err)
               }
             }
             usedAes = aesKeyRef.current?.key || null
@@ -172,6 +197,18 @@ const Messages = () => {
               isOutgoing: from === user.id
             }]
           })
+
+          // If viewing this conversation, mark the incoming message read
+          try {
+            if (toUserId && (from === toUserId) && saved.id && !markedReadRef.current.has(saved.id)) {
+              console.log('[Messages] PUT mark-read realtime id=', saved.id)
+              await axios.put(`${API}/messages/${saved.id}/read`, {}, { headers: { Authorization: `Bearer ${token}` }})
+              markedReadRef.current.add(saved.id)
+            }
+          } catch (e) {
+            // non-fatal
+            try { console.error('[Messages] mark-read realtime failed', e?.message || e) } catch {}
+          }
         } catch (err) {
           console.error('Failed to decrypt incoming message', err)
         }
@@ -179,6 +216,7 @@ const Messages = () => {
 
   // reconcile sent ack: replace pending message with saved server message
       socket.on('secure:sent', (ack) => {
+        try { console.log('[Messages] secure:sent ack', ack) } catch {}
         try {
           // ack may include { clientId, message }
           const ackClientId = ack?.clientId || ack?.client_id
@@ -219,10 +257,12 @@ const Messages = () => {
 
       // load conversations list (includes partnerName & partnerAvatar)
       try {
-        const convRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/messages`, { headers: { Authorization: `Bearer ${token}` }})
+        console.log('[Messages] GET /messages (conversations)')
+        const convRes = await axios.get(`${API}/messages`, { headers: { Authorization: `Bearer ${token}` }})
+        console.log('[Messages] conversations status', convRes?.status, 'count', convRes?.data?.data?.length)
         setConversations(convRes.data?.data || [])
       } catch (e) {
-        console.warn('Failed to load conversations', e)
+        console.warn('Failed to load conversations', e?.message || e)
       }
 
       // if a recipient is pre-selected, load conversation
@@ -231,11 +271,32 @@ const Messages = () => {
       }
 
       return () => {
+        try { console.log('[Messages] cleanup: closing socket') } catch {}
         closeSocket()
       }
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, token])
+
+  // Mark messages as read when opening/viewing a conversation
+  useEffect(() => {
+    const markAllVisibleIncomingAsRead = async () => {
+      if (!toUserId || !token) return
+      const base = API
+      const toMark = messages.filter(m => m && m.id && !m.isOutgoing && !markedReadRef.current.has(m.id))
+      for (const m of toMark) {
+        try {
+          console.log('[Messages] PUT mark-read (visible) id=', m.id)
+          await axios.put(`${base}/messages/${m.id}/read`, {}, { headers: { Authorization: `Bearer ${token}` }})
+          markedReadRef.current.add(m.id)
+        } catch (e) {
+          console.error('[Messages] mark-read (visible) failed id=', m.id, e?.message || e)
+        }
+      }
+    }
+    markAllVisibleIncomingAsRead()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, toUserId, token])
 
   useEffect(() => {
     // if preTo changes externally update
@@ -248,14 +309,17 @@ const Messages = () => {
 
   const loadConversation = async (otherUserId, kp) => {
     try {
-      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/messages/conversation/${otherUserId}`, { headers: { Authorization: `Bearer ${token}` }})
+      console.log('[Messages] GET conversation with', otherUserId)
+      const res = await axios.get(`${API}/messages/conversation/${otherUserId}`, { headers: { Authorization: `Bearer ${token}` }})
+      console.log('[Messages] conversation status', res?.status, 'items', res?.data?.data?.length)
       const old = res.data?.data || []
       const decoded = []
       // Try to derive a conversation AES key using the partner's public key once
       let convoAes = null
       let recipientHasKey = false
       try {
-        const pkRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/messages/public-key/${otherUserId}`, { headers: { Authorization: `Bearer ${token}` }})
+        console.log('[Messages] GET partner public-key userId=', otherUserId)
+        const pkRes = await axios.get(`${API}/messages/public-key/${otherUserId}`, { headers: { Authorization: `Bearer ${token}` }})
         const partnerPub = pkRes.data?.data?.public_key || pkRes.data?.publicKey || pkRes.data?.public_key || null
         if (partnerPub) {
           const imported = await crypto.importPublicKey(partnerPub)
@@ -313,7 +377,8 @@ const Messages = () => {
             const tryIds = [m.sender_user_id, fromAuthUserId, m.sender_id, m.alumniFrom].filter(Boolean)
             for (const idToTry of tryIds) {
               try {
-                const senderPubRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/messages/public-key/${idToTry}`, { headers: { Authorization: `Bearer ${token}` }})
+                console.log('[Messages] GET sender public-key idToTry=', idToTry)
+                const senderPubRes = await axios.get(`${API}/messages/public-key/${idToTry}`, { headers: { Authorization: `Bearer ${token}` }})
                 senderPub = senderPubRes.data?.data?.public_key || senderPubRes.data?.publicKey || senderPubRes.data?.public_key
                 if (senderPub) break
               } catch (e) {
@@ -365,14 +430,17 @@ const Messages = () => {
         }
       }
       setMessages(decoded)
-    } catch (e) { console.error('failed to load conv', e) }
+    } catch (e) { console.error('failed to load conv', e?.message || e) }
   }
 
   const handleSelectConversation = async (conv) => {
     // conv.partnerUserId is users.id (auth id) used to address the socket and public-key lookup
     if (!conv || !conv.partnerUserId) return
-    setToUserId(conv.partnerUserId)
-    if (localKeysRef.current) await loadConversation(conv.partnerUserId, localKeysRef.current)
+    const id = conv.partnerUserId
+    setToUserId(id)
+    setActiveConversationUserId(id)
+    clearConversationUnread(id)
+    if (localKeysRef.current) await loadConversation(id, localKeysRef.current)
   }
 
   const handleSend = async () => {
@@ -405,8 +473,8 @@ const Messages = () => {
 
       // fetch recipient public key
       console.log(`🔑 Fetching public key for user: ${toUserId}`)
-      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/messages/public-key/${toUserId}`, { headers: { Authorization: `Bearer ${token}` }})
-      console.log('✅ Public key fetched:', res.data)
+      const res = await axios.get(`${API}/messages/public-key/${toUserId}`, { headers: { Authorization: `Bearer ${token}` }})
+      console.log('✅ Public key fetched status=', res?.status)
       const theirPub = res.data?.data?.public_key || res.data?.publicKey || res.data?.public_key
       if (!theirPub) throw new Error('Recipient public key not found')
 
@@ -428,6 +496,7 @@ const Messages = () => {
       }
 
       console.log('📤 Emitting secure:send...', { toUserId, clientId })
+      try { console.log('📤 Emitting secure:send payload=', payload) } catch {}
       socket.emit('secure:send', payload)
       // push pending message locally with clientId so we can reconcile when server acks
       setMessages((m) => [...m, { clientId, from: user.id, text, file: attachmentMeta || null, pending: true }])
@@ -435,7 +504,7 @@ const Messages = () => {
       setAttachmentMeta(null)
       console.log('✅ Message sent!')
     } catch (err) {
-      console.error('❌ send failed', err)
+      console.error('❌ send failed', err?.message || err)
       setErrorMsg(`Send error: ${err.message || 'Failed to send message'}`)
     } finally {
       setSending(false)
@@ -453,10 +522,13 @@ const Messages = () => {
       if (file.size > 5 * 1024 * 1024) throw new Error('File exceeds 5MB limit')
       const form = new FormData()
       form.append('file', file)
-      const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/messages/upload`, form, { headers: { Authorization: `Bearer ${token}` } })
+      console.log('[Messages] POST /messages/upload name=', file.name, 'size=', file.size)
+      const res = await axios.post(`${API}/messages/upload`, form, { headers: { Authorization: `Bearer ${token}` } })
+      console.log('[Messages] upload status', res?.status)
       const meta = res.data?.data
       setAttachmentMeta(meta)
     } catch (err) {
+      console.error('[Messages] upload failed', err?.message || err)
       setErrorMsg(`Upload error: ${err.message || 'Upload failed'}`)
     } finally {
       setUploading(false)
@@ -517,11 +589,27 @@ const Messages = () => {
               {filteredConversations.length === 0 && <div style={{ padding:'0.5rem', fontSize:12, color:'#6b7280' }}>No conversations</div>}
               {filteredConversations.map(c => {
                 const active = c.partnerUserId === toUserId
+                const unreadCount = conversationUnreadMap?.[c.partnerUserId] || 0
                 return (
                   <div key={c.partnerAlumniId} role="listitem" tabIndex={0} className={`${styles.conversationItem} ${active ? styles.active : ''}`} onClick={() => handleSelectConversation(c)} onKeyDown={(e) => { if (e.key==='Enter') handleSelectConversation(c) }}>
                     <div className={styles.conversationAvatar}>{(c.partnerName || 'User').slice(0,2).toUpperCase()}</div>
                     <div className={styles.conversationMeta}>
                       <div className={styles.conversationName}>{c.partnerName || 'User'}</div>
+                      {unreadCount > 0 && !active && (
+                        <div style={{ marginTop:4 }}>
+                          <span style={{
+                            display:'inline-block',
+                            background:'#1e3a8a',
+                            color:'#fff',
+                            fontSize:11,
+                            padding:'2px 6px',
+                            borderRadius:12,
+                            minWidth:24,
+                            textAlign:'center',
+                            boxShadow:'0 1px 2px rgba(0,0,0,0.15)'
+                          }} aria-label={`Unread messages: ${unreadCount}`}>{unreadCount}</span>
+                        </div>
+                      )}
                         {/* {c.lastMessage ? (
                           c.lastMessage.message_type === 'file' ? 'Encrypted file' : (c.lastMessage.content || c.lastMessage.text || 'Encrypted')
                         ) : 'No messages yet'} */}
@@ -542,10 +630,7 @@ const Messages = () => {
                   <div className={styles.chatSubtitle}>{toUserId ? 'End-to-end encrypted' : 'Choose a conversation to start messaging'}</div>
                 </div>
               </div>
-              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <span style={{ fontSize:11, opacity:.8 }}>{connected ? 'Online' : 'Offline'}</span>
-                <span className={styles.presenceDot} aria-hidden />
-              </div>
+              {/* Presence indicator removed per request to hide socket status */}
             </header>
 
             <div className={styles.messagesViewport} ref={messagesListRef}>
@@ -612,13 +697,13 @@ const Messages = () => {
                   className={styles.composerTextarea} 
                   rows={2} 
                   placeholder={toUserId ? 'Type a message…' : 'Select a conversation to start messaging'}
-                  disabled={!toUserId || !connected}
+                  disabled={!toUserId }
                   aria-label="Message input"
                 />
                 <div className={styles.composerActions}>
                   <input ref={fileInputRef} type="file" style={{ display:'none' }} onChange={handleFileChange} accept="image/*,application/pdf" />
-                  <button className={styles.attachButton} type="button" onClick={handleFileChoose} disabled={!connected || !toUserId || uploading}>{uploading ? 'Uploading…' : '📎 Attach'}</button>
-                  <button className={styles.sendButton} onClick={handleSend} disabled={!connected || sending || !toUserId || (!text.trim() && !attachmentMeta)}>{sending ? 'Sending…' : 'Send'}</button>
+                  <button className={styles.attachButton} type="button" onClick={handleFileChoose} disabled={!toUserId || uploading}>{uploading ? 'Uploading…' : '📎 Attach'}</button>
+                  <button className={styles.sendButton} onClick={handleSend} disabled={ !toUserId }>{sending ? 'Sending…' : 'Send'}</button>
                 </div>
                 {attachmentMeta && (
                   <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:12, marginTop:6 }}>

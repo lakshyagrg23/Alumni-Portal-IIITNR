@@ -40,6 +40,7 @@ import { useAuth } from '@hooks/useAuth'
 
 // Styles
 import styles from './App.module.css'
+import { MessagingProvider } from './context/MessagingContext'
 
 function App() {
   const { user, loading } = useAuth()
@@ -54,6 +55,7 @@ function App() {
   }
 
   return (
+    <MessagingProvider>
     <div className={styles.app}>
       <Helmet>
         <title>IIIT Naya Raipur Alumni Portal</title>
@@ -134,9 +136,9 @@ function App() {
             path="/dashboard" 
             element={
               <ProtectedRoute>
-                <OnboardingRoute>
+                {/* <OnboardingRoute> */}
                   <Dashboard />
-                </OnboardingRoute>
+                {/* </OnboardingRoute> */}
               </ProtectedRoute>
             } 
           />
@@ -156,9 +158,9 @@ function App() {
             path="/messages" 
             element={
               <ProtectedRoute>
-                <OnboardingRoute>
+                {/* <OnboardingRoute> */}
                   <Messages />
-                </OnboardingRoute>
+                {/* </OnboardingRoute> */}
               </ProtectedRoute>
             } 
           />
@@ -191,6 +193,7 @@ function App() {
       
       <Footer />
     </div>
+    </MessagingProvider>
   )
 }
 
