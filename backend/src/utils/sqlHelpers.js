@@ -63,12 +63,13 @@ export const buildInsertQuery = (table, data, returning = "*") => {
  * @param {string} returning - Columns to return (default: '*')
  * @returns {Object} { query, values }
  */
-export const buildUpdateQuery = (table, data, conditions, returning = "*") => {
+export const buildUpdateQuery = (table, data, conditions, returning = "*", options = {}) => {
+  const { includeUpdatedAt = true } = options;
   const dataKeys = Object.keys(data);
   const setClauses = dataKeys.map((key, index) => `${key} = $${index + 1}`);
   const dataValues = dataKeys.map((key) => data[key]);
   const hasUpdatedAt = dataKeys.includes("updated_at");
-  if (!hasUpdatedAt) {
+  if (includeUpdatedAt && !hasUpdatedAt) {
     setClauses.push("updated_at = CURRENT_TIMESTAMP");
   }
   const setClause = setClauses.join(", ");
@@ -86,6 +87,27 @@ export const buildUpdateQuery = (table, data, conditions, returning = "*") => {
   `;
 
   return { query: queryText, values: [...Object.values(data), ...whereValues] };
+};
+
+/**
+ * Check whether a given column exists on a table (public schema)
+ * @param {string} table - table name
+ * @param {string} column - column name
+ * @returns {Promise<boolean>}
+ */
+export const columnExists = async (table, column) => {
+  try {
+    const sql = `
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2
+      LIMIT 1
+    `;
+    const result = await query(sql, [String(table), String(column)]);
+    return (result.rowCount || 0) > 0;
+  } catch {
+    return false;
+  }
 };
 
 /**
@@ -220,10 +242,19 @@ export const insertOne = async (table, data) => {
  * @returns {Promise<Array>} Updated records
  */
 export const updateMany = async (table, data, conditions) => {
+  // Only include automatic updated_at if the table actually has that column
+  let includeUpdatedAt = false;
+  try {
+    includeUpdatedAt = await columnExists(table, 'updated_at');
+  } catch {
+    includeUpdatedAt = false;
+  }
   const { query: queryText, values } = buildUpdateQuery(
     table,
     data,
-    conditions
+    conditions,
+    "*",
+    { includeUpdatedAt }
   );
   const result = await query(queryText, values);
   return result.rows;

@@ -31,9 +31,9 @@ import notFound from "./models/middleware/notFound.js";
 import setupSocket from "./socket.js";
 
 const app = express();
-// Allow overriding the port via environment. Default to 5001 to avoid
-// common conflicts during local development if 5000 is already used.
-const PORT = process.env.PORT || 5001;
+// Allow overriding the port via environment. Default to 5000 (original project expectation).
+// Set PORT in .env if you need a different value.
+const PORT = process.env.PORT || 5000;
 
 // Create HTTP server (for socket.io attachment)
 const server = createServer(app);
@@ -70,15 +70,22 @@ app.use("/api/auth/register", authLimiter);
 app.use("/api/auth/forgot-password", authLimiter);
 
 // CORS configuration
+const devOrigins = [
+  process.env.FRONTEND_URL || "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  // Common Vite ports
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:5174",
+  "http://127.0.0.1:5174",
+];
+
 const corsOptions = {
   origin:
     process.env.CORS_ORIGINS?.split(",") ||
     (process.env.NODE_ENV === "production"
       ? ["https://alumni.iiitnr.ac.in", "https://www.iiitnr.ac.in"]
-      : [
-          `${process.env.FRONTEND_URL || "http://localhost:3000"}`,
-          "http://127.0.0.1:3000",
-        ]),
+      : devOrigins),
   credentials: true,
   optionsSuccessStatus: 200,
 };
@@ -164,7 +171,7 @@ const startServer = async () => {
             process.env.CORS_ORIGINS?.split(",") ||
             (process.env.NODE_ENV === "production"
               ? ["https://alumni.iiitnr.ac.in"]
-              : [process.env.FRONTEND_URL || "http://localhost:3000"]),
+              : devOrigins),
           methods: ["GET", "POST"],
         },
       });
