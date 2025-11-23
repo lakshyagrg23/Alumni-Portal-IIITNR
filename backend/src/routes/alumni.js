@@ -615,16 +615,23 @@ router.post(
 
       // If no profile exists yet (common during onboarding), create a minimal one
       if (profileResult.rows.length === 0) {
-        // Fetch basic user info to satisfy NOT NULL constraints
+        // Fetch email only (names are stored in alumni_profiles). Derive placeholder names.
         const userInfo = await query(
-          "SELECT first_name, last_name FROM users WHERE id = $1",
+          "SELECT email FROM users WHERE id = $1",
           [req.user.id]
         );
 
-        const firstName =
-          userInfo.rows[0]?.first_name?.trim() || "Alumni";
-        const lastName =
-          userInfo.rows[0]?.last_name?.trim() || "User";
+        let firstName = "Alumni";
+        let lastName = "User";
+        const email = userInfo.rows[0]?.email;
+        if (email) {
+          const local = email.split("@")[0];
+          if (local) {
+            const parts = local.split(/[._-]/).filter(Boolean);
+            if (parts.length > 0) firstName = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+            if (parts.length > 1) lastName = parts[1].charAt(0).toUpperCase() + parts[1].slice(1);
+          }
+        }
 
         uploadResult = await query(
           `INSERT INTO alumni_profiles (
