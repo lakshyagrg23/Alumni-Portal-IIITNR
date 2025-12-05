@@ -9,7 +9,7 @@ import styles from './AdminPanel.module.css'
 
 const AdminPanel = () => {
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState('users')
+  const [activeTab, setActiveTab] = useState('dashboard')
   const [users, setUsers] = useState([])
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -167,66 +167,43 @@ const AdminPanel = () => {
       </Helmet>
       
       <div className={styles.adminContainer}>
-        {/* Sidebar */}
-        <aside className={styles.sidebar}>
-          <div className={styles.sidebarHeader}>
-            <h2 className={styles.sidebarTitle}>Admin Panel</h2>
-            <p className={styles.sidebarSubtitle}>IIIT-NR Alumni Portal</p>
+        <div className={styles.adminContent}>
+          {/* Tab Navigation */}
+          <div className={styles.tabNavigation}>
+            <button
+              className={`${styles.tab} ${activeTab === 'dashboard' ? styles.activeTab : ''}`}
+              onClick={() => setActiveTab('dashboard')}
+            >
+              <span className={styles.tabIcon}>📊</span>
+              Dashboard
+            </button>
+            <button
+              className={`${styles.tab} ${activeTab === 'users' ? styles.activeTab : ''}`}
+              onClick={() => setActiveTab('users')}
+            >
+              <span className={styles.tabIcon}>👥</span>
+              Users
+            </button>
+            <button
+              className={`${styles.tab} ${activeTab === 'news' ? styles.activeTab : ''}`}
+              onClick={() => setActiveTab('news')}
+            >
+              <span className={styles.tabIcon}>📰</span>
+              News
+            </button>
+            <button
+              className={`${styles.tab} ${activeTab === 'events' ? styles.activeTab : ''}`}
+              onClick={() => setActiveTab('events')}
+            >
+              <span className={styles.tabIcon}>📅</span>
+              Events
+            </button>
           </div>
-          
-          <nav>
-            <ul className={styles.sidebarNav}>
-              <li className={styles.sidebarNavItem}>
-                <button
-                  className={`${styles.sidebarNavLink} ${activeTab === 'users' ? styles.active : ''}`}
-                  onClick={() => setActiveTab('users')}
-                >
-                  <span className={styles.sidebarNavIcon}>👥</span>
-                  User Management
-                </button>
-              </li>
-              <li className={styles.sidebarNavItem}>
-                <button
-                  className={`${styles.sidebarNavLink} ${activeTab === 'dashboard' ? styles.active : ''}`}
-                  onClick={() => setActiveTab('dashboard')}
-                >
-                  <span className={styles.sidebarNavIcon}>📊</span>
-                  Dashboard
-                </button>
-              </li>
-              <li className={styles.sidebarNavItem}>
-                <button
-                  className={`${styles.sidebarNavLink} ${activeTab === 'news' ? styles.active : ''}`}
-                  onClick={() => setActiveTab('news')}
-                >
-                  <span className={styles.sidebarNavIcon}>📰</span>
-                  News Management
-                </button>
-              </li>
-              <li className={styles.sidebarNavItem}>
-                <button
-                  className={`${styles.sidebarNavLink} ${activeTab === 'events' ? styles.active : ''}`}
-                  onClick={() => setActiveTab('events')}
-                >
-                  <span className={styles.sidebarNavIcon}>📅</span>
-                  Events Management
-                </button>
-              </li>
-              <li className={styles.sidebarNavItem}>
-                <button
-                  className={`${styles.sidebarNavLink} ${activeTab === 'accreditation' ? styles.active : ''}`}
-                  onClick={() => setActiveTab('accreditation')}
-                >
-                  <span className={styles.sidebarNavIcon}>🏅</span>
-                  Accreditation
-                </button>
-              </li>
-            </ul>
-          </nav>
-        </aside>
 
-        {/* Main Content */}
-        <main className={styles.mainContent}>
+          {/* Content Area */}
+          <div className={styles.tabContent}>
+            {activeTab === 'dashboard' && <AccreditationDashboard />}
+
           {activeTab === 'users' && (
             <>
               <div className={styles.pageHeader}>
@@ -430,26 +407,11 @@ const AdminPanel = () => {
             </>
           )}
 
-          {activeTab === 'dashboard' && (
-            <>
-              <div className={styles.pageHeader}>
-                <h1 className={styles.pageTitle}>Admin Dashboard</h1>
-                <p className={styles.pageSubtitle}>
-                  Overview and statistics
-                </p>
-              </div>
-              
-              <div style={{ padding: '2rem', textAlign: 'center' }}>
-                <p><em>Dashboard features coming soon...</em></p>
-              </div>
-            </>
-          )}
+            {activeTab === 'news' && <NewsManagement />}
 
-          {activeTab === 'news' && <NewsManagement />}
-
-          {activeTab === 'events' && <EventsManagement />}
-          {activeTab === 'accreditation' && <AccreditationDashboard />}
-        </main>
+            {activeTab === 'events' && <EventsManagement />}
+          </div>
+        </div>
       </div>
     </>
   )

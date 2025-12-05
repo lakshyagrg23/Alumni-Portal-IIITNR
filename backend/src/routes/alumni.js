@@ -2,8 +2,14 @@ import express from "express";
 const router = express.Router();
 import AlumniProfile from "../models/AlumniProfile.js";
 import { query } from "../config/database.js";
-import { authenticate, requireOnboardedUser } from "../models/middleware/auth.js";
-import { uploadProfilePicture, handleUploadError } from "../models/middleware/upload.js";
+import {
+  authenticate,
+  requireOnboardedUser,
+} from "../models/middleware/auth.js";
+import {
+  uploadProfilePicture,
+  handleUploadError,
+} from "../models/middleware/upload.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -505,7 +511,7 @@ router.put("/profile/consent", authenticate, async (req, res) => {
     const result = await query(
       `UPDATE alumni_profiles
        SET consent_for_accreditation = $1,
-           consent_date = ${consent ? 'CURRENT_TIMESTAMP' : 'NULL'},
+           consent_date = ${consent ? "CURRENT_TIMESTAMP" : "NULL"},
            consent_ip_address = $2,
            updated_at = CURRENT_TIMESTAMP
        WHERE user_id = $3
@@ -551,7 +557,7 @@ router.post(
     console.log("User:", req.user);
     console.log("File:", req.file);
     console.log("Body:", req.body);
-    
+
     try {
       if (!req.user || !req.user.id) {
         console.log("❌ Authentication failed - no user");
@@ -583,10 +589,16 @@ router.post(
         [req.user.id]
       );
 
-      console.log("Current profile picture:", profileResult.rows[0]?.profile_picture_url);
+      console.log(
+        "Current profile picture:",
+        profileResult.rows[0]?.profile_picture_url
+      );
 
       // Delete old profile picture if exists
-      if (profileResult.rows.length > 0 && profileResult.rows[0].profile_picture_url) {
+      if (
+        profileResult.rows.length > 0 &&
+        profileResult.rows[0].profile_picture_url
+      ) {
         const oldPicturePath = profileResult.rows[0].profile_picture_url;
         // Extract filename from URL (e.g., /uploads/profile_pics/filename.jpg)
         const oldFileName = oldPicturePath.split("/").pop();
@@ -615,23 +627,14 @@ router.post(
 
       // If no profile exists yet (common during onboarding), create a minimal one
       if (profileResult.rows.length === 0) {
-        // Fetch email only (names are stored in alumni_profiles). Derive placeholder names.
+        // Fetch basic user info to satisfy NOT NULL constraints
         const userInfo = await query(
-          "SELECT email FROM users WHERE id = $1",
+          "SELECT first_name, last_name FROM users WHERE id = $1",
           [req.user.id]
         );
 
-        let firstName = "Alumni";
-        let lastName = "User";
-        const email = userInfo.rows[0]?.email;
-        if (email) {
-          const local = email.split("@")[0];
-          if (local) {
-            const parts = local.split(/[._-]/).filter(Boolean);
-            if (parts.length > 0) firstName = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
-            if (parts.length > 1) lastName = parts[1].charAt(0).toUpperCase() + parts[1].slice(1);
-          }
-        }
+        const firstName = userInfo.rows[0]?.first_name?.trim() || "Alumni";
+        const lastName = userInfo.rows[0]?.last_name?.trim() || "User";
 
         uploadResult = await query(
           `INSERT INTO alumni_profiles (
@@ -662,7 +665,8 @@ router.post(
         success: true,
         message: "Profile picture uploaded successfully",
         data: {
-          profilePictureUrl: uploadResult.rows[0].profile_picture_url || fileUrl,
+          profilePictureUrl:
+            uploadResult.rows[0].profile_picture_url || fileUrl,
           filename: req.file.filename,
         },
       });
@@ -680,7 +684,8 @@ router.post(
       res.status(500).json({
         success: false,
         message: "Server error while uploading profile picture",
-        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   }
@@ -724,7 +729,11 @@ router.delete("/profile/delete-picture", authenticate, async (req, res) => {
 
     // Delete file from filesystem
     const fileName = currentPictureUrl.split("/").pop();
-    const filePath = path.join(__dirname, "../../uploads/profile_pics", fileName);
+    const filePath = path.join(
+      __dirname,
+      "../../uploads/profile_pics",
+      fileName
+    );
 
     if (fs.existsSync(filePath)) {
       try {

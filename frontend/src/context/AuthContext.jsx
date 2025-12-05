@@ -4,7 +4,8 @@ import { authService } from '../services/authService'
 // Initial state
 const initialState = {
   user: null,
-  loading: true,
+  initializing: true, // For initial app load only
+  authLoading: false, // For login/logout operations
   isAuthenticated: false,
   onboardingCompleted: false,
   token: localStorage.getItem('token'),
@@ -28,7 +29,7 @@ const authReducer = (state, action) => {
     case authActions.LOGIN_START:
       return {
         ...state,
-        loading: true,
+        authLoading: true,
       }
     case authActions.LOGIN_SUCCESS:
       return {
@@ -37,7 +38,8 @@ const authReducer = (state, action) => {
         token: action.payload.token,
         isAuthenticated: true,
         onboardingCompleted: action.payload.user?.onboardingCompleted || false,
-        loading: false,
+        initializing: false,
+        authLoading: false,
       }
     case authActions.LOGIN_FAILURE:
       return {
@@ -45,7 +47,8 @@ const authReducer = (state, action) => {
         user: null,
         token: null,
         isAuthenticated: false,
-        loading: false,
+        initializing: false,
+        authLoading: false,
       }
     case authActions.LOGOUT:
       return {
@@ -54,7 +57,8 @@ const authReducer = (state, action) => {
         token: null,
         isAuthenticated: false,
         onboardingCompleted: false,
-        loading: false,
+        initializing: false,
+        authLoading: false,
       }
     case authActions.LOAD_USER:
       return {
@@ -62,7 +66,7 @@ const authReducer = (state, action) => {
         user: action.payload,
         isAuthenticated: true,
         onboardingCompleted: action.payload?.onboardingCompleted || false,
-        loading: false,
+        initializing: false,
       }
     case authActions.UPDATE_PROFILE:
       return {
@@ -78,7 +82,7 @@ const authReducer = (state, action) => {
     case authActions.CLEAR_LOADING:
       return {
         ...state,
-        loading: false,
+        initializing: false,
       }
     default:
       return state

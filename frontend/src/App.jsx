@@ -43,9 +43,9 @@ import styles from './App.module.css'
 import { MessagingProvider } from './context/MessagingContext'
 
 function App() {
-  const { user, loading } = useAuth()
+  const { user, initializing } = useAuth()
 
-  if (loading) {
+  if (initializing) {
     return (
       <div className={styles.loadingContainer}>
         <div className={styles.spinner}></div>

@@ -187,6 +187,41 @@
   cursor: not-allowed;
 }
 
+/* Password Input Wrapper */
+.passwordWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.passwordWrapper input {
+  width: 100%;
+  padding-right: 2.5rem;
+}
+
+.togglePassword {
+  position: absolute;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #666;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.togglePassword:hover {
+  color: #1e3a8a;
+}
+
+.togglePassword svg {
+  width: 20px;
+  height: 20px;
+}
+
 .errorText {
   font-size: 0.85rem;
   color: #ef4444;

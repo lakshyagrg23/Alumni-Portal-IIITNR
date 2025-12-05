@@ -29,16 +29,22 @@ API.interceptors.response.use(
     return response.data;
   },
   (error) => {
+    // Only redirect to login if 401 occurs on a protected route (when a token exists)
+    // Don't redirect if the request was to the login endpoint itself
     if (error.response?.status === 401) {
-      // Token expired or invalid
-      localStorage.removeItem("token");
-      window.location.href = "/login";
+      const isLoginRequest = error.config?.url?.includes("/auth/login");
+      const hasToken = localStorage.getItem("token");
+
+      // Only redirect if this is not a login attempt and user had a token
+      if (!isLoginRequest && hasToken) {
+        // Token expired or invalid
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+      }
     }
 
-    // Return error message from API or generic message
-    const message =
-      error.response?.data?.message || error.message || "An error occurred";
-    return Promise.reject(new Error(message));
+    // Return the full error object so we can access response data
+    return Promise.reject(error);
   }
 );
 
