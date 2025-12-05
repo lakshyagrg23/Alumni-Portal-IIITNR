@@ -18,6 +18,8 @@ import ProfileCompletion from '@pages/auth/ProfileCompletion'
 import LinkedInCallback from '@pages/auth/LinkedInCallback'
 import VerifyEmail from '@pages/auth/VerifyEmail'
 import EmailSent from '@pages/auth/EmailSent'
+import ForgotPassword from '@pages/auth/ForgotPassword'
+import ResetPassword from '@pages/auth/ResetPassword'
 import Dashboard from '@pages/Dashboard'
 import AlumniDirectory from '@pages/AlumniDirectory'
 import AlumniProfile from '@pages/AlumniProfile'
@@ -117,6 +119,20 @@ function App() {
           {/* Email Verification Routes */}
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/email-sent" element={<EmailSent />} />
+          
+          {/* Password Reset Routes */}
+          <Route 
+            path="/forgot-password" 
+            element={
+              user ? <Dashboard /> : <ForgotPassword />
+            } 
+          />
+          <Route 
+            path="/reset-password" 
+            element={
+              user ? <Dashboard /> : <ResetPassword />
+            } 
+          />
           
           {/* LinkedIn OAuth Callback */}
           <Route path="/linkedin" element={<LinkedInCallback />} />

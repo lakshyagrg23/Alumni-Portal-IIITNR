@@ -1473,4 +1473,252 @@ router.post("/logout", (req, res) => {
   }
 });
 
+/**
+ * @route   POST /api/auth/forgot-password
+ * @desc    Request password reset link
+ * @access  Public
+ */
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Validate email
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide an email address",
+      });
+    }
+
+    // Find user by email
+    const user = await User.findByEmail(email.toLowerCase());
+
+    // Always return success to prevent email enumeration attacks
+    // (Don't reveal if email exists or not)
+    if (!user) {
+      console.log(`Password reset requested for non-existent email: ${email}`);
+      return res.json({
+        success: true,
+        message:
+          "If an account exists with this email, a password reset link has been sent.",
+      });
+    }
+
+    // Check if user's email is verified
+    if (!user.email_verified) {
+      return res.status(400).json({
+        success: false,
+        message: "Please verify your email before resetting your password.",
+      });
+    }
+
+    // Generate reset token (valid for 1 hour)
+    const resetToken = jwt.sign(
+      { userId: user.id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    // Calculate expiration time (1 hour from now)
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+    // Store reset token in database
+    await query(
+      `UPDATE users 
+       SET password_reset_token = $1, 
+           password_reset_token_expires = $2 
+       WHERE id = $3`,
+      [resetToken, expiresAt, user.id]
+    );
+
+    // Send password reset email
+    try {
+      await emailService.sendPasswordResetEmail(
+        user.email,
+        resetToken,
+        user.first_name || user.email.split("@")[0]
+      );
+
+      console.log(`✅ Password reset email sent to: ${user.email}`);
+    } catch (emailError) {
+      console.error("Error sending password reset email:", emailError);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send password reset email. Please try again.",
+      });
+    }
+
+    res.json({
+      success: true,
+      message:
+        "If an account exists with this email, a password reset link has been sent.",
+    });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error. Please try again later.",
+    });
+  }
+});
+
+/**
+ * @route   GET /api/auth/verify-reset-token/:token
+ * @desc    Verify if password reset token is valid
+ * @access  Public
+ */
+router.get("/verify-reset-token/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "Reset token is required",
+      });
+    }
+
+    // Verify JWT token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (jwtError) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired reset token",
+      });
+    }
+
+    // Check if token exists in database and hasn't expired
+    const result = await query(
+      `SELECT id, email, first_name, 
+              password_reset_token, 
+              password_reset_token_expires 
+       FROM users 
+       WHERE id = $1 AND password_reset_token = $2`,
+      [decoded.userId, token]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid reset token",
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Check if token has expired
+    if (new Date() > new Date(user.password_reset_token_expires)) {
+      return res.status(400).json({
+        success: false,
+        message: "Reset token has expired. Please request a new one.",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Token is valid",
+      email: user.email,
+    });
+  } catch (error) {
+    console.error("Verify reset token error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error. Please try again later.",
+    });
+  }
+});
+
+/**
+ * @route   POST /api/auth/reset-password
+ * @desc    Reset password using valid token
+ * @access  Public
+ */
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    // Validate input
+    if (!token || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Token and new password are required",
+      });
+    }
+
+    // Validate password strength
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters long",
+      });
+    }
+
+    // Verify JWT token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (jwtError) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired reset token",
+      });
+    }
+
+    // Check if token exists in database and hasn't expired
+    const result = await query(
+      `SELECT id, email, password_reset_token, password_reset_token_expires 
+       FROM users 
+       WHERE id = $1 AND password_reset_token = $2`,
+      [decoded.userId, token]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid reset token",
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Check if token has expired
+    if (new Date() > new Date(user.password_reset_token_expires)) {
+      return res.status(400).json({
+        success: false,
+        message: "Reset token has expired. Please request a new one.",
+      });
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update password and clear reset token
+    await query(
+      `UPDATE users 
+       SET password_hash = $1, 
+           password_reset_token = NULL, 
+           password_reset_token_expires = NULL 
+       WHERE id = $2`,
+      [hashedPassword, user.id]
+    );
+
+    console.log(`✅ Password reset successful for user: ${user.email}`);
+
+    res.json({
+      success: true,
+      message:
+        "Password has been reset successfully. You can now login with your new password.",
+    });
+  } catch (error) {
+    console.error("Reset password error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error. Please try again later.",
+    });
+  }
+});
+
 export default router;

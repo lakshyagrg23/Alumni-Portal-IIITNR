@@ -142,6 +142,13 @@ const Login = () => {
                 <span className={styles.errorMessage}>{errors.password.message}</span>
               )}
             </div>
+            
+            <div className={styles.forgotPasswordLink}>
+              <Link to="/forgot-password" className={styles.link}>
+                Forgot password?
+              </Link>
+            </div>
+            
             <button
               type="submit"
               className={styles.submitButton}

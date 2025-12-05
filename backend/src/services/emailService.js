@@ -1,10 +1,12 @@
-import nodemailer from 'nodemailer';
+import nodemailer from "nodemailer";
 
 // Email Service providing verification and welcome email functionality (ESM version)
 class EmailService {
   constructor() {
     const baseConfig = {
-      service: process.env.EMAIL_SERVICE || (process.env.NODE_ENV === 'production' ? undefined : 'gmail'),
+      service:
+        process.env.EMAIL_SERVICE ||
+        (process.env.NODE_ENV === "production" ? undefined : "gmail"),
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASSWORD,
@@ -19,23 +21,23 @@ class EmailService {
    * @param {string} verificationToken - Unique verification token
    * @param {string} firstName - User's first name
    */
-  async sendVerificationEmail(email, verificationToken, firstName = 'there') {
+  async sendVerificationEmail(email, verificationToken, firstName = "there") {
     const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
 
     const mailOptions = {
-      from: process.env.EMAIL_FROM || 'IIIT Naya Raipur Alumni Portal',
+      from: process.env.EMAIL_FROM || "IIIT Naya Raipur Alumni Portal",
       to: email,
-      subject: 'Verify Your Email - IIIT Naya Raipur Alumni Portal',
+      subject: "Verify Your Email - IIIT Naya Raipur Alumni Portal",
       html: this.getVerificationEmailTemplate(firstName, verificationUrl),
     };
 
     try {
       const info = await this.transporter.sendMail(mailOptions);
-      console.log('✅ Verification email sent:', info.messageId);
+      console.log("✅ Verification email sent:", info.messageId);
       return { success: true, messageId: info.messageId };
     } catch (error) {
-      console.error('❌ Error sending verification email:', error);
-      throw new Error('Failed to send verification email');
+      console.error("❌ Error sending verification email:", error);
+      throw new Error("Failed to send verification email");
     }
   }
 
@@ -150,7 +152,7 @@ class EmailService {
     const mailOptions = {
       from: process.env.EMAIL_FROM,
       to: email,
-      subject: 'Welcome to IIIT Naya Raipur Alumni Portal! 🎉',
+      subject: "Welcome to IIIT Naya Raipur Alumni Portal! 🎉",
       html: `
         <!DOCTYPE html>
         <html>
@@ -194,11 +196,152 @@ class EmailService {
 
     try {
       await this.transporter.sendMail(mailOptions);
-      console.log('✅ Welcome email sent to:', email);
+      console.log("✅ Welcome email sent to:", email);
     } catch (error) {
-      console.error('❌ Error sending welcome email:', error);
+      console.error("❌ Error sending welcome email:", error);
       // Don't throw - welcome email is not critical
     }
+  }
+
+  /**
+   * Send password reset email with token
+   * @param {string} email - Recipient email
+   * @param {string} resetToken - Unique password reset token
+   * @param {string} firstName - User's first name
+   */
+  async sendPasswordResetEmail(email, resetToken, firstName = "there") {
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || "IIIT Naya Raipur Alumni Portal",
+      to: email,
+      subject: "Password Reset Request - IIIT Naya Raipur Alumni Portal",
+      html: this.getPasswordResetEmailTemplate(firstName, resetUrl),
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log("✅ Password reset email sent:", info.messageId);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error("❌ Error sending password reset email:", error);
+      throw new Error("Failed to send password reset email");
+    }
+  }
+
+  /**
+   * HTML template for password reset email
+   */
+  getPasswordResetEmailTemplate(firstName, resetUrl) {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+          }
+          .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 24px;
+          }
+          .content {
+            padding: 40px 30px;
+            color: #333;
+            line-height: 1.6;
+          }
+          .button {
+            display: inline-block;
+            padding: 14px 40px;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white !important;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-weight: 600;
+            transition: transform 0.2s;
+          }
+          .button:hover {
+            transform: translateY(-2px);
+          }
+          .footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+          }
+          .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin: 20px 0;
+            border-radius: 4px;
+          }
+          .security-notice {
+            background: #fee;
+            border-left: 4px solid #dc2626;
+            padding: 12px;
+            margin: 20px 0;
+            border-radius: 4px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🔐 Password Reset Request</h1>
+          </div>
+          <div class="content">
+            <h2>Hello, ${firstName}!</h2>
+            <p>We received a request to reset your password for your IIIT Naya Raipur Alumni Portal account.</p>
+            
+            <p>To reset your password, please click the button below:</p>
+            
+            <center>
+              <a href="${resetUrl}" class="button">Reset Password</a>
+            </center>
+            
+            <p>Or copy and paste this link into your browser:</p>
+            <p style="background: #f8f9fa; padding: 12px; border-radius: 4px; word-break: break-all; font-size: 13px;">
+              ${resetUrl}
+            </p>
+            
+            <div class="warning">
+              <strong>⏰ Important:</strong> This password reset link will expire in 1 hour for security reasons.
+            </div>
+            
+            <div class="security-notice">
+              <strong>🔒 Security Notice:</strong> If you didn't request a password reset, please ignore this email. Your account is safe and your password hasn't been changed.
+            </div>
+            
+            <p>For your security, never share this link with anyone.</p>
+          </div>
+          <div class="footer">
+            <p>© ${new Date().getFullYear()} IIIT Naya Raipur Alumni Portal</p>
+            <p>This is an automated email. Please do not reply to this message.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
   }
 }
 
