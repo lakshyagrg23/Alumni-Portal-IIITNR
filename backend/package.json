@@ -4,7 +4,7 @@
   "description": "Backend API for IIIT Naya Raipur Alumni Portal",
   "main": "src/server.js",
   "scripts": {
-      "migrate:messages:updated_at": "node scripts/add-updated-at-to-messages.js",
+    "migrate:messages:updated_at": "node scripts/add-updated-at-to-messages.js",
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "dev:local": "node -r dotenv/config src/server.js dotenv_config_path=.env.local",
@@ -24,6 +24,10 @@
     "db:setup": "node src/config/migrate.js setup",
     "db:setup:local": "node -r dotenv/config src/config/migrate.js setup dotenv_config_path=.env.local",
     "db:setup:shared": "node -r dotenv/config src/config/migrate.js setup dotenv_config_path=.env.development",
+    "records:template": "node generate-template.js",
+    "records:import": "node import-institute-records.js",
+    "records:verify": "node verify-institute-records.js",
+    "records:clear": "node clear-institute-records.js",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "setup": "npm install && npm run db:setup"
@@ -65,7 +69,8 @@
     "socket.io": "^4.7.0",
     "uuid": "^9.0.0",
     "vary": "^1.1.2",
-    "ws": "^8.18.3"
+    "ws": "^8.18.3",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "eslint": "^8.47.0",
