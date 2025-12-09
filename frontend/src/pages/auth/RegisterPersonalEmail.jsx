@@ -416,7 +416,7 @@ const CreateAccountStep = ({ verificationToken, userData, onBack }) => {
 
       <div className={styles.oauthButtons}>
         <GoogleLogin 
-          onSuccess={handleGoogleSuccess}
+          verificationToken={verificationToken}
           buttonText="Sign up with Google"
         />
       </div>

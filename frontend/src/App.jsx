@@ -1,5 +1,5 @@
 import React from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 
 // Layout Components
@@ -47,6 +47,11 @@ import { MessagingProvider } from './context/MessagingContext'
 function App() {
   const { user, initializing } = useAuth()
 
+  // Decide where to send already-authenticated users who hit auth routes
+  const authRedirectPath = user?.role === 'admin'
+    ? '/admin'
+    : (user?.onboardingCompleted ? '/dashboard' : '/complete-profile')
+
   if (initializing) {
     return (
       <div className={styles.loadingContainer}>
@@ -88,31 +93,31 @@ function App() {
           <Route 
             path="/login" 
             element={
-              user ? <Dashboard /> : <Login />
+              user ? <Navigate to={authRedirectPath} replace /> : <Login />
             } 
           />
           <Route 
             path="/register" 
             element={
-              user ? <Dashboard /> : <RegisterMethodSelection />
+              user ? <Navigate to={authRedirectPath} replace /> : <RegisterMethodSelection />
             } 
           />
           <Route 
             path="/register/institute-email" 
             element={
-              user ? <Dashboard /> : <RegisterInstituteEmail />
+              user ? <Navigate to={authRedirectPath} replace /> : <RegisterInstituteEmail />
             } 
           />
           <Route 
             path="/register/personal-email" 
             element={
-              user ? <Dashboard /> : <RegisterPersonalEmail />
+              user ? <Navigate to={authRedirectPath} replace /> : <RegisterPersonalEmail />
             } 
           />
           <Route 
             path="/register-old" 
             element={
-              user ? <Dashboard /> : <Register />
+              user ? <Navigate to={authRedirectPath} replace /> : <Register />
             } 
           />
           
@@ -124,13 +129,13 @@ function App() {
           <Route 
             path="/forgot-password" 
             element={
-              user ? <Dashboard /> : <ForgotPassword />
+              user ? <Navigate to={authRedirectPath} replace /> : <ForgotPassword />
             } 
           />
           <Route 
             path="/reset-password" 
             element={
-              user ? <Dashboard /> : <ResetPassword />
+              user ? <Navigate to={authRedirectPath} replace /> : <ResetPassword />
             } 
           />
           
@@ -152,9 +157,9 @@ function App() {
             path="/dashboard" 
             element={
               <ProtectedRoute>
-                {/* <OnboardingRoute> */}
+                <OnboardingRoute>
                   <Dashboard />
-                {/* </OnboardingRoute> */}
+                </OnboardingRoute>
               </ProtectedRoute>
             } 
           />
@@ -174,9 +179,9 @@ function App() {
             path="/messages" 
             element={
               <ProtectedRoute>
-                {/* <OnboardingRoute> */}
+                <OnboardingRoute>
                   <Messages />
-                {/* </OnboardingRoute> */}
+                </OnboardingRoute>
               </ProtectedRoute>
             } 
           />

@@ -585,7 +585,11 @@ router.get("/verify-email", async (req, res) => {
   try {
     const { token } = req.query;
 
+    console.log('📧 Email verification attempt');
+    console.log('Token received:', token ? `${token.substring(0, 10)}...` : 'MISSING');
+
     if (!token) {
+      console.log('❌ No token provided');
       return res.status(400).json({
         success: false,
         message: "Verification token is required",
@@ -593,9 +597,12 @@ router.get("/verify-email", async (req, res) => {
     }
 
     // Verify the email
+    console.log('🔍 Calling User.verifyEmail...');
     const result = await User.verifyEmail(token);
+    console.log('📊 Verification result:', result);
 
     if (!result.success) {
+      console.log('❌ Verification failed:', result.message);
       return res.status(400).json({
         success: false,
         message: result.message,
@@ -830,7 +837,7 @@ router.post("/google", async (req, res) => {
  */
 router.post("/linkedin", async (req, res) => {
   try {
-    const { email, linkedinId, name } = req.body;
+    const { email, linkedinId, name, verificationToken } = req.body;
     if (!email || !linkedinId) {
       return res.status(400).json({
         success: false,
@@ -842,13 +849,60 @@ router.post("/linkedin", async (req, res) => {
     let isNewUser = false;
 
     if (!user) {
+      // Determine registration path based on email domain or verification token
+      const emailLower = email.toLowerCase();
+      const isInstituteEmail =
+        emailLower.endsWith("@iiitnr.edu.in") ||
+        emailLower.endsWith("@iiitnr.ac.in");
+
+      let registrationPath = "oauth";
+      let instituteRecordId = null;
+
+      // If verification token provided, this is personal email path
+      if (verificationToken) {
+        try {
+          const tokenData = jwt.verify(
+            verificationToken,
+            process.env.JWT_SECRET
+          );
+          if (tokenData.type === "identity_verification") {
+            registrationPath = "personal_email";
+            instituteRecordId = tokenData.instituteRecordId;
+
+            // Check if someone already registered with this institute record
+            const existingRecord = await query(
+              "SELECT id FROM users WHERE institute_record_id = $1",
+              [instituteRecordId]
+            );
+
+            if (existingRecord.rows.length > 0) {
+              return res.status(400).json({
+                success: false,
+                message:
+                  "An account has already been registered with this roll number.",
+              });
+            }
+          }
+        } catch (err) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid or expired verification token.",
+          });
+        }
+      } else if (isInstituteEmail) {
+        registrationPath = "institute_email";
+      }
+
       // Register new user with LinkedIn provider
       const userData = {
-        email: email.toLowerCase(),
+        email: emailLower,
         provider: "linkedin",
         providerId: linkedinId,
         role: "alumni",
-        isApproved: true,
+        isApproved: true, // OAuth users are auto-approved
+        email_verified: true, // OAuth emails are pre-verified by LinkedIn
+        registration_path: registrationPath,
+        institute_record_id: instituteRecordId,
       };
       user = await User.create(userData);
       isNewUser = true;
@@ -1125,14 +1179,24 @@ router.get("/onboarding-data", authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
 
+    console.log('🔍 Onboarding data requested for user:', userId);
+
     // Get user data
     const user = await User.findById(userId);
     if (!user) {
+      console.log('❌ User not found:', userId);
       return res.status(404).json({
         success: false,
         message: "User not found",
       });
     }
+
+    console.log('✅ User found:', {
+      id: user.id,
+      email: user.email,
+      registration_path: user.registration_path,
+      institute_record_id: user.institute_record_id
+    });
 
     let preFillData = {
       registrationPath: user.registration_path || "institute_email",
@@ -1140,45 +1204,157 @@ router.get("/onboarding-data", authenticate, async (req, res) => {
       rollNumberLocked: false,
       firstName: "",
       lastName: "",
-      graduationYear: null,
+      firstNameLocked: false,
+      lastNameLocked: false,
+      dateOfBirth: null,
+      dateOfBirthLocked: false,
+      enrollmentYear: null,
+      enrollmentYearLocked: false,
       degree: null,
+      degreeLocked: false,
       branch: null,
+      branchLocked: false,
+      contactNumber: null,
+      contactNumberLocked: false,
     };
 
     // If user registered via personal email, fetch institute record data
     if (user.institute_record_id) {
+      console.log('📝 Fetching institute record by ID:', user.institute_record_id);
       try {
         const recordResult = await query(
           "SELECT * FROM institute_records WHERE id = $1",
           [user.institute_record_id]
         );
 
+        console.log('📊 Institute records query result:', {
+          rowCount: recordResult.rows.length,
+          hasData: recordResult.rows.length > 0
+        });
+
         if (recordResult.rows.length > 0) {
           const record = recordResult.rows[0];
+
+          console.log('📋 Institute record data:', {
+            roll_number: record.roll_number,
+            full_name: record.full_name,
+            enrollment_year: record.enrollment_year,
+            degree: record.degree,
+            branch: record.branch
+          });
 
           // Split full name into first and last name
           const nameParts = record.full_name.trim().split(/\s+/);
           const firstName = nameParts[0] || "";
           const lastName =
-            nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
+            nameParts.length > 1 ? nameParts.slice(1).join(" ") : "";
+
+          // Calculate graduation year from enrollment year (assuming 4-year B.Tech)
+          const graduationYear = record.enrollment_year 
+            ? record.enrollment_year + 4 
+            : null;
 
           preFillData = {
             registrationPath: "personal_email",
             rollNumber: record.roll_number,
-            rollNumberLocked: true, // Lock roll number for verified users
+            rollNumberLocked: true,
             firstName: firstName,
             lastName: lastName,
+            firstNameLocked: true,
+            lastNameLocked: true,
             fullName: record.full_name,
-            graduationYear: record.graduation_year,
+            dateOfBirth: record.date_of_birth,
+            dateOfBirthLocked: true,
+            enrollmentYear: record.enrollment_year,
+            enrollmentYearLocked: true,
+            graduationYear: graduationYear,
+            graduationYearLocked: true,
             degree: record.degree,
+            degreeLocked: true,
             branch: record.branch,
+            branchLocked: true,
+            contactNumber: record.contact_number,
+            contactNumberLocked: true,
           };
+
+          console.log('✅ Pre-fill data prepared:', preFillData);
+        } else {
+          console.log('⚠️ No institute record found for ID:', user.institute_record_id);
         }
       } catch (error) {
-        console.error("Error fetching institute record:", error);
+        console.error("❌ Error fetching institute record:", error);
       }
+    } else if (user.registration_path === 'institute_email') {
+      // For institute email users, match by email address
+      console.log('📝 Fetching institute record by email:', user.email);
+      try {
+        const recordResult = await query(
+          "SELECT * FROM institute_records WHERE LOWER(institute_email) = LOWER($1) AND is_active = true",
+          [user.email]
+        );
+
+        console.log('📊 Institute records query result (by email):', {
+          rowCount: recordResult.rows.length,
+          hasData: recordResult.rows.length > 0
+        });
+
+        if (recordResult.rows.length > 0) {
+          const record = recordResult.rows[0];
+
+          console.log('📋 Institute record data found:', {
+            roll_number: record.roll_number,
+            full_name: record.full_name,
+            enrollment_year: record.enrollment_year,
+            degree: record.degree,
+            branch: record.branch
+          });
+
+          // Split full name into first and last name
+          const nameParts = record.full_name.trim().split(/\s+/);
+          const firstName = nameParts[0] || "";
+          const lastName =
+            nameParts.length > 1 ? nameParts.slice(1).join(" ") : "";
+
+          // Calculate graduation year from enrollment year (assuming 4-year B.Tech)
+          const graduationYear = record.enrollment_year 
+            ? record.enrollment_year + 4 
+            : null;
+
+          preFillData = {
+            registrationPath: "institute_email",
+            rollNumber: record.roll_number,
+            rollNumberLocked: true,
+            firstName: firstName,
+            lastName: lastName,
+            firstNameLocked: true,
+            lastNameLocked: true,
+            fullName: record.full_name,
+            dateOfBirth: record.date_of_birth,
+            dateOfBirthLocked: true,
+            enrollmentYear: record.enrollment_year,
+            enrollmentYearLocked: true,
+            graduationYear: graduationYear,
+            graduationYearLocked: true,
+            degree: record.degree,
+            degreeLocked: true,
+            branch: record.branch,
+            branchLocked: true,
+            contactNumber: record.contact_number,
+            contactNumberLocked: true,
+          };
+
+          console.log('✅ Pre-fill data prepared from institute email:', preFillData);
+        } else {
+          console.log('⚠️ No institute record found for email:', user.email);
+        }
+      } catch (error) {
+        console.error("❌ Error fetching institute record by email:", error);
+      }
+    } else {
+      console.log('ℹ️ No institute_record_id and not institute_email path - using default data');
     }
 
+    console.log('📤 Sending response with data:', preFillData);
     res.json({
       success: true,
       data: preFillData,

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-export default function LinkedInLoginButton() {
+export default function LinkedInLoginButton({ verificationToken = null }) {
   const navigate = useNavigate();
 
   const handleLinkedInLogin = () => {
@@ -18,6 +18,11 @@ export default function LinkedInLoginButton() {
     // Store both state and redirect URI for callback to use
     sessionStorage.setItem('linkedin_oauth_state', state);
     sessionStorage.setItem('linkedin_redirect_uri', redirectUri);
+    
+    // Store verification token if provided (for personal email registration path)
+    if (verificationToken) {
+      sessionStorage.setItem('linkedin_verification_token', verificationToken);
+    }
     
     // Redirect to LinkedIn authorization (same window)
     const linkedInAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodedRedirectUri}&scope=${scope}&state=${state}`;

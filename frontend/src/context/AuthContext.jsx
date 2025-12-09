@@ -199,13 +199,15 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = async (profileData) => {
     try {
       const updatedUser = await authService.updateProfile(profileData)
-      
+      const updatedUserData = updatedUser?.data || updatedUser
+
+      // Keep the auth state in sync with the backend response (includes alumniProfile)
       dispatch({
         type: authActions.UPDATE_PROFILE,
-        payload: updatedUser,
+        payload: updatedUserData,
       })
       
-      return updatedUser
+      return updatedUserData
     } catch (error) {
       throw error
     }

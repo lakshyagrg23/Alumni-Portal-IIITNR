@@ -4,9 +4,11 @@ import { useNavigate, Link } from 'react-router-dom';
 import API from '../../services/authService';
 import styles from './RegisterNew.module.css';
 import GoogleLogin from '../../services/google_login';
+import { useAuth } from '../../context/AuthContext';
 
 const RegisterInstituteEmail = () => {
   const navigate = useNavigate();
+  const { loginWithGoogle } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -112,22 +114,20 @@ const RegisterInstituteEmail = () => {
         return;
       }
 
-      const response = await API.post('/auth/google', {
+      // Use auth context login so state & token are set consistently
+      const response = await loginWithGoogle({
         email: decoded.email,
         googleId: decoded.sub,
         name: decoded.name,
       });
 
-      if (response.success) {
-        // Store token
-        localStorage.setItem('token', response.token);
-        
-        // Redirect based on onboarding status
-        if (response.user.onboardingCompleted) {
-          navigate('/dashboard');
-        } else {
-          navigate('/complete-profile');
-        }
+      // Redirect based on onboarding status/profile
+      const hasProfile = response.user?.hasAlumniProfile;
+      const onboardingDone = response.user?.onboardingCompleted;
+      if (response.isNewUser || !hasProfile || !onboardingDone) {
+        navigate('/complete-profile');
+      } else {
+        navigate('/dashboard');
       }
     } catch (error) {
       console.error('Google auth error:', error);
