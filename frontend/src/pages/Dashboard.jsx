@@ -18,6 +18,13 @@ const Dashboard = () => {
   const [profileCompletion, setProfileCompletion] = useState(0)
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+  const ASSETS_BASE_URL = API_URL.replace(/\/api$/, '')
+
+  const resolveAvatar = (url) => {
+    if (!url) return '/default-avatar.svg'
+    if (url.startsWith('http')) return url
+    return `${ASSETS_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`
+  }
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -91,6 +98,7 @@ const Dashboard = () => {
       const currentCity = profile.currentCity || profile.current_city
       const graduationYear = profile.graduationYear || profile.graduation_year
       const branch = profile.branch
+      const currentYear = new Date().getFullYear()
       
       console.log('📊 Fetching recommendations for profile:', {
         currentCompany,
@@ -138,11 +146,24 @@ const Dashboard = () => {
         console.log('⚠️ No city information in profile')
       }
 
-      // Fetch alumni from same batch and branch
-      if (graduationYear && branch) {
-        console.log('🔍 Searching for batchmates:', branch, graduationYear)
+      // Fetch alumni from same batch (branch optional)
+      if (graduationYear) {
+        const params = new URLSearchParams()
+        params.set('batch', graduationYear)
+        params.set('limit', 4)
+
+        // If this is a current student (future graduation year), include current students too
+        if (graduationYear > currentYear) {
+          params.set('studentType', 'current')
+        }
+
+        console.log('🔍 Searching for batchmates:', {
+          graduationYear,
+          studentType: params.get('studentType') || 'alumni',
+        })
+
         const batchResponse = await axios.get(
-          `${API_URL}/alumni?batch=${graduationYear}&branch=${encodeURIComponent(branch)}&limit=4`
+          `${API_URL}/alumni?${params.toString()}`
         )
         if (batchResponse.data.success) {
           recommendations.sameBatch = batchResponse.data.data.filter(
@@ -151,7 +172,7 @@ const Dashboard = () => {
           console.log('✅ Found', recommendations.sameBatch.length, 'batchmates')
         }
       } else {
-        console.log('⚠️ No graduation year or branch in profile')
+        console.log('⚠️ No graduation year in profile')
       }
 
       console.log('📋 Total recommendations:', {
@@ -351,9 +372,14 @@ const Dashboard = () => {
                           {recommendations.sameCompany.map(alum => (
                             <div key={alum.id} className={styles.alumniCard}>
                               <img 
-                                src={alum.profilePicture || '/default-avatar.svg'} 
+                                src={resolveAvatar(
+                                  alum.profilePicture ||
+                                  alum.profilePictureUrl ||
+                                  alum.profile_picture_url
+                                )} 
                                 alt={`${alum.firstName} ${alum.lastName}`}
                                 className={styles.alumniAvatar}
+                                onError={(e) => { e.currentTarget.src = '/default-avatar.svg' }}
                               />
                               <h4 className={styles.alumniName}>
                                 {alum.firstName} {alum.lastName}
@@ -386,9 +412,14 @@ const Dashboard = () => {
                           {recommendations.sameCity.map(alum => (
                             <div key={alum.id} className={styles.alumniCard}>
                               <img 
-                                src={alum.profilePicture || '/default-avatar.svg'} 
+                                src={resolveAvatar(
+                                  alum.profilePicture ||
+                                  alum.profilePictureUrl ||
+                                  alum.profile_picture_url
+                                )} 
                                 alt={`${alum.firstName} ${alum.lastName}`}
                                 className={styles.alumniAvatar}
+                                onError={(e) => { e.currentTarget.src = '/default-avatar.svg' }}
                               />
                               <h4 className={styles.alumniName}>
                                 {alum.firstName} {alum.lastName}
@@ -415,15 +446,20 @@ const Dashboard = () => {
                     {recommendations.sameBatch.length > 0 && (
                       <div className={styles.recommendationGroup}>
                         <h3 className={styles.recommendationTitle}>
-                          Your Batchmates ({user.alumniProfile?.branch} {user.alumniProfile?.graduationYear || user.alumniProfile?.graduation_year})
+                          Your Batchmates (Graduation Year: {user.alumniProfile?.graduationYear || user.alumniProfile?.graduation_year})
                         </h3>
                         <div className={styles.alumniGrid}>
                           {recommendations.sameBatch.map(alum => (
                             <div key={alum.id} className={styles.alumniCard}>
                               <img 
-                                src={alum.profilePicture || '/default-avatar.svg'} 
+                                src={resolveAvatar(
+                                  alum.profilePicture ||
+                                  alum.profilePictureUrl ||
+                                  alum.profile_picture_url || '/default-avatar.svg'
+                                )} 
                                 alt={`${alum.firstName} ${alum.lastName}`}
                                 className={styles.alumniAvatar}
+                                onError={(e) => { e.currentTarget.src = '/default-avatar.svg' }}
                               />
                               <h4 className={styles.alumniName}>
                                 {alum.firstName} {alum.lastName}
