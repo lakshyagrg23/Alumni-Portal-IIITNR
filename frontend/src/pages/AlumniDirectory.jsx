@@ -243,92 +243,67 @@ const AlumniDirectory = () => {
                   : null;
                 return (
                 <div key={alum.id} className={styles.alumniCard}>
-                  <div className={styles.cardHeader}>
-                    <div className={styles.avatar}>
-                      {profileImageUrl ? (
-                        <img 
-                          src={profileImageUrl} 
-                          alt={`${alum.firstName} ${alum.lastName}`}
-                          onError={(e) => {
-                            handleAvatarError(e)
-                            e.target.style.display = 'none'
-                            if (e.target.nextSibling) {
-                              e.target.nextSibling.style.display = 'flex'
-                            }
-                          }}
-                        />
-                      ) : null}
-                      <div 
-                        className={styles.avatarInitials}
-                        style={{ display: profileImageUrl ? 'none' : 'flex' }}
-                      >
-                        {alum.firstName?.charAt(0)}{alum.lastName?.charAt(0)}
-                      </div>
-                    </div>
-                    <div className={styles.basicInfo}>
-                      <h3 className={styles.name}>
-                        {alum.firstName} {alum.lastName}
-                      </h3>
-                      <p className={styles.batch}>
-                        {alum.degree} {alum.branch} • {alum.graduationYear}
-                      </p>
+                  {/* Large Photo at Top */}
+                  <div className={styles.photoContainer}>
+                    {profileImageUrl ? (
+                      <img 
+                        src={profileImageUrl} 
+                        alt={`${alum.firstName} ${alum.lastName}`}
+                        className={styles.photo}
+                        onError={(e) => {
+                          handleAvatarError(e)
+                          e.target.style.display = 'none'
+                          if (e.target.nextSibling) {
+                            e.target.nextSibling.style.display = 'flex'
+                          }
+                        }}
+                      />
+                    ) : null}
+                    <div 
+                      className={styles.photoInitials}
+                      style={{ display: profileImageUrl ? 'none' : 'flex' }}
+                    >
+                      {alum.firstName?.charAt(0)}{alum.lastName?.charAt(0)}
                     </div>
                   </div>
 
-                  <div className={styles.cardBody}>
-                    {alum.currentCompany && (
-                      <div className={styles.workInfo}>
-                        <p className={styles.position}>{alum.currentPosition}</p>
-                        <p className={styles.company}>at {alum.currentCompany}</p>
+                  {/* Compact Info Section */}
+                  <div className={styles.infoSection}>
+                    <h3 className={styles.alumniName}>
+                      {alum.firstName} {alum.lastName}
+                    </h3>
+                    
+                    <p className={styles.educationInfo}>
+                      Class of {alum.graduationYear}
+                    </p>
+                    
+                    <p className={styles.degreeInfo}>
+                      {alum.degree}, {alum.branch}
+                    </p>
+
+                    {(alum.currentPosition || alum.currentCompany) && (
+                      <div className={styles.workSection}>
+                        {alum.currentPosition && (
+                          <p className={styles.positionInfo}>{alum.currentPosition}</p>
+                        )}
+                        {alum.currentCompany && (
+                          <p className={styles.companyInfo}>Currently at {alum.currentCompany}</p>
+                        )}
                       </div>
                     )}
 
                     {alum.currentCity && (
-                      <p className={styles.location}>
-                        📍 {alum.currentCity}, {alum.currentState}
+                      <p className={styles.locationInfo}>
+                        Based in {alum.currentCity}{alum.currentState ? `, ${alum.currentState}` : ''}
                       </p>
                     )}
 
-                    {alum.skills && alum.skills.length > 0 && (
-                      <div className={styles.skills}>
-                        {alum.skills.slice(0, 3).map((skill, index) => (
-                          <span key={index} className={styles.skillTag}>
-                            {skill}
-                          </span>
-                        ))}
-                        {alum.skills.length > 3 && (
-                          <span className={styles.skillTag}>+{alum.skills.length - 3}</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className={styles.cardFooter}>
                     <button 
                       className={styles.viewButton}
                       onClick={() => navigate(`/alumni/${alum.id}`)}
                     >
                       View Profile
                     </button>
-                    <button
-                      className={styles.messageButton}
-                      onClick={() => userId && navigate(`/messages?to=${userId}`)}
-                      data-user-id={userId}
-                      disabled={!userId}
-                      title={userId ? 'Message this alumnus' : 'Recipient has not enabled messaging (no user id)'}
-                    >
-                      Message
-                    </button>
-                    {alum.linkedinUrl && (
-                      <a
-                        href={alum.linkedinUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={styles.linkedinButton}
-                      >
-                        LinkedIn
-                      </a>
-                    )}
                   </div>
                 </div>
                   )
