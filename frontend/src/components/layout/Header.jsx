@@ -83,7 +83,7 @@ const Header = () => {
             </Link>
           )}
           
-          {isAuthenticated && user?.role === 'admin' && (
+          {isAuthenticated && (user?.role === 'admin' || user?.role === 'superadmin') && (
             <Link 
               to="/admin" 
               className={`${styles.navLink} ${isActiveLink('/admin') ? styles.active : ''}`}
@@ -92,7 +92,7 @@ const Header = () => {
             </Link>
           )}
           
-          {isAuthenticated && user?.role !== 'admin' && (
+          {isAuthenticated && !(user?.role === 'admin' || user?.role === 'superadmin') && (
             <Link 
               to="/dashboard" 
               className={`${styles.navLink} ${isActiveLink('/dashboard') ? styles.active : ''}`}
@@ -223,13 +223,13 @@ const Header = () => {
               </Link>
             )}
             
-            {isAuthenticated && user?.role === 'admin' && (
+            {isAuthenticated && (user?.role === 'admin' || user?.role === 'superadmin') && (
               <Link to="/admin" className={styles.mobileNavLink} onClick={closeAllMenus}>
                 Dashboard
               </Link>
             )}
             
-            {isAuthenticated && user?.role !== 'admin' && (
+            {isAuthenticated && !(user?.role === 'admin' || user?.role === 'superadmin') && (
               <Link to="/dashboard" className={styles.mobileNavLink} onClick={closeAllMenus}>
                 Dashboard
               </Link>

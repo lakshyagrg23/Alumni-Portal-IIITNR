@@ -1,7 +1,8 @@
 import express from "express";
 const router = express.Router();
 import User from "../models/User.js";
-import { requireAdminAuth } from "../models/middleware/auth.js";
+import { requireAdminAuth, requireSuperadminAuth, requirePermission } from "../models/middleware/auth.js";
+import { query } from "../config/database.js";
 
 // Apply admin authentication to all routes in this router
 router.use(requireAdminAuth);
@@ -11,7 +12,7 @@ router.use(requireAdminAuth);
  * @desc    Get all users for admin dashboard
  * @access  Admin only
  */
-router.get("/users", async (req, res) => {
+router.get("/users", requirePermission('manage_users'), async (req, res) => {
   try {
     const {
       page = 1,
@@ -60,7 +61,7 @@ router.get("/users", async (req, res) => {
  * @desc    Approve a user account
  * @access  Admin only
  */
-router.put("/users/:id/approve", async (req, res) => {
+router.put("/users/:id/approve", requirePermission('manage_users'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -103,7 +104,7 @@ router.put("/users/:id/approve", async (req, res) => {
  * @desc    Reject/unapprove a user account
  * @access  Admin only
  */
-router.put("/users/:id/reject", async (req, res) => {
+router.put("/users/:id/reject", requirePermission('manage_users'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -138,7 +139,7 @@ router.put("/users/:id/reject", async (req, res) => {
  * @desc    Deactivate a user account
  * @access  Admin only
  */
-router.put("/users/:id/deactivate", async (req, res) => {
+router.put("/users/:id/deactivate", requirePermission('manage_users'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -181,7 +182,7 @@ router.put("/users/:id/deactivate", async (req, res) => {
  * @desc    Activate a user account
  * @access  Admin only
  */
-router.put("/users/:id/activate", async (req, res) => {
+router.put("/users/:id/activate", requirePermission('manage_users'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -216,10 +217,10 @@ router.put("/users/:id/activate", async (req, res) => {
  * @desc    Get user statistics for admin dashboard
  * @access  Admin only
  */
-router.get("/stats/users", async (req, res) => {
+router.get("/stats/users", requirePermission('manage_users'), async (req, res) => {
   try {
-    // `User.findAll` returns an array of users; use it directly for stats
-    const users = await User.findAll({ limit: 1000 }); // Get users array for stats
+    // `User.findAll` returns an object; extract users array for stats
+    const { users } = await User.findAll({ limit: 1000 });
 
     const stats = {
       total: users.length,
@@ -228,6 +229,7 @@ router.get("/stats/users", async (req, res) => {
       active: users.filter(user => user.is_active).length,
       inactive: users.filter(user => !user.is_active).length,
       byRole: {
+        superadmin: users.filter(user => user.role === 'superadmin').length,
         admin: users.filter(user => user.role === 'admin').length,
         alumni: users.filter(user => user.role === 'alumni').length,
       },
@@ -262,6 +264,11 @@ router.get("/stats/users", async (req, res) => {
  */
 router.get("/news", async (req, res) => {
   try {
+    if (req.user.role !== 'superadmin') {
+      // enforce permission for admins
+      const has = await query('SELECT 1 FROM admin_permissions WHERE user_id=$1 AND permission=$2 LIMIT 1', [req.user.id, 'manage_news']);
+      if (!has.rowCount) return res.status(403).json({ success:false, message:'Missing permission: manage_news' });
+    }
     const { query } = await import("../config/database.js");
     
     const result = await query(`
@@ -290,7 +297,7 @@ router.get("/news", async (req, res) => {
  * @desc    Create new news item
  * @access  Admin only
  */
-router.post("/news", async (req, res) => {
+router.post("/news", requirePermission('manage_news'), async (req, res) => {
   try {
     const { query } = await import("../config/database.js");
     const { title, content, excerpt, category = 'news', tags = [], isPublished = true } = req.body;
@@ -336,7 +343,7 @@ router.post("/news", async (req, res) => {
  * @desc    Update news item
  * @access  Admin only
  */
-router.put("/news/:id", async (req, res) => {
+router.put("/news/:id", requirePermission('manage_news'), async (req, res) => {
   try {
     const { query } = await import("../config/database.js");
     const { id } = req.params;
@@ -385,7 +392,7 @@ router.put("/news/:id", async (req, res) => {
  * @desc    Delete news item
  * @access  Admin only
  */
-router.delete("/news/:id", async (req, res) => {
+router.delete("/news/:id", requirePermission('manage_news'), async (req, res) => {
   try {
     const { query } = await import("../config/database.js");
     const { id } = req.params;
@@ -412,6 +419,111 @@ router.delete("/news/:id", async (req, res) => {
   }
 });
 
+// =============== SUPERADMIN MANAGEMENT ===============
+
+// Get current admin's permissions
+router.get('/permissions/me', async (req, res) => {
+  try {
+    if (req.user.role === 'superadmin') {
+      return res.json({ success: true, data: ['*'] });
+    }
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success:false, message:'Admin privileges required' });
+    }
+    const perms = await query('SELECT permission FROM admin_permissions WHERE user_id=$1 ORDER BY permission', [req.user.id]);
+    res.json({ success:true, data: perms.rows.map(r=>r.permission) });
+  } catch (e) {
+    console.error('permissions/me error', e);
+    res.status(500).json({ success:false, message:'Failed to load permissions' });
+  }
+});
+
+// List admins with permissions (superadmin only)
+router.get('/superadmin/admins', requireSuperadminAuth, async (req, res) => {
+  try {
+    const adminsRes = await query("SELECT id, email, role, is_active, is_approved FROM users WHERE role IN ('admin','superadmin') ORDER BY role DESC, email ASC");
+    const ids = adminsRes.rows.map(r=>r.id);
+    let permMap = new Map();
+    if (ids.length) {
+      const perms = await query('SELECT user_id, permission FROM admin_permissions WHERE user_id = ANY($1)', [ids]);
+      permMap = perms.rows.reduce((m, r) => {
+        const list = m.get(r.user_id) || [];
+        list.push(r.permission);
+        m.set(r.user_id, list);
+        return m;
+      }, new Map());
+    }
+    const data = adminsRes.rows.map(u => ({ ...u, permissions: permMap.get(u.id) || [] }));
+    res.json({ success:true, data });
+  } catch (e) {
+    console.error('list admins error', e);
+    res.status(500).json({ success:false, message:'Failed to list admins' });
+  }
+});
+
+// Promote user to admin (superadmin only)
+router.post('/superadmin/promote', requireSuperadminAuth, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ success:false, message:'userId required' });
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ success:false, message:'User not found' });
+    if (user.role === 'superadmin') return res.status(400).json({ success:false, message:'Cannot change superadmin role' });
+    const updated = await User.update(userId, { role: 'admin' });
+    res.json({ success:true, message:'User promoted to admin', data: updated });
+  } catch (e) {
+    console.error('promote admin error', e);
+    res.status(500).json({ success:false, message:'Failed to promote user' });
+  }
+});
+
+// Demote admin to alumni (superadmin only)
+router.post('/superadmin/demote', requireSuperadminAuth, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ success:false, message:'userId required' });
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ success:false, message:'User not found' });
+    if (user.role === 'superadmin') return res.status(400).json({ success:false, message:'Cannot demote superadmin' });
+    const updated = await User.update(userId, { role: 'alumni' });
+    // Remove all permissions for that user
+    await query('DELETE FROM admin_permissions WHERE user_id=$1', [userId]);
+    res.json({ success:true, message:'User demoted to alumni', data: updated });
+  } catch (e) {
+    console.error('demote admin error', e);
+    res.status(500).json({ success:false, message:'Failed to demote user' });
+  }
+});
+
+// Grant a permission to admin (superadmin only)
+router.post('/superadmin/permissions/grant', requireSuperadminAuth, async (req, res) => {
+  try {
+    const { userId, permission } = req.body;
+    if (!userId || !permission) return res.status(400).json({ success:false, message:'userId and permission required' });
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ success:false, message:'User not found' });
+    if (user.role !== 'admin') return res.status(400).json({ success:false, message:'Permissions can be granted only to admin users' });
+    await query('INSERT INTO admin_permissions(user_id, permission, granted_by) VALUES ($1,$2,$3) ON CONFLICT(user_id, permission) DO NOTHING', [userId, String(permission), req.user.id]);
+    res.json({ success:true, message:'Permission granted' });
+  } catch (e) {
+    console.error('grant permission error', e);
+    res.status(500).json({ success:false, message:'Failed to grant permission' });
+  }
+});
+
+// Revoke a permission from admin (superadmin only)
+router.post('/superadmin/permissions/revoke', requireSuperadminAuth, async (req, res) => {
+  try {
+    const { userId, permission } = req.body;
+    if (!userId || !permission) return res.status(400).json({ success:false, message:'userId and permission required' });
+    await query('DELETE FROM admin_permissions WHERE user_id=$1 AND permission=$2', [userId, String(permission)]);
+    res.json({ success:true, message:'Permission revoked' });
+  } catch (e) {
+    console.error('revoke permission error', e);
+    res.status(500).json({ success:false, message:'Failed to revoke permission' });
+  }
+});
+
 // =================== EVENTS MANAGEMENT ===================
 
 /**
@@ -421,6 +533,10 @@ router.delete("/news/:id", async (req, res) => {
  */
 router.get("/events", async (req, res) => {
   try {
+    if (req.user.role !== 'superadmin') {
+      const has = await query('SELECT 1 FROM admin_permissions WHERE user_id=$1 AND permission=$2 LIMIT 1', [req.user.id, 'manage_events']);
+      if (!has.rowCount) return res.status(403).json({ success:false, message:'Missing permission: manage_events' });
+    }
     const { query } = await import("../config/database.js");
     
     const result = await query(`
@@ -451,7 +567,7 @@ router.get("/events", async (req, res) => {
  * @desc    Create new event
  * @access  Admin only
  */
-router.post("/events", async (req, res) => {
+router.post("/events", requirePermission('manage_events'), async (req, res) => {
   try {
     const { query } = await import("../config/database.js");
     const { 
@@ -514,7 +630,7 @@ router.post("/events", async (req, res) => {
  * @desc    Update event
  * @access  Admin only
  */
-router.put("/events/:id", async (req, res) => {
+router.put("/events/:id", requirePermission('manage_events'), async (req, res) => {
   try {
     const { query } = await import("../config/database.js");
     const { id } = req.params;
@@ -580,7 +696,7 @@ router.put("/events/:id", async (req, res) => {
  * @desc    Delete event
  * @access  Admin only
  */
-router.delete("/events/:id", async (req, res) => {
+router.delete("/events/:id", requirePermission('manage_events'), async (req, res) => {
   try {
     const { query } = await import("../config/database.js");
     const { id } = req.params;

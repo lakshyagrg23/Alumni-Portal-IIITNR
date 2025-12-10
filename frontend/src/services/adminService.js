@@ -74,6 +74,32 @@ export const adminService = {
     return response
   },
 
+  // ===== Permissions & Superadmin Management =====
+  getMyPermissions: async () => {
+    const response = await API.get('/admin/permissions/me')
+    return response
+  },
+  listAdmins: async () => {
+    const response = await API.get('/admin/superadmin/admins')
+    return response
+  },
+  promoteToAdmin: async (userId) => {
+    const response = await API.post('/admin/superadmin/promote', { userId })
+    return response
+  },
+  demoteToAlumni: async (userId) => {
+    const response = await API.post('/admin/superadmin/demote', { userId })
+    return response
+  },
+  grantPermission: async (userId, permission) => {
+    const response = await API.post('/admin/superadmin/permissions/grant', { userId, permission })
+    return response
+  },
+  revokePermission: async (userId, permission) => {
+    const response = await API.post('/admin/superadmin/permissions/revoke', { userId, permission })
+    return response
+  },
+
   // =================== NEWS MANAGEMENT ===================
   
   // Get all news items

@@ -5,20 +5,15 @@ import {
   updateMany,
   deleteMany,
   findOne,
+  columnExists,
 } from "../utils/sqlHelpers.js";
 import {
   generateToken,
   generateTokenExpiry,
   isTokenExpired,
 } from "../utils/tokenUtils.js";
-import { query, updateMany } from "../utils/sqlHelpers.js";
-import { columnExists } from "../utils/sqlHelpers.js";
 import crypto from "crypto";
 
-/**
- * SQL-based User Model compatible with existing routes/middleware.
- * Returns DB-native snake_case fields to match current usage.
- */
 class User {
   static async findById(id) {
     return await findOne("users", { id });
@@ -26,8 +21,8 @@ class User {
 
   static async findByEmail(email) {
     const res = await query(
-      "SELECT * FROM users WHERE LOWER(email)=LOWER($1) LIMIT 1",
-      [email]
+      "SELECT * FROM users WHERE email = $1 LIMIT 1",
+      [String(email || "").toLowerCase()]
     );
     return res.rows[0] || null;
   }
@@ -79,8 +74,7 @@ class User {
       updated_at: new Date(),
     };
 
-    const row = await insertOne("users", insertData);
-    return row;
+    return await insertOne("users", insertData);
   }
 
   static async update(id, updateData = {}) {

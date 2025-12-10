@@ -5,6 +5,7 @@ import { adminService } from '@services/adminService'
 import NewsManagement from './components/NewsManagement'
 import EventsManagement from './components/EventsManagement'
 import AccreditationDashboard from './AccreditationDashboard'
+import AdminAccessTab from './components/AdminAccessTab'
 import styles from './AdminPanel.module.css'
 
 const AdminPanel = () => {
@@ -147,7 +148,7 @@ const AdminPanel = () => {
   }, [])
 
   // Redirect if not admin
-  if (user?.role !== 'admin') {
+  if (user?.role !== 'admin' && user?.role !== 'superadmin') {
     return (
       <div className={styles.adminContainer}>
         <div className={styles.mainContent}>
@@ -198,6 +199,15 @@ const AdminPanel = () => {
               <span className={styles.tabIcon}>📅</span>
               Events
             </button>
+            {user?.role === 'superadmin' && (
+              <button
+                className={`${styles.tab} ${activeTab === 'access' ? styles.activeTab : ''}`}
+                onClick={() => setActiveTab('access')}
+              >
+                <span className={styles.tabIcon}>🛡️</span>
+                Admin Access
+              </button>
+            )}
           </div>
 
           {/* Content Area */}
@@ -252,6 +262,7 @@ const AdminPanel = () => {
                     onChange={(e) => handleFilterChange('role', e.target.value)}
                   >
                     <option value="">All Roles</option>
+                    <option value="superadmin">Superadmin</option>
                     <option value="admin">Admin</option>
                     <option value="alumni">Alumni</option>
                   </select>
@@ -405,6 +416,10 @@ const AdminPanel = () => {
                 )}
               </div>
             </>
+          )}
+
+          {activeTab === 'access' && user?.role === 'superadmin' && (
+            <AdminAccessTab />
           )}
 
             {activeTab === 'news' && <NewsManagement />}

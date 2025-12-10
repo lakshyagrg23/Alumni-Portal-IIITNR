@@ -32,7 +32,7 @@ const AdminRoute = ({ children }) => {
     return <Navigate to="/login" replace />
   }
 
-  if (user?.role !== 'admin') {
+  if (user?.role !== 'admin' && user?.role !== 'superadmin') {
     console.log('AdminRoute: User role is not admin, role:', user?.role, 'redirecting to /dashboard')
     return <Navigate to="/dashboard" replace />
   }

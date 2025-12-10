@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import User from "../User.js";
+import { query } from "../../config/database.js";
 
 /**
  * Authentication middleware - verifies JWT token
@@ -52,7 +53,7 @@ export const requireAdmin = (req, res, next) => {
     });
   }
 
-  if (req.user.role !== "admin") {
+  if (req.user.role !== "admin" && req.user.role !== "superadmin") {
     return res.status(403).json({
       success: false,
       message: "Access denied. Admin privileges required.",
@@ -60,6 +61,46 @@ export const requireAdmin = (req, res, next) => {
   }
 
   next();
+};
+
+/** Ensure only superadmin can access */
+export const requireSuperadmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: "Authentication required." });
+  }
+  if (req.user.role !== 'superadmin') {
+    return res.status(403).json({ success: false, message: "Access denied. Superadmin privileges required." });
+  }
+  next();
+};
+
+/**
+ * Permission check for admins (superadmin bypasses)
+ * @param {string} permission
+ */
+export const requirePermission = (permission) => {
+  return async (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required.' });
+    }
+    if (req.user.role === 'superadmin') return next();
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Admin privileges required.' });
+    }
+    try {
+      const result = await query(
+        'SELECT 1 FROM admin_permissions WHERE user_id=$1 AND permission=$2 LIMIT 1',
+        [req.user.id, String(permission)]
+      );
+      if ((result.rowCount || 0) === 0) {
+        return res.status(403).json({ success: false, message: `Missing permission: ${permission}` });
+      }
+      next();
+    } catch (e) {
+      console.error('Permission check error:', e);
+      return res.status(500).json({ success: false, message: 'Permission check failed' });
+    }
+  };
 };
 
 /**
@@ -91,3 +132,4 @@ export const requireOnboarding = (req, res, next) => {
 export const requireAuth = authenticate;
 export const requireAdminAuth = [authenticate, requireAdmin];
 export const requireOnboardedUser = [authenticate, requireOnboarding];
+export const requireSuperadminAuth = [authenticate, requireSuperadmin];
