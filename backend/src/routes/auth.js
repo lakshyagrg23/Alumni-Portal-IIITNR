@@ -8,6 +8,7 @@ import { authenticate } from "../models/middleware/auth.js";
 import { query } from "../config/database.js";
 import emailService from "../services/emailService.js";
 import AlumniProfile from "../models/AlumniProfile.js";
+import { columnExists } from "../utils/sqlHelpers.js";
 
 /**
  * @route   POST /api/auth/register
@@ -697,6 +698,65 @@ router.post("/resend-verification", async (req, res) => {
       success: false,
       message: "Failed to resend verification email",
     });
+  }
+});
+
+/**
+ * @route   POST /api/auth/forgot-password
+ * @desc    Request password reset link
+ * @access  Public
+ */
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email is required" });
+    }
+    const user = await User.findByEmail(email);
+    // Always respond success to avoid account discovery
+    if (!user) {
+      return res.json({ success: true, message: "If an account exists, a reset link has been sent." });
+    }
+
+    const token = await User.generatePasswordResetToken(user.id, 1);
+    if (!token) {
+      return res.status(500).json({ success: false, message: "Unable to generate reset token" });
+    }
+    try {
+      await emailService.sendPasswordResetEmail(user.email, token, user.email.split("@")[0]);
+    } catch (e) {
+      console.error("Password reset email send error:", e);
+      return res.status(500).json({ success: false, message: "Failed to send reset email" });
+    }
+    return res.json({ success: true, message: "Reset link sent. Please check your email." });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    res.status(500).json({ success: false, message: "Server error while requesting password reset" });
+  }
+});
+
+/**
+ * @route   POST /api/auth/reset-password
+ * @desc    Reset password using token
+ * @access  Public
+ */
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password) {
+      return res.status(400).json({ success: false, message: "Token and new password are required" });
+    }
+    if (String(password).length < 6) {
+      return res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
+    }
+    const result = await User.resetPasswordByToken(token, password);
+    if (!result.success) {
+      return res.status(400).json({ success: false, message: result.message || "Unable to reset password" });
+    }
+    return res.json({ success: true, message: "Password reset successful. You can now log in." });
+  } catch (error) {
+    console.error("Reset password error:", error);
+    res.status(500).json({ success: false, message: "Server error during password reset" });
   }
 });
 

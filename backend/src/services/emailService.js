@@ -200,6 +200,65 @@ class EmailService {
       // Don't throw - welcome email is not critical
     }
   }
+
+  /**
+   * Send password reset email with token link
+   * @param {string} email - Recipient email
+   * @param {string} resetToken - Unique reset token
+   * @param {string} name - Optional display name
+   */
+  async sendPasswordResetEmail(email, resetToken, name = 'there') {
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || 'IIIT Naya Raipur Alumni Portal',
+      to: email,
+      subject: 'Reset Your Password - IIIT Naya Raipur Alumni Portal',
+      html: this.getPasswordResetTemplate(name, resetUrl),
+    };
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log('✅ Password reset email sent:', info.messageId);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error('❌ Error sending password reset email:', error);
+      throw new Error('Failed to send password reset email');
+    }
+  }
+
+  getPasswordResetTemplate(name, resetUrl) {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+          .container { max-width: 600px; margin: 40px auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+          .header { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; padding: 26px; text-align: center; }
+          .content { padding: 30px; color: #333; line-height: 1.6; }
+          .button { display: inline-block; padding: 12px 30px; background: #f97316; color: white !important; text-decoration: none; border-radius: 6px; margin: 16px 0; font-weight: 600; }
+          .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin: 16px 0; border-radius: 4px; }
+          .footer { background: #f8f9fa; padding: 18px 26px; text-align: center; color: #666; font-size: 13px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header"><h2>Password Reset Request</h2></div>
+          <div class="content">
+            <p>Hi ${name},</p>
+            <p>We received a request to reset your password for the IIIT Naya Raipur Alumni Portal.</p>
+            <p>Click the button below to set a new password:</p>
+            <center><a href="${resetUrl}" class="button">Reset Password</a></center>
+            <p>If the button doesn’t work, copy this link into your browser:</p>
+            <p style="background: #f8f9fa; padding: 12px; border-radius: 4px; word-break: break-all; font-size: 13px;">${resetUrl}</p>
+            <div class="warning"><strong>⏰ Note:</strong> This link expires in 1 hour and can be used once.</div>
+            <p>If you didn’t request a password reset, you can safely ignore this email.</p>
+          </div>
+          <div class="footer">© ${new Date().getFullYear()} IIIT Naya Raipur Alumni Portal</div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
 }
 
 const emailService = new EmailService();

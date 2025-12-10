@@ -11,6 +11,9 @@ import {
   generateTokenExpiry,
   isTokenExpired,
 } from "../utils/tokenUtils.js";
+import { query, updateMany } from "../utils/sqlHelpers.js";
+import { columnExists } from "../utils/sqlHelpers.js";
+import crypto from "crypto";
 
 /**
  * SQL-based User Model compatible with existing routes/middleware.
@@ -264,6 +267,64 @@ class User {
       { id: userId }
     );
     return rows[0] || null;
+  }
+
+  /**
+   * Generate and persist a password reset token for a user.
+   * Ensures required columns exist on users table.
+   */
+  static async generatePasswordResetToken(userId, expiresHours = 1) {
+    // Ensure columns exist
+    try {
+      const hasToken = await columnExists('users', 'password_reset_token');
+      if (!hasToken) {
+        await query("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token TEXT");
+      }
+      const hasExpires = await columnExists('users', 'password_reset_token_expires');
+      if (!hasExpires) {
+        await query("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token_expires TIMESTAMP NULL");
+      }
+      const hasUsed = await columnExists('users', 'password_reset_token_used');
+      if (!hasUsed) {
+        await query("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token_used BOOLEAN DEFAULT FALSE");
+      }
+    } catch (e) {
+      // continue; columns will error only once
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = new Date(Date.now() + (expiresHours * 60 * 60 * 1000));
+    const rows = await updateMany('users', {
+      password_reset_token: token,
+      password_reset_token_expires: expires,
+      password_reset_token_used: false,
+    }, { id: userId });
+    return rows[0] ? token : null;
+  }
+
+  /**
+   * Reset a user's password by reset token.
+   * Validates token, expiry, and single-use.
+   */
+  static async resetPasswordByToken(token, newPassword) {
+    if (!token || !newPassword) return { success: false, message: 'Invalid request' };
+    const res = await query(
+      "SELECT * FROM users WHERE password_reset_token = $1 LIMIT 1",
+      [token]
+    );
+    if (res.rows.length === 0) return { success: false, message: 'Invalid or used token' };
+    const user = res.rows[0];
+    if (user.password_reset_token_used) return { success: false, message: 'Token already used' };
+    if (!user.password_reset_token_expires) return { success: false, message: 'Invalid token' };
+    if (isTokenExpired(user.password_reset_token_expires)) return { success: false, message: 'Reset token has expired' };
+
+    const salt = await bcrypt.genSalt(10);
+    const password_hash = await bcrypt.hash(newPassword, salt);
+    await query(
+      `UPDATE users SET password_hash=$1, password_reset_token=NULL, password_reset_token_expires=NULL, password_reset_token_used=TRUE, updated_at=CURRENT_TIMESTAMP WHERE id=$2`,
+      [password_hash, user.id]
+    );
+    return { success: true, userId: user.id };
   }
 }
 export default User;
