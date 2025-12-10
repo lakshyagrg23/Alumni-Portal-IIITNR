@@ -1,15 +1,34 @@
 import React, { useState, useEffect } from 'react'
 import { Helmet } from 'react-helmet-async'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@hooks/useAuth'
 import axios from 'axios'
 import styles from './Dashboard.module.css'
+import { DayPicker } from 'react-day-picker'
+import 'react-day-picker/dist/style.css'
+import { Tooltip } from 'react-tooltip';
+import 'react-tooltip/dist/react-tooltip.css';
+
 
 const Dashboard = () => {
+  const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
   const [loading, setLoading] = useState(true)
   const [latestNews, setLatestNews] = useState([])
   const [upcomingEvents, setUpcomingEvents] = useState([])
+  const [calendarDate, setCalendarDate] = useState(new Date())
+
+  // Normalize events to include start/end dates for multi-day support
+  const normalizedEvents = React.useMemo(() => {
+    return upcomingEvents.map(e => {
+      const start = new Date(e.startDatetime)
+      const end = new Date(e.endDatetime || e.startDatetime)
+      // strip time
+      const startKey = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+      const endKey = new Date(end.getFullYear(), end.getMonth(), end.getDate())
+      return { ...e, _startDate: startKey, _endDate: endKey }
+    })
+  }, [upcomingEvents])
   const [recommendations, setRecommendations] = useState({
     sameCompany: [],
     sameCity: [],
@@ -196,6 +215,14 @@ const Dashboard = () => {
     })
   }
 
+  const formatTimeRange = (start, end) => {
+    const s = new Date(start)
+    const e = new Date(end || start)
+    const sStr = s.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    const eStr = e.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    return `${sStr} - ${eStr}`
+  }
+
   if (!isAuthenticated || !user) {
     return (
       <div className={styles.container}>
@@ -299,7 +326,7 @@ const Dashboard = () => {
                 )}
               </section>
 
-              {/* Upcoming Events */}
+              {/* Upcoming Events - Calendar View */}
               <section className={styles.section}>
                 <div className={styles.sectionHeader}>
                   <h2 className={styles.sectionTitle}>📅 Upcoming Events</h2>
@@ -307,36 +334,58 @@ const Dashboard = () => {
                     View All →
                   </Link>
                 </div>
-                
-                {upcomingEvents.length > 0 ? (
-                  <div className={styles.eventsGrid}>
-                    {upcomingEvents.map(event => (
-                      <div key={event.id} className={styles.eventCard}>
-                        <div className={styles.eventDate}>
-                          <span className={styles.eventDay}>
-                            {new Date(event.startDatetime).getDate()}
-                          </span>
-                          <span className={styles.eventMonth}>
-                            {new Date(event.startDatetime).toLocaleDateString('en-US', { month: 'short' })}
-                          </span>
-                        </div>
-                        <div className={styles.eventContent}>
-                          <h3 className={styles.eventTitle}>{event.title}</h3>
-                          <p className={styles.eventType}>{event.eventType}</p>
-                          <p className={styles.eventMode}>{event.mode}</p>
-                        </div>
-                        <Link 
-                          to="/events" 
-                          className={styles.eventButton}
-                        >
-                          View Details
-                        </Link>
-                      </div>
-                    ))}
+
+                <div className={styles.calendarSection}>
+                  <div className={styles.calendarWrapper}>
+                      <DayPicker
+                        mode="single"
+                        selected={calendarDate}
+                        onSelect={(date) => setCalendarDate(date || new Date())}
+                        onDayClick={(date) => setCalendarDate(date)}
+                        modifiers={{
+                          hasEvent: (date) => normalizedEvents.some(e => date >= e._startDate && date <= e._endDate),
+                          rangeStart: (date) => normalizedEvents.some(e => +date === +e._startDate),
+                          rangeEnd: (date) => normalizedEvents.some(e => +date === +e._endDate),
+                        }}
+                        modifiersClassNames={{
+                          hasEvent: styles.calendarEventDay,
+                          rangeStart: styles.calendarRangeStart,
+                          rangeEnd: styles.calendarRangeEnd,
+                        }}
+                      />
                   </div>
-                ) : (
-                  <p className={styles.emptyState}>No upcoming events scheduled.</p>
-                )}
+
+                  <div className={styles.calendarSidebar}>
+                    <h3 className={styles.calendarSidebarTitle}>{calendarDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</h3>
+                    {(() => {
+                      const dayEvents = normalizedEvents.filter(e => calendarDate >= e._startDate && calendarDate <= e._endDate)
+                      if (!dayEvents.length) {
+                        return <p className={styles.emptyState}>No events on this date.</p>
+                      }
+                      return (
+                        <ul className={styles.dayEventsList}>
+                          {dayEvents.map(e => (
+                            <li key={e.id} className={styles.dayEventItem}>
+                              <div className={styles.dayEventTitle}>{e.title}</div>
+                              <div className={styles.dayEventMeta}>
+                                <span>{e.eventType}</span>
+                                <span>•</span>
+                                <span>{e.mode}</span>
+                                {e.startDatetime && (
+                                  <>
+                                    <span>•</span>
+                                    <span>{formatTimeRange(e.startDatetime, e.endDatetime)}</span>
+                                  </>
+                                )}
+                              </div>
+                              <Link to="/events" className={styles.eventButton}>View Details</Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )
+                    })()}
+                  </div>
+                </div>
               </section>
             </div>
 
