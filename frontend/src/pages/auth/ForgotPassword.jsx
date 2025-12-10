@@ -1,60 +1,125 @@
-import React from 'react';
-import { Helmet } from 'react-helmet-async';
-import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
-import { toast } from 'react-hot-toast';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import styles from './Register.module.css';
 import { authService } from '../../services/authService';
-
-const schema = yup.object({
-  email: yup.string().required('Email is required').email('Enter a valid email'),
-});
+import toast from 'react-hot-toast';
+import styles from './Register.module.css';
 
 const ForgotPassword = () => {
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
-    resolver: yupResolver(schema),
-    mode: 'onChange',
-  });
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
-  const onSubmit = async ({ email }) => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    // Validate email
+    if (!email) {
+      toast.error('Please enter your email address');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      await authService.requestPasswordReset(email);
-      toast.success('If an account exists, a reset link was sent.');
-    } catch (e) {
-      toast.error(e.message || 'Failed to request password reset');
+      const response = await authService.forgotPassword(email);
+
+      if (response.success) {
+        setEmailSent(true);
+        toast.success('Password reset link sent! Please check your email.');
+      } else {
+        toast.error(response.message || 'Failed to send reset link');
+      }
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to send reset link. Please try again.';
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
-  return (
-    <>
-      <Helmet>
-        <title>Forgot Password - IIIT NR Alumni Portal</title>
-      </Helmet>
-      <div className={styles.registerContainer}>
-        <div className={styles.registerCard}>
-          <div className={styles.headerSection}>
-            <img src="/iiit-logo.png" alt="IIIT-NR Logo" className={styles.logo} />
-            <h1 className={styles.title}>Forgot Password</h1>
-            <p className={styles.subtitle}>Enter your email to receive a reset link</p>
+  if (emailSent) {
+    return (
+      <div className={styles.authPage}>
+        <div className={styles.authCard}>
+          <div className={styles.header}>
+            <h2>Check Your Email 📧</h2>
+            <p className={styles.subtitle}>
+              If an account exists with {email}, we've sent a password reset link.
+            </p>
           </div>
-          <form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
-            <div className={styles.inputGroup}>
-              <label htmlFor="email">Email Address</label>
-              <input type="email" id="email" {...register('email')} className={errors.email ? styles.errorInput : ''} />
-              {errors.email && <span className={styles.errorMessage}>{errors.email.message}</span>}
-            </div>
-            <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
-              {isSubmitting ? 'Sending...' : 'Send Reset Link'}
-            </button>
-          </form>
-          <div className={styles.footerText}>
-            Remembered your password? <Link to="/login" className={styles.link}>Login</Link>
+
+          <div className={styles.successMessage}>
+            <p>Please check your email inbox and click on the reset link.</p>
+            <p className={styles.infoText}>
+              The link will expire in 1 hour for security reasons.
+            </p>
+            <p className={styles.infoText}>
+              Don't see the email? Check your spam folder.
+            </p>
+          </div>
+
+          <div className={styles.formFooter}>
+            <Link to="/login" className={styles.backToLogin}>
+              ← Back to Login
+            </Link>
           </div>
         </div>
       </div>
-    </>
+    );
+  }
+
+  return (
+    <div className={styles.authPage}>
+      <div className={styles.authCard}>
+        <div className={styles.header}>
+          <h2>Forgot Password? 🔒</h2>
+          <p className={styles.subtitle}>
+            Enter your email address and we'll send you a link to reset your password.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className={styles.form}>
+          <div className={styles.formGroup}>
+            <label htmlFor="email">Email Address</label>
+            <input
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your registered email"
+              required
+              className={styles.input}
+              autoFocus
+            />
+          </div>
+
+          <button
+            type="submit"
+            className={styles.submitButton}
+            disabled={loading}
+          >
+            {loading ? (
+              <span className={styles.loadingText}>Sending...</span>
+            ) : (
+              'Send Reset Link'
+            )}
+          </button>
+
+          <div className={styles.formFooter}>
+            <Link to="/login" className={styles.backToLogin}>
+              ← Back to Login
+            </Link>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 };
 

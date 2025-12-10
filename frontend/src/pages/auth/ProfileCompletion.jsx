@@ -12,7 +12,14 @@ const ProfileCompletion = () => {
   const [loading, setLoading] = useState(false)
   const [fetchingData, setFetchingData] = useState(true)
   const [errors, setErrors] = useState({})
-  const [rollNumberLocked, setRollNumberLocked] = useState(false)
+  const [lockedFields, setLockedFields] = useState({
+    rollNumber: false,
+    firstName: false,
+    lastName: false,
+    degree: false,
+    branch: false,
+    graduationYear: false,
+  })
   const [preFillInfo, setPreFillInfo] = useState(null)
   
   const [formData, setFormData] = useState({
@@ -42,35 +49,77 @@ const ProfileCompletion = () => {
     const fetchOnboardingData = async () => {
       try {
         setFetchingData(true)
+        console.log('🔍 Fetching onboarding data...')
         const response = await API.get('/auth/onboarding-data')
         
-        if (response.data.success && response.data.data) {
-          const data = response.data.data
+        console.log('📥 Onboarding data response (already unwrapped by interceptor):', response)
+        
+        // Note: API interceptor already extracts response.data, so response IS the backend's JSON
+        if (response.success && response.data) {
+          const data = response.data
           
-          // Update form with pre-filled data
-          setFormData(prev => ({
-            ...prev,
-            first_name: data.firstName || prev.first_name,
-            last_name: data.lastName || prev.last_name,
-            roll_number: data.rollNumber || prev.roll_number,
-            degree: data.degree || prev.degree,
-            branch: data.branch || prev.branch,
-            graduation_year: data.graduationYear || prev.graduation_year,
-          }))
+          console.log('✅ Pre-fill data received:', {
+            firstName: data.firstName,
+            lastName: data.lastName,
+            rollNumber: data.rollNumber,
+            degree: data.degree,
+            branch: data.branch,
+            graduationYear: data.graduationYear,
+            locks: {
+              firstName: data.firstNameLocked,
+              lastName: data.lastNameLocked,
+              rollNumber: data.rollNumberLocked,
+              degree: data.degreeLocked,
+              branch: data.branchLocked,
+              graduationYear: data.graduationYearLocked,
+            }
+          })
           
-          // Set roll number lock state
-          setRollNumberLocked(data.rollNumberLocked || false)
+          // Check if we have any meaningful data to pre-fill
+          const hasPreFillData = data.rollNumber || data.firstName || data.degree || data.branch || data.graduationYear
           
-          // Store pre-fill info for display
-          if (data.registrationPath === 'personal_email' && data.rollNumber) {
-            setPreFillInfo({
-              path: 'personal_email',
-              message: 'Your information has been pre-filled from verified institute records'
+          if (hasPreFillData) {
+            console.log('✅ Has pre-fill data, updating form...')
+            
+            // Update form with pre-filled data
+            setFormData(prev => ({
+              ...prev,
+              first_name: data.firstName || prev.first_name,
+              last_name: data.lastName || prev.last_name,
+              roll_number: data.rollNumber || prev.roll_number,
+              degree: data.degree || prev.degree,
+              branch: data.branch || prev.branch,
+              graduation_year: data.graduationYear || prev.graduation_year,
+            }))
+            
+            // Set locked fields based on verification
+            setLockedFields({
+              rollNumber: data.rollNumberLocked || false,
+              firstName: data.firstNameLocked || false,
+              lastName: data.lastNameLocked || false,
+              degree: data.degreeLocked || false,
+              branch: data.branchLocked || false,
+              graduationYear: data.graduationYearLocked || false,
             })
+            
+            // Store pre-fill info for display if data is locked
+            const isVerified = data.rollNumberLocked || data.firstNameLocked || data.degreeLocked
+            if (isVerified) {
+              setPreFillInfo({
+                path: data.registrationPath,
+                message: 'Your basic information has been pre-filled and verified from institute records',
+                isVerified: true
+              })
+            }
+          } else {
+            console.log('ℹ️ No pre-fill data available, user will fill manually')
           }
+        } else {
+          console.log('⚠️ No onboarding data or unsuccessful response')
         }
       } catch (error) {
-        console.error('Error fetching onboarding data:', error)
+        console.error('❌ Error fetching onboarding data:', error)
+        console.error('Error details:', error.response?.data || error.message)
         // Continue with normal flow if fetch fails
       } finally {
         setFetchingData(false)
@@ -238,10 +287,7 @@ const ProfileCompletion = () => {
       }
       
       // Update the profile using the auth profile endpoint
-      await API.put('/auth/profile', profileData)
-      
-      // Update auth context
-      await updateProfile(formData)
+      await updateProfile(profileData)
       
       // Mark onboarding as completed
       await completeOnboarding()
@@ -312,32 +358,46 @@ const ProfileCompletion = () => {
 
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
-                  <label htmlFor="first_name">First Name *</label>
+                  <label htmlFor="first_name">
+                    First Name *
+                    {lockedFields.firstName && <span className={styles.lockedBadge}>✓ Verified</span>}
+                  </label>
                   <input
                     type="text"
                     id="first_name"
                     name="first_name"
                     value={formData.first_name}
                     onChange={handleInputChange}
-                    className={errors.first_name ? styles.error : ''}
+                    readOnly={lockedFields.firstName}
+                    className={`${errors.first_name ? styles.error : ''} ${lockedFields.firstName ? styles.readOnly : ''}`}
                     placeholder="e.g., Rahul"
                   />
+                  {lockedFields.firstName && (
+                    <small className={styles.helpText}>Verified from institute records</small>
+                  )}
                   {errors.first_name && (
                     <span className={styles.errorText}>{errors.first_name}</span>
                   )}
                 </div>
                 
                 <div className={styles.formGroup}>
-                  <label htmlFor="last_name">Last Name *</label>
+                  <label htmlFor="last_name">
+                    Last Name *
+                    {lockedFields.lastName && <span className={styles.lockedBadge}>✓ Verified</span>}
+                  </label>
                   <input
                     type="text"
                     id="last_name"
                     name="last_name"
                     value={formData.last_name}
                     onChange={handleInputChange}
-                    className={errors.last_name ? styles.error : ''}
+                    readOnly={lockedFields.lastName}
+                    className={`${errors.last_name ? styles.error : ''} ${lockedFields.lastName ? styles.readOnly : ''}`}
                     placeholder="e.g., Sharma"
                   />
+                  {lockedFields.lastName && (
+                    <small className={styles.helpText}>Verified from institute records</small>
+                  )}
                   {errors.last_name && (
                     <span className={styles.errorText}>{errors.last_name}</span>
                   )}
@@ -347,7 +407,7 @@ const ProfileCompletion = () => {
               <div className={styles.formGroup}>
                 <label htmlFor="roll_number">
                   Roll Number *
-                  {rollNumberLocked && <span className={styles.lockedBadge}>✓ Verified</span>}
+                  {lockedFields.rollNumber && <span className={styles.lockedBadge}>✓ Verified</span>}
                 </label>
                 <input
                   type="text"
@@ -356,11 +416,11 @@ const ProfileCompletion = () => {
                   value={formData.roll_number}
                   onChange={handleInputChange}
                   placeholder="e.g., 19115001"
-                  readOnly={rollNumberLocked}
-                  className={rollNumberLocked ? styles.readOnly : ''}
+                  readOnly={lockedFields.rollNumber}
+                  className={lockedFields.rollNumber ? styles.readOnly : ''}
                 />
                 <small className={styles.helpText}>
-                  {rollNumberLocked 
+                  {lockedFields.rollNumber 
                     ? 'Roll number verified from institute records'
                     : 'Your institute roll number'}
                 </small>
@@ -376,38 +436,52 @@ const ProfileCompletion = () => {
               
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
-                  <label htmlFor="degree">Degree *</label>
+                  <label htmlFor="degree">
+                    Degree *
+                    {lockedFields.degree && <span className={styles.lockedBadge}>✓ Verified</span>}
+                  </label>
                   <select
                     id="degree"
                     name="degree"
                     value={formData.degree}
                     onChange={handleInputChange}
-                    className={errors.degree ? styles.error : ''}
+                    disabled={lockedFields.degree}
+                    className={`${errors.degree ? styles.error : ''} ${lockedFields.degree ? styles.readOnly : ''}`}
                   >
                     <option value="">Select Degree</option>
                     {degreeOptions.map(degree => (
                       <option key={degree} value={degree}>{degree}</option>
                     ))}
                   </select>
+                  {lockedFields.degree && (
+                    <small className={styles.helpText}>Verified from institute records</small>
+                  )}
                   {errors.degree && (
                     <span className={styles.errorText}>{errors.degree}</span>
                   )}
                 </div>
                 
                 <div className={styles.formGroup}>
-                  <label htmlFor="branch">Branch *</label>
+                  <label htmlFor="branch">
+                    Branch *
+                    {lockedFields.branch && <span className={styles.lockedBadge}>✓ Verified</span>}
+                  </label>
                   <select
                     id="branch"
                     name="branch"
                     value={formData.branch}
                     onChange={handleInputChange}
-                    className={errors.branch ? styles.error : ''}
+                    disabled={lockedFields.branch}
+                    className={`${errors.branch ? styles.error : ''} ${lockedFields.branch ? styles.readOnly : ''}`}
                   >
                     <option value="">Select Branch</option>
                     {branchOptions.map(branch => (
                       <option key={branch} value={branch}>{branch}</option>
                     ))}
                   </select>
+                  {lockedFields.branch && (
+                    <small className={styles.helpText}>Verified from institute records</small>
+                  )}
                   {errors.branch && (
                     <span className={styles.errorText}>{errors.branch}</span>
                   )}
@@ -415,7 +489,10 @@ const ProfileCompletion = () => {
               </div>
 
               <div className={styles.formGroup}>
-                <label htmlFor="graduation_year">Graduation Year *</label>
+                <label htmlFor="graduation_year">
+                  Graduation Year *
+                  {lockedFields.graduationYear && <span className={styles.lockedBadge}>✓ Verified</span>}
+                </label>
                 <input
                   type="number"
                   id="graduation_year"
@@ -424,9 +501,13 @@ const ProfileCompletion = () => {
                   onChange={handleInputChange}
                   min="2019"
                   max={new Date().getFullYear() + 6}
-                  className={errors.graduation_year ? styles.error : ''}
+                  readOnly={lockedFields.graduationYear}
+                  className={`${errors.graduation_year ? styles.error : ''} ${lockedFields.graduationYear ? styles.readOnly : ''}`}
                   placeholder="e.g., 2023"
                 />
+                {lockedFields.graduationYear && (
+                  <small className={styles.helpText}>Verified from institute records</small>
+                )}
                 {errors.graduation_year && (
                   <span className={styles.errorText}>{errors.graduation_year}</span>
                 )}

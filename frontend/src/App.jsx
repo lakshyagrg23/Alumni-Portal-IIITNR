@@ -1,5 +1,5 @@
 import React from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 
 // Layout Components
@@ -45,9 +45,14 @@ import styles from './App.module.css'
 import { MessagingProvider } from './context/MessagingContext'
 
 function App() {
-  const { user, loading } = useAuth()
+  const { user, initializing } = useAuth()
 
-  if (loading) {
+  // Decide where to send already-authenticated users who hit auth routes
+  const authRedirectPath = user?.role === 'admin'
+    ? '/admin'
+    : (user?.onboardingCompleted ? '/dashboard' : '/complete-profile')
+
+  if (initializing) {
     return (
       <div className={styles.loadingContainer}>
         <div className={styles.spinner}></div>
@@ -88,40 +93,51 @@ function App() {
           <Route 
             path="/login" 
             element={
-              user ? <Dashboard /> : <Login />
+              user ? <Navigate to={authRedirectPath} replace /> : <Login />
             } 
           />
           <Route 
             path="/register" 
             element={
-              user ? <Dashboard /> : <RegisterMethodSelection />
+              user ? <Navigate to={authRedirectPath} replace /> : <RegisterMethodSelection />
             } 
           />
           <Route 
             path="/register/institute-email" 
             element={
-              user ? <Dashboard /> : <RegisterInstituteEmail />
+              user ? <Navigate to={authRedirectPath} replace /> : <RegisterInstituteEmail />
             } 
           />
           <Route 
             path="/register/personal-email" 
             element={
-              user ? <Dashboard /> : <RegisterPersonalEmail />
+              user ? <Navigate to={authRedirectPath} replace /> : <RegisterPersonalEmail />
             } 
           />
           <Route 
             path="/register-old" 
             element={
-              user ? <Dashboard /> : <Register />
+              user ? <Navigate to={authRedirectPath} replace /> : <Register />
             } 
           />
           
           {/* Email Verification Routes */}
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/email-sent" element={<EmailSent />} />
+          
           {/* Password Reset Routes */}
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route 
+            path="/forgot-password" 
+            element={
+              user ? <Navigate to={authRedirectPath} replace /> : <ForgotPassword />
+            } 
+          />
+          <Route 
+            path="/reset-password" 
+            element={
+              user ? <Navigate to={authRedirectPath} replace /> : <ResetPassword />
+            } 
+          />
           
           {/* LinkedIn OAuth Callback */}
           <Route path="/linkedin" element={<LinkedInCallback />} />
@@ -141,9 +157,9 @@ function App() {
             path="/dashboard" 
             element={
               <ProtectedRoute>
-                {/* <OnboardingRoute> */}
+                <OnboardingRoute>
                   <Dashboard />
-                {/* </OnboardingRoute> */}
+                </OnboardingRoute>
               </ProtectedRoute>
             } 
           />
@@ -163,9 +179,9 @@ function App() {
             path="/messages" 
             element={
               <ProtectedRoute>
-                {/* <OnboardingRoute> */}
+                <OnboardingRoute>
                   <Messages />
-                {/* </OnboardingRoute> */}
+                </OnboardingRoute>
               </ProtectedRoute>
             } 
           />

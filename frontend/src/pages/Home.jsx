@@ -105,30 +105,6 @@ const Home = () => {
           </div>
         </section>
 
-        {/* Stats Section */}
-        <section className={styles.stats}>
-          <div className={styles.container}>
-            <div className={styles.statsGrid}>
-              <div className={styles.statCard}>
-                <div className={styles.statNumber}>1500+</div>
-                <div className={styles.statLabel}>Alumni Network</div>
-              </div>
-              <div className={styles.statCard}>
-                <div className={styles.statNumber}>50+</div>
-                <div className={styles.statLabel}>Countries Worldwide</div>
-              </div>
-              <div className={styles.statCard}>
-                <div className={styles.statNumber}>200+</div>
-                <div className={styles.statLabel}>Companies</div>
-              </div>
-              <div className={styles.statCard}>
-                <div className={styles.statNumber}>15+</div>
-                <div className={styles.statLabel}>Years of Excellence</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
         {/* CTA Section */}
         <section className={styles.cta}>
           <div className={styles.container}>

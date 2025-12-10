@@ -2,6 +2,9 @@
 
 /* CSS Custom Properties (Variables) - IIIT NR Color Scheme */
 :root {
+  /* Global Zoom Scale - Set to 90% */
+  zoom: 90%;
+  
   /* Primary Colors - Based on IIIT NR Official Logo */
   --color-primary: #1e3a8a; /* Deep Navy Blue from logo */
   --color-primary-light: #3b5998;

@@ -33,7 +33,7 @@ import setupSocket from "./socket.js";
 const app = express();
 // Allow overriding the port via environment. Default to 5000 (original project expectation).
 // Set PORT in .env if you need a different value.
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 // Create HTTP server (for socket.io attachment)
 const server = createServer(app);

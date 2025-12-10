@@ -66,25 +66,28 @@ const VerifyEmail = () => {
         // Debug: Log the error details
         console.error('Verification error caught:', error);
         console.error('Error response:', error.response?.data);
+        console.error('Error message:', error.message);
         
-        // Only show error if it's not a duplicate call issue
-        if (!error.message.includes('Invalid verification token')) {
-          setStatus('error');
-          setMessage(
-            error.message || 'Verification failed. The link may have expired.'
-          );
-        } else {
-          // Token already used - treat as success since first call worked
-          console.log('Token already used (duplicate call), treating as success');
+        // Extract the actual error message from backend
+        const backendError = error.response?.data;
+        const errorMessage = backendError?.message || error.message || 'Verification failed. The link may have expired.';
+        
+        // Check if already verified
+        if (backendError?.alreadyVerified) {
           setStatus('success');
-          setMessage('Email verified successfully! You can now login to your account.');
+          setMessage('Your email is already verified! You can login now.');
           
           setTimeout(() => {
             navigate('/login', {
-              state: { message: 'Email verified! Please login to continue.' },
+              state: { message: 'Your email is already verified. Please login.' },
             });
           }, 3000);
+          return;
         }
+        
+        // Show the actual error
+        setStatus('error');
+        setMessage(errorMessage);
       }
     };
 

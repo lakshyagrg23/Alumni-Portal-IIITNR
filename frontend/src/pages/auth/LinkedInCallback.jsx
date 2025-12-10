@@ -41,8 +41,12 @@ const LinkedInCallback = () => {
           return;
         }
         
-        // Clear stored state
+        // Retrieve verification token if exists (for personal email registration path)
+        const verificationToken = sessionStorage.getItem('linkedin_verification_token');
+        
+        // Clear stored state and verification token
         sessionStorage.removeItem('linkedin_oauth_state');
+        sessionStorage.removeItem('linkedin_verification_token');
 
         // Validate authorization code
         if (!code) {
@@ -87,6 +91,11 @@ const LinkedInCallback = () => {
 
         const linkedinData = backendResponse.data.data;
         console.log('LinkedIn user data received:', linkedinData);
+
+        // Add verification token to LinkedIn data if available
+        if (verificationToken) {
+          linkedinData.verificationToken = verificationToken;
+        }
 
         // Login with backend
         const response = await loginWithLinkedIn(linkedinData);

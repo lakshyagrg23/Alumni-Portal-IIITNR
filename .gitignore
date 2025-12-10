@@ -80,6 +80,12 @@ jspm_packages/
 *.sqlite
 *.sqlite3
 
+# Data import files (contains sensitive student information)
+backend/data/*.xlsx
+backend/data/*.xls
+backend/data/*.csv
+!backend/data/README.md
+
 # Temporary folders
 tmp/
 temp/

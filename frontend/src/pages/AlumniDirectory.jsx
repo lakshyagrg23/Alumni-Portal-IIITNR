@@ -13,7 +13,6 @@ const AlumniDirectory = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalRecords, setTotalRecords] = useState(0)
-  const [toast, setToast] = useState(null)
   
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState('')
@@ -101,12 +100,6 @@ const AlumniDirectory = () => {
     setSortOrder('DESC')
     setStudentType('alumni')
     setCurrentPage(1)
-  }
-
-  // Simple toast helper
-  const showToast = (message) => {
-    setToast(message)
-    setTimeout(() => setToast(null), 2800)
   }
 
   return (
@@ -241,24 +234,15 @@ const AlumniDirectory = () => {
             </div>
 
             <div className={styles.alumniGrid}>
-              {alumni.map((alum, idx) => {
+              {alumni.map((alum) => {
                 // Backend converts `user_id` -> `userId` in API responses.
                 // Use `userId` (camelCase) primarily and fall back to `user_id` if present.
                 const userId = alum.userId || alum.user_id || null;
                 const profileImageUrl = alum.profilePictureUrl
                   ? getAvatarUrl(alum.profilePictureUrl)
                   : null;
-                const isAlumni = studentType === 'alumni'
-                const displayedSkills = Array.isArray(alum.skills) ? alum.skills : []
-                const primarySkills = displayedSkills.slice(0, 3)
-                const extraSkills = displayedSkills.slice(3)
                 return (
-                <div
-                  key={alum.id}
-                  className={styles.alumniCard}
-                  tabIndex={0}
-                  style={{ animationDelay: `${(idx * 40)}ms` }}
-                >
+                <div key={alum.id} className={styles.alumniCard}>
                   <div className={styles.cardHeader}>
                     <div className={styles.avatar}>
                       {profileImageUrl ? (
@@ -284,9 +268,6 @@ const AlumniDirectory = () => {
                     <div className={styles.basicInfo}>
                       <h3 className={styles.name}>
                         {alum.firstName} {alum.lastName}
-                        <span className={styles.statusBadge}>
-                          {isAlumni ? 'Alumni' : 'Student'}
-                        </span>
                       </h3>
                       <p className={styles.batch}>
                         {alum.degree} {alum.branch} • {alum.graduationYear}
@@ -308,24 +289,17 @@ const AlumniDirectory = () => {
                       </p>
                     )}
 
-                    {primarySkills.length > 0 && (
-                      <>
-                        <div className={styles.skills}>
-                          {primarySkills.map((skill, index) => (
-                            <span key={index} className={styles.skillTag}>{skill}</span>
-                          ))}
-                          {extraSkills.length > 0 && (
-                            <span className={styles.skillTag}>+{extraSkills.length}</span>
-                          )}
-                        </div>
-                        {extraSkills.length > 0 && (
-                          <div className={styles.extraSkills}>
-                            {extraSkills.map((skill, index) => (
-                              <span key={`x-${index}`} className={styles.skillTag}>{skill}</span>
-                            ))}
-                          </div>
+                    {alum.skills && alum.skills.length > 0 && (
+                      <div className={styles.skills}>
+                        {alum.skills.slice(0, 3).map((skill, index) => (
+                          <span key={index} className={styles.skillTag}>
+                            {skill}
+                          </span>
+                        ))}
+                        {alum.skills.length > 3 && (
+                          <span className={styles.skillTag}>+{alum.skills.length - 3}</span>
                         )}
-                      </>
+                      </div>
                     )}
                   </div>
 
@@ -333,29 +307,15 @@ const AlumniDirectory = () => {
                     <button 
                       className={styles.viewButton}
                       onClick={() => navigate(`/alumni/${alum.id}`)}
-                      aria-label={`View profile of ${alum.firstName} ${alum.lastName}`}
                     >
                       View Profile
                     </button>
                     <button
                       className={styles.messageButton}
-                      onClick={() => {
-                        if (userId) {
-                          navigate(`/messages?to=${userId}`)
-                        } else {
-                          showToast('Recipient not available for messaging')
-                        }
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          if (userId) navigate(`/messages?to=${userId}`)
-                          else showToast('Recipient not available for messaging')
-                        }
-                      }}
+                      onClick={() => userId && navigate(`/messages?to=${userId}`)}
                       data-user-id={userId}
-                      title={userId ? 'Message this alumnus' : 'Recipient not available for messaging'}
-                      aria-disabled={!userId}
+                      disabled={!userId}
+                      title={userId ? 'Message this alumnus' : 'Recipient has not enabled messaging (no user id)'}
                     >
                       Message
                     </button>
@@ -365,7 +325,6 @@ const AlumniDirectory = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         className={styles.linkedinButton}
-                        aria-label={`Open LinkedIn profile of ${alum.firstName} ${alum.lastName}`}
                       >
                         LinkedIn
                       </a>
@@ -436,26 +395,6 @@ const AlumniDirectory = () => {
           </div>
         )}
       </div>
-      {toast && (
-        <div
-          role="status"
-          aria-live="polite"
-          style={{
-            position: 'fixed',
-            right: 16,
-            bottom: 16,
-            background: '#1e3a8a',
-            color: '#fff',
-            padding: '10px 14px',
-            borderRadius: 8,
-            boxShadow: '0 6px 24px rgba(0,0,0,0.18)',
-            fontSize: 14,
-            zIndex: 9999,
-          }}
-        >
-          {toast}
-        </div>
-      )}
     </>
   )
 }
