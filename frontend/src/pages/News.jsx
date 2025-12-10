@@ -55,7 +55,7 @@ const NewsCard = ({ article }) => {
         </div>
         
         <h3 className={styles.articleTitle}>
-          <Link to={`/news/${article.id}`} className={styles.titleLink}>
+          <Link to={`/news/${article.slug || article.id}`} className={styles.titleLink}>
             {article.title}
           </Link>
         </h3>
@@ -81,7 +81,7 @@ const NewsCard = ({ article }) => {
           <span className={styles.authorInfo}>
             By {article.authorName || 'Unknown Author'}
           </span>
-          <Link to={`/news/${article.id}`} className={styles.readMoreBtn}>
+          <Link to={`/news/${article.slug || article.id}`} className={styles.readMoreBtn}>
             Read More →
           </Link>
         </div>
@@ -244,7 +244,7 @@ const News = () => {
                     <div className={styles.featuredOverlay}>
                       <span className={styles.featuredLabel}>Featured</span>
                       <h2 className={styles.featuredTitle}>
-                        <Link to={`/news/${article.id}`} className={styles.featuredTitleLink}>
+                        <Link to={`/news/${article.slug || article.id}`} className={styles.featuredTitleLink}>
                           {article.title}
                         </Link>
                       </h2>

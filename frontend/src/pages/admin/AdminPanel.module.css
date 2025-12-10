@@ -1,3 +1,45 @@
+/* --- UX Enhancements & Utilities (appended) --- */
+.tabNavigation { backdrop-filter: saturate(120%) blur(6px); }
+.activeTab { transform: translateY(-1px); }
+.tabContent { animation: fadeIn 0.35s ease; }
+.userManagement { transition: box-shadow 0.25s ease, transform 0.25s ease; }
+.userManagement:hover { box-shadow: 0 10px 24px rgba(0,0,0,0.12); transform: translateY(-2px); }
+.searchInput { transition: box-shadow 0.2s ease, border-color 0.2s ease; }
+.searchInput:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+.userTable tr { transition: background-color 0.2s ease; }
+.accessContainer { transition: box-shadow 0.25s ease, transform 0.25s ease; }
+.accessContainer:hover { box-shadow: 0 10px 24px rgba(0,0,0,0.12); transform: translateY(-2px); }
+.promoteBox { animation: fadeIn 0.4s ease; }
+.adminCard { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.adminCard:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,0.12); }
+.permissionToggle { transition: background-color 0.2s ease, border-color 0.2s ease; }
+.permissionToggle:hover { background: #f9fafb; border-color: #d1d5db; }
+.emptyState { animation: fadeIn 0.35s ease; }
+.formContainer { transition: box-shadow 0.25s ease, transform 0.25s ease; }
+.formContainer:hover { box-shadow: 0 10px 24px rgba(0,0,0,0.12); transform: translateY(-2px); }
+
+.primaryButton { transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease; }
+.primaryButton:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(30,58,138,0.18); }
+.secondaryButton {
+  padding: 0.75rem 1rem;
+  background: white;
+  color: var(--color-primary, #1e3a8a);
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.secondaryButton:hover { transform: translateY(-1px); border-color: #9ca3af; box-shadow: 0 6px 14px rgba(0,0,0,0.08); }
+.divider { border: 0; border-top: 1px solid #e5e7eb; margin: 0.75rem 0; }
+
+@media (max-width: 768px) {
+  .secondaryButton { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
 /* Admin Dashboard Styles - Modern Clean Design */
 .adminContainer {
   min-height: 100vh;

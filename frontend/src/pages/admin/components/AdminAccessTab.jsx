@@ -14,6 +14,8 @@ const AdminAccessTab = () => {
   const [admins, setAdmins] = useState([])
   const [query, setQuery] = useState('')
   const [promoteEmail, setPromoteEmail] = useState('')
+  const [newAdminEmail, setNewAdminEmail] = useState('')
+  const [newAdminPassword, setNewAdminPassword] = useState('')
   const [busyIds, setBusyIds] = useState(new Set())
 
   const filtered = useMemo(() => {
@@ -76,6 +78,27 @@ const AdminAccessTab = () => {
     }
   }
 
+  const handleCreateAdmin = async (e) => {
+    e.preventDefault()
+    const email = newAdminEmail.trim().toLowerCase()
+    const password = newAdminPassword
+    if (!email || !password) return
+    try {
+      const res = await adminService.createAdmin({ email, password })
+      if (res?.success) {
+        toast.success(`Admin created: ${email}`)
+      } else {
+        toast.success(`Admin created`) // API returns data only; interceptor unwraps
+      }
+      setNewAdminEmail('')
+      setNewAdminPassword('')
+      await refresh()
+    } catch (e) {
+      console.error('Create admin failed', e)
+      toast.error(e?.message || 'Failed to create admin')
+    }
+  }
+
   const togglePermission = async (userId, has, perm) => {
     try {
       if (has) {
@@ -131,6 +154,27 @@ const AdminAccessTab = () => {
           <button type="submit" className={styles.primaryButton}>Promote to Admin</button>
         </form>
         <div className={styles.hint}>Tip: Enter the exact email of a registered user to promote.</div>
+        <hr className={styles.divider} />
+        <form onSubmit={handleCreateAdmin} className={styles.promoteForm}>
+          <input
+            type="email"
+            placeholder="Create admin by email"
+            className={styles.searchInput}
+            value={newAdminEmail}
+            onChange={(e) => setNewAdminEmail(e.target.value)}
+            required
+          />
+          <input
+            type="password"
+            placeholder="Temporary password"
+            className={styles.searchInput}
+            value={newAdminPassword}
+            onChange={(e) => setNewAdminPassword(e.target.value)}
+            required
+          />
+          <button type="submit" className={styles.secondaryButton}>Create Admin (Superadmin)</button>
+        </form>
+        <div className={styles.hint}>Superadmin can directly create an admin account with a temp password.</div>
       </div>
 
       <div className={styles.filters}>

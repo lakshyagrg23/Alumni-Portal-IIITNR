@@ -100,6 +100,11 @@ export const adminService = {
     return response
   },
 
+  // Create admin directly (superadmin only)
+  createAdmin: async ({ email, password }) => {
+    return API.post('/admin/superadmin/create-admin', { email, password })
+  },
+
   // =================== NEWS MANAGEMENT ===================
   
   // Get all news items
