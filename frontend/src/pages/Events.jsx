@@ -4,59 +4,39 @@ import { useNavigate } from 'react-router-dom';
 import UpcomingEvents from '../components/events/UpcomingEvents';
 import RecentEvents from '../components/events/RecentEvents';
 import VolunteerProposalNew from '../components/events/VolunteerProposalNew';
-import { registerForEvent } from '../services/eventService';
+import { getEventById } from '../services/eventService';
 import styles from './Events.module.css';
 
 const Events = () => {
   const navigate = useNavigate();
   const [showVolunteerModal, setShowVolunteerModal] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState(null);
 
-  const handleEventClick = (eventId) => {
-    // Navigate to event detail page (will be implemented later)
-    navigate(`/events/${eventId}`);
+  const closeDetails = () => {
+    setSelectedEvent(null);
+    setDetailError(null);
+    setDetailLoading(false);
   };
 
-  const handleRegister = async (event) => {
+  const handleEventClick = async (eventId) => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setNotification({
-          type: 'error',
-          message: 'Please log in to register for events.'
-        });
-        setTimeout(() => navigate('/login'), 2000);
-        return;
-      }
-
-      // For now, just show a success message
-      // In a real implementation, you might show a registration form first
-      const response = await registerForEvent(event.id, {
-        motivation: 'Interested in participating',
-        relevant_experience: ''
-      });
-
-      if (response.success) {
-        setNotification({
-          type: 'success',
-          message: `Successfully registered for "${event.title}"! You will receive confirmation details soon.`
-        });
+      setDetailLoading(true);
+      setDetailError(null);
+      const res = await getEventById(eventId);
+      if (res.success) {
+        setSelectedEvent(res.data || res.event || res);
       } else {
-        setNotification({
-          type: 'error',
-          message: response.message || 'Registration failed. Please try again.'
-        });
+        setDetailError(res.message || 'Unable to load event details.');
       }
-    } catch (error) {
-      console.error('Registration error:', error);
-      setNotification({
-        type: 'error',
-        message: 'Registration failed. Please try again.'
-      });
+    } catch (err) {
+      console.error('Load event details error:', err);
+      setDetailError('Unable to load event details.');
+    } finally {
+      setDetailLoading(false);
     }
-
-    // Clear notification after 5 seconds
-    setTimeout(() => setNotification(null), 5000);
   };
 
   const handleVolunteerSuccess = (proposalData) => {
@@ -117,7 +97,6 @@ const Events = () => {
           <section className={styles.eventsSection}>
             <UpcomingEvents
               onEventClick={handleEventClick}
-              onRegister={handleRegister}
             />
           </section>
 
@@ -161,6 +140,91 @@ const Events = () => {
             onClose={() => setShowVolunteerModal(false)}
             onSuccess={handleVolunteerSuccess}
           />
+        )}
+
+        {/* Event Details Modal */}
+        {(selectedEvent || detailLoading || detailError) && (
+          <div className={styles.modalOverlay} onClick={closeDetails}>
+            <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+              <button className={styles.modalClose} onClick={closeDetails} aria-label="Close">
+                ✕
+              </button>
+              
+              {detailLoading && (
+                <div className={styles.modalLoading}>
+                  <div className={styles.spinner}></div>
+                  <p>Loading event details...</p>
+                </div>
+              )}
+
+              {detailError && !detailLoading && (
+                <div className={styles.modalError}>
+                  <p>{detailError}</p>
+                </div>
+              )}
+
+              {selectedEvent && !detailLoading && !detailError && (
+                <div className={styles.modalContent}>
+                  <div className={styles.modalHeader}>
+                    <span className={styles.badge}>{selectedEvent.event_type || selectedEvent.type || 'Event'}</span>
+                    <h3>{selectedEvent.title}</h3>
+                    <p className={styles.subtext}>{selectedEvent.description}</p>
+                  </div>
+
+                  <div className={styles.metaGrid}>
+                    <div className={styles.metaItem}>
+                      <span>📅 Date</span>
+                      <strong>{new Date(selectedEvent.start_datetime || selectedEvent.startDateTime).toLocaleString()}</strong>
+                    </div>
+                    {selectedEvent.end_datetime && (
+                      <div className={styles.metaItem}>
+                        <span>🕒 Ends</span>
+                        <strong>{new Date(selectedEvent.end_datetime).toLocaleString()}</strong>
+                      </div>
+                    )}
+                    {selectedEvent.mode && (
+                      <div className={styles.metaItem}>
+                        <span>🎯 Mode</span>
+                        <strong>{selectedEvent.mode}</strong>
+                      </div>
+                    )}
+                    {selectedEvent.location && (
+                      <div className={styles.metaItem}>
+                        <span>📍 Location</span>
+                        <strong>{selectedEvent.location}</strong>
+                      </div>
+                    )}
+                    {selectedEvent.experience_level && (
+                      <div className={styles.metaItem}>
+                        <span>🎓 Audience</span>
+                        <strong>{selectedEvent.experience_level}</strong>
+                      </div>
+                    )}
+                    {selectedEvent.status && (
+                      <div className={styles.metaItem}>
+                        <span>⚡ Status</span>
+                        <strong>{selectedEvent.status}</strong>
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedEvent.description && (
+                    <div className={styles.detailBox}>
+                      <h4>About this event</h4>
+                      <p>{selectedEvent.description}</p>
+                    </div>
+                  )}
+
+                  {selectedEvent.requirements && (
+                    <div className={styles.detailBox}>
+                      <h4>Requirements</h4>
+                      <p>{selectedEvent.requirements}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </>

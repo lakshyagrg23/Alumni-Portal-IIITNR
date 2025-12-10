@@ -6,7 +6,7 @@ import styles from './UpcomingEvents.module.css';
 /**
  * UpcomingEvents Component - Displays upcoming events with filtering
  */
-const UpcomingEvents = ({ onEventClick, onRegister }) => {
+const UpcomingEvents = ({ onEventClick }) => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -224,8 +224,7 @@ const UpcomingEvents = ({ onEventClick, onRegister }) => {
                 key={event.id}
                 event={event}
                 onEventClick={onEventClick}
-                onRegister={onRegister}
-                showRegistration={true}
+                showRegistration={false}
                 isPastEvent={false}
               />
             ))}
