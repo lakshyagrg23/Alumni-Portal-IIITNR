@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import UpcomingEvents from '../components/events/UpcomingEvents';
 import RecentEvents from '../components/events/RecentEvents';
-import VolunteerProposal from '../components/events/VolunteerProposal';
+import VolunteerProposalNew from '../components/events/VolunteerProposalNew';
 import { registerForEvent } from '../services/eventService';
 import styles from './Events.module.css';
 
@@ -157,7 +157,7 @@ const Events = () => {
 
         {/* Volunteer Modal */}
         {showVolunteerModal && (
-          <VolunteerProposal
+          <VolunteerProposalNew
             onClose={() => setShowVolunteerModal(false)}
             onSuccess={handleVolunteerSuccess}
           />
