@@ -64,7 +64,7 @@ const AlumniProfileNew = () => {
           <h2>Profile Not Found</h2>
           <p>{error || 'The requested alumni profile could not be found.'}</p>
           <button onClick={() => navigate('/directory')} className={styles.backBtn}>
-            ← Back to Directory
+            Back to Directory
           </button>
         </div>
       </div>
@@ -104,7 +104,7 @@ const AlumniProfileNew = () => {
         <div className={styles.container}>
           {/* Back Button */}
           <button onClick={() => navigate('/directory')} className={styles.backBtn}>
-            ← Back to Directory
+            Back to Directory
           </button>
 
           {/* Profile Header Card */}
@@ -127,19 +127,19 @@ const AlumniProfileNew = () => {
                 <p className={styles.headline}>{getEmploymentDisplay()}</p>
                 <div className={styles.metaTags}>
                   <span className={styles.tag}>
-                    🎓 {alumni.degree} • {alumni.branch}
+                    {alumni.degree} - {alumni.branch}
                   </span>
                   <span className={styles.tag}>
-                    📅 Class of {alumni.graduationYear}
+                    Class of {alumni.graduationYear}
                   </span>
                   {alumni.currentCity && (
                     <span className={styles.tag}>
-                      📍 {alumni.currentCity}, {alumni.currentState || alumni.currentCountry}
+                      Location: {alumni.currentCity}, {alumni.currentState || alumni.currentCountry}
                     </span>
                   )}
                   {alumni.industry && (
                     <span className={styles.tag}>
-                      💼 {alumni.industry}
+                      Industry: {alumni.industry}
                     </span>
                   )}
                 </div>
@@ -183,164 +183,175 @@ const AlumniProfileNew = () => {
             </div>
           </div>
 
-          {/* Content Grid */}
-          <div className={styles.contentGrid}>
-            {/* Left Column */}
-            <div className={styles.leftColumn}>
-              {/* Professional Interests */}
-              {alumni.professionalInterests && alumni.professionalInterests.length > 0 && (
-                <div className={styles.card}>
-                  <h3 className={styles.cardTitle}>Professional Interests</h3>
-                  <div className={styles.chipContainer}>
-                    {alumni.professionalInterests.map((interest, index) => (
-                      <span key={index} className={styles.chip}>
-                        {interest}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Career Goals */}
-              {alumni.careerGoals && alumni.careerGoals.length > 0 && (
-                <div className={styles.card}>
-                  <h3 className={styles.cardTitle}>Career Goals</h3>
-                  <div className={styles.goalsList}>
-                    {alumni.careerGoals.map((goal, index) => (
-                      <div key={index} className={styles.goalItem}>
-                        <span className={styles.goalIcon}>🎯</span>
-                        <span>{goal}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Engagement */}
-              {(alumni.interestedInMentoring || alumni.openToReferrals || alumni.availableForSpeaking) && (
-                <div className={styles.card}>
-                  <h3 className={styles.cardTitle}>Community Engagement</h3>
-                  <div className={styles.engagementList}>
-                    {alumni.interestedInMentoring && (
-                      <div className={styles.engagementItem}>
-                        <span className={styles.engagementIcon}>🧑‍🏫</span>
-                        <span>Available for Mentoring</span>
-                      </div>
-                    )}
-                    {alumni.openToReferrals && (
-                      <div className={styles.engagementItem}>
-                        <span className={styles.engagementIcon}>🤝</span>
-                        <span>Open to Referrals</span>
-                      </div>
-                    )}
-                    {alumni.availableForSpeaking && (
-                      <div className={styles.engagementItem}>
-                        <span className={styles.engagementIcon}>🎤</span>
-                        <span>Available for Speaking</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Right Column */}
-            <div className={styles.rightColumn}>
-              {/* Current Status */}
-              <div className={styles.card}>
-                <h3 className={styles.cardTitle}>Current Status</h3>
-                <div className={styles.infoList}>
-                  <div className={styles.infoItem}>
-                    <span className={styles.infoLabel}>Employment Status</span>
-                    <span className={styles.infoValue}>{alumni.employmentStatus || 'Not specified'}</span>
-                  </div>
-                  {alumni.industry && (
-                    <div className={styles.infoItem}>
-                      <span className={styles.infoLabel}>Industry</span>
-                      <span className={styles.infoValue}>{alumni.industry}</span>
-                    </div>
-                  )}
-                  {alumni.currentCompany && (
-                    <div className={styles.infoItem}>
-                      <span className={styles.infoLabel}>Company</span>
-                      <span className={styles.infoValue}>{alumni.currentCompany}</span>
-                    </div>
-                  )}
-                  {alumni.currentPosition && (
-                    <div className={styles.infoItem}>
-                      <span className={styles.infoLabel}>Position</span>
-                      <span className={styles.infoValue}>{alumni.currentPosition}</span>
-                    </div>
-                  )}
-                  {alumni.targetRole && (
-                    <div className={styles.infoItem}>
-                      <span className={styles.infoLabel}>Target Role</span>
-                      <span className={styles.infoValue}>{alumni.targetRole}</span>
-                    </div>
-                  )}
-                  {alumni.institutionName && (
-                    <div className={styles.infoItem}>
-                      <span className={styles.infoLabel}>Institution</span>
-                      <span className={styles.infoValue}>{alumni.institutionName}</span>
-                    </div>
-                  )}
-                  {alumni.expectedCompletionYear && (
-                    <div className={styles.infoItem}>
-                      <span className={styles.infoLabel}>Expected Completion</span>
-                      <span className={styles.infoValue}>{alumni.expectedCompletionYear}</span>
-                    </div>
-                  )}
+          {/* Content Sections */}
+          <div className={styles.contentSections}>
+            <section className={styles.sectionGroup}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <p className={styles.sectionEyebrow}>Status & Background</p>
                 </div>
               </div>
 
-              {/* Academic Background */}
-              <div className={styles.card}>
-                <h3 className={styles.cardTitle}>Academic Background</h3>
-                <div className={styles.infoList}>
-                  <div className={styles.infoItem}>
-                    <span className={styles.infoLabel}>Roll Number</span>
-                    <span className={styles.infoValue}>{alumni.studentId || 'N/A'}</span>
-                  </div>
-                  <div className={styles.infoItem}>
-                    <span className={styles.infoLabel}>Degree</span>
-                    <span className={styles.infoValue}>{alumni.degree}</span>
-                  </div>
-                  <div className={styles.infoItem}>
-                    <span className={styles.infoLabel}>Branch</span>
-                    <span className={styles.infoValue}>{alumni.branch}</span>
-                  </div>
-                  <div className={styles.infoItem}>
-                    <span className={styles.infoLabel}>Graduation Year</span>
-                    <span className={styles.infoValue}>{alumni.graduationYear}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Location */}
-              {alumni.currentCity && (
+              <div className={styles.cardGrid}>
+                {/* Current Status */}
                 <div className={styles.card}>
-                  <h3 className={styles.cardTitle}>Location</h3>
+                  <h3 className={styles.cardTitle}>Current Status</h3>
                   <div className={styles.infoList}>
                     <div className={styles.infoItem}>
-                      <span className={styles.infoLabel}>City</span>
-                      <span className={styles.infoValue}>{alumni.currentCity}</span>
+                      <span className={styles.infoLabel}>Employment Status</span>
+                      <span className={styles.infoValue}>{alumni.employmentStatus || 'Not specified'}</span>
                     </div>
-                    {alumni.currentState && (
+                    {alumni.industry && (
                       <div className={styles.infoItem}>
-                        <span className={styles.infoLabel}>State</span>
-                        <span className={styles.infoValue}>{alumni.currentState}</span>
+                        <span className={styles.infoLabel}>Industry</span>
+                        <span className={styles.infoValue}>{alumni.industry}</span>
                       </div>
                     )}
-                    {alumni.currentCountry && (
+                    {alumni.currentCompany && (
                       <div className={styles.infoItem}>
-                        <span className={styles.infoLabel}>Country</span>
-                        <span className={styles.infoValue}>{alumni.currentCountry}</span>
+                        <span className={styles.infoLabel}>Company</span>
+                        <span className={styles.infoValue}>{alumni.currentCompany}</span>
+                      </div>
+                    )}
+                    {alumni.currentPosition && (
+                      <div className={styles.infoItem}>
+                        <span className={styles.infoLabel}>Position</span>
+                        <span className={styles.infoValue}>{alumni.currentPosition}</span>
+                      </div>
+                    )}
+                    {alumni.targetRole && (
+                      <div className={styles.infoItem}>
+                        <span className={styles.infoLabel}>Target Role</span>
+                        <span className={styles.infoValue}>{alumni.targetRole}</span>
+                      </div>
+                    )}
+                    {alumni.institutionName && (
+                      <div className={styles.infoItem}>
+                        <span className={styles.infoLabel}>Institution</span>
+                        <span className={styles.infoValue}>{alumni.institutionName}</span>
+                      </div>
+                    )}
+                    {alumni.expectedCompletionYear && (
+                      <div className={styles.infoItem}>
+                        <span className={styles.infoLabel}>Expected Completion</span>
+                        <span className={styles.infoValue}>{alumni.expectedCompletionYear}</span>
                       </div>
                     )}
                   </div>
                 </div>
-              )}
-            </div>
+
+                {/* Academic Background */}
+                <div className={styles.card}>
+                  <h3 className={styles.cardTitle}>Academic Background</h3>
+                  <div className={styles.infoList}>
+                    <div className={styles.infoItem}>
+                      <span className={styles.infoLabel}>Roll Number</span>
+                      <span className={styles.infoValue}>{alumni.studentId || 'N/A'}</span>
+                    </div>
+                    <div className={styles.infoItem}>
+                      <span className={styles.infoLabel}>Degree</span>
+                      <span className={styles.infoValue}>{alumni.degree}</span>
+                    </div>
+                    <div className={styles.infoItem}>
+                      <span className={styles.infoLabel}>Branch</span>
+                      <span className={styles.infoValue}>{alumni.branch}</span>
+                    </div>
+                    <div className={styles.infoItem}>
+                      <span className={styles.infoLabel}>Graduation Year</span>
+                      <span className={styles.infoValue}>{alumni.graduationYear}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Location */}
+                {alumni.currentCity && (
+                  <div className={styles.card}>
+                    <h3 className={styles.cardTitle}>Location</h3>
+                    <div className={styles.infoList}>
+                      <div className={styles.infoItem}>
+                        <span className={styles.infoLabel}>City</span>
+                        <span className={styles.infoValue}>{alumni.currentCity}</span>
+                      </div>
+                      {alumni.currentState && (
+                        <div className={styles.infoItem}>
+                          <span className={styles.infoLabel}>State</span>
+                          <span className={styles.infoValue}>{alumni.currentState}</span>
+                        </div>
+                      )}
+                      {alumni.currentCountry && (
+                        <div className={styles.infoItem}>
+                          <span className={styles.infoLabel}>Country</span>
+                          <span className={styles.infoValue}>{alumni.currentCountry}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className={styles.sectionGroup}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <p className={styles.sectionEyebrow}>Professional & Community</p>
+                </div>
+              </div>
+
+              <div className={styles.cardGrid}>
+                {/* Professional Interests */}
+                {alumni.professionalInterests && alumni.professionalInterests.length > 0 && (
+                  <div className={styles.card}>
+                    <h3 className={styles.cardTitle}>Professional Interests</h3>
+                    <div className={styles.chipContainer}>
+                      {alumni.professionalInterests.map((interest, index) => (
+                        <span key={index} className={styles.chip}>
+                          {interest}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Career Goals */}
+                {alumni.careerGoals && alumni.careerGoals.length > 0 && (
+                  <div className={styles.card}>
+                    <h3 className={styles.cardTitle}>Career Goals</h3>
+                    <div className={styles.goalsList}>
+                      {alumni.careerGoals.map((goal, index) => (
+                        <div key={index} className={styles.goalItem}>
+                          <span className={styles.goalIcon}>*</span>
+                          <span>{goal}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Engagement */}
+                {(alumni.interestedInMentoring || alumni.openToReferrals || alumni.availableForSpeaking) && (
+                  <div className={styles.card}>
+                    <h3 className={styles.cardTitle}>Community Engagement</h3>
+                    <div className={styles.engagementList}>
+                      {alumni.interestedInMentoring && (
+                        <div className={styles.engagementItem}>
+                          <span>Available for Mentoring</span>
+                        </div>
+                      )}
+                      {alumni.openToReferrals && (
+                        <div className={styles.engagementItem}>
+                          <span>Open to Referrals</span>
+                        </div>
+                      )}
+                      {alumni.availableForSpeaking && (
+                        <div className={styles.engagementItem}>
+                          <span>Available for Speaking</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
           </div>
         </div>
       </div>
