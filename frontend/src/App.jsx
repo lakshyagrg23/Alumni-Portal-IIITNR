@@ -22,13 +22,13 @@ import ForgotPassword from '@pages/auth/ForgotPassword'
 import ResetPassword from '@pages/auth/ResetPassword'
 import Dashboard from '@pages/Dashboard'
 import AlumniDirectory from '@pages/AlumniDirectory'
-import AlumniProfile from '@pages/AlumniProfile'
+import AlumniProfileNew from '@pages/AlumniProfileNew'
 import News from '@pages/News'
 import NewsDetail from '@pages/NewsDetail'
 import Events from '@pages/Events'
 import Connect from '@pages/Connect'
 import Messages from '@pages/Messages'
-import Profile from '@pages/Profile'
+import Profile from '@pages/ProfileNew'
 import AdminPanel from '@pages/admin/AdminPanel'
 import NotFound from '@pages/NotFound'
 
@@ -87,7 +87,7 @@ function App() {
           <Route path="/directory" element={<AlumniDirectory />} />
           
           {/* Alumni Profile - Temporarily Public for Development */}
-          <Route path="/alumni/:id" element={<AlumniProfile />} />
+          <Route path="/alumni/:id" element={<AlumniProfileNew />} />
           
           {/* Auth Routes */}
           <Route 

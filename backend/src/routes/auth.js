@@ -586,11 +586,14 @@ router.get("/verify-email", async (req, res) => {
   try {
     const { token } = req.query;
 
-    console.log('📧 Email verification attempt');
-    console.log('Token received:', token ? `${token.substring(0, 10)}...` : 'MISSING');
+    console.log("📧 Email verification attempt");
+    console.log(
+      "Token received:",
+      token ? `${token.substring(0, 10)}...` : "MISSING"
+    );
 
     if (!token) {
-      console.log('❌ No token provided');
+      console.log("❌ No token provided");
       return res.status(400).json({
         success: false,
         message: "Verification token is required",
@@ -598,12 +601,12 @@ router.get("/verify-email", async (req, res) => {
     }
 
     // Verify the email
-    console.log('🔍 Calling User.verifyEmail...');
+    console.log("🔍 Calling User.verifyEmail...");
     const result = await User.verifyEmail(token);
-    console.log('📊 Verification result:', result);
+    console.log("📊 Verification result:", result);
 
     if (!result.success) {
-      console.log('❌ Verification failed:', result.message);
+      console.log("❌ Verification failed:", result.message);
       return res.status(400).json({
         success: false,
         message: result.message,
@@ -717,28 +720,49 @@ router.post("/forgot-password", async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) {
-      return res.status(400).json({ success: false, message: "Email is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Email is required" });
     }
     const user = await User.findByEmail(email);
     // Always respond success to avoid account discovery
     if (!user) {
-      return res.json({ success: true, message: "If an account exists, a reset link has been sent." });
+      return res.json({
+        success: true,
+        message: "If an account exists, a reset link has been sent.",
+      });
     }
 
     const token = await User.generatePasswordResetToken(user.id, 1);
     if (!token) {
-      return res.status(500).json({ success: false, message: "Unable to generate reset token" });
+      return res
+        .status(500)
+        .json({ success: false, message: "Unable to generate reset token" });
     }
     try {
-      await emailService.sendPasswordResetEmail(user.email, token, user.email.split("@")[0]);
+      await emailService.sendPasswordResetEmail(
+        user.email,
+        token,
+        user.email.split("@")[0]
+      );
     } catch (e) {
       console.error("Password reset email send error:", e);
-      return res.status(500).json({ success: false, message: "Failed to send reset email" });
+      return res
+        .status(500)
+        .json({ success: false, message: "Failed to send reset email" });
     }
-    return res.json({ success: true, message: "Reset link sent. Please check your email." });
+    return res.json({
+      success: true,
+      message: "Reset link sent. Please check your email.",
+    });
   } catch (error) {
     console.error("Forgot password error:", error);
-    res.status(500).json({ success: false, message: "Server error while requesting password reset" });
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: "Server error while requesting password reset",
+      });
   }
 });
 
@@ -751,19 +775,39 @@ router.post("/reset-password", async (req, res) => {
   try {
     const { token, password } = req.body;
     if (!token || !password) {
-      return res.status(400).json({ success: false, message: "Token and new password are required" });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Token and new password are required",
+        });
     }
     if (String(password).length < 6) {
-      return res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Password must be at least 6 characters",
+        });
     }
     const result = await User.resetPasswordByToken(token, password);
     if (!result.success) {
-      return res.status(400).json({ success: false, message: result.message || "Unable to reset password" });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: result.message || "Unable to reset password",
+        });
     }
-    return res.json({ success: true, message: "Password reset successful. You can now log in." });
+    return res.json({
+      success: true,
+      message: "Password reset successful. You can now log in.",
+    });
   } catch (error) {
     console.error("Reset password error:", error);
-    res.status(500).json({ success: false, message: "Server error during password reset" });
+    res
+      .status(500)
+      .json({ success: false, message: "Server error during password reset" });
   }
 });
 
@@ -1239,23 +1283,23 @@ router.get("/onboarding-data", authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    console.log('🔍 Onboarding data requested for user:', userId);
+    console.log("🔍 Onboarding data requested for user:", userId);
 
     // Get user data
     const user = await User.findById(userId);
     if (!user) {
-      console.log('❌ User not found:', userId);
+      console.log("❌ User not found:", userId);
       return res.status(404).json({
         success: false,
         message: "User not found",
       });
     }
 
-    console.log('✅ User found:', {
+    console.log("✅ User found:", {
       id: user.id,
       email: user.email,
       registration_path: user.registration_path,
-      institute_record_id: user.institute_record_id
+      institute_record_id: user.institute_record_id,
     });
 
     let preFillData = {
@@ -1280,27 +1324,30 @@ router.get("/onboarding-data", authenticate, async (req, res) => {
 
     // If user registered via personal email, fetch institute record data
     if (user.institute_record_id) {
-      console.log('📝 Fetching institute record by ID:', user.institute_record_id);
+      console.log(
+        "📝 Fetching institute record by ID:",
+        user.institute_record_id
+      );
       try {
         const recordResult = await query(
           "SELECT * FROM institute_records WHERE id = $1",
           [user.institute_record_id]
         );
 
-        console.log('📊 Institute records query result:', {
+        console.log("📊 Institute records query result:", {
           rowCount: recordResult.rows.length,
-          hasData: recordResult.rows.length > 0
+          hasData: recordResult.rows.length > 0,
         });
 
         if (recordResult.rows.length > 0) {
           const record = recordResult.rows[0];
 
-          console.log('📋 Institute record data:', {
+          console.log("📋 Institute record data:", {
             roll_number: record.roll_number,
             full_name: record.full_name,
             enrollment_year: record.enrollment_year,
             degree: record.degree,
-            branch: record.branch
+            branch: record.branch,
           });
 
           // Split full name into first and last name
@@ -1310,8 +1357,8 @@ router.get("/onboarding-data", authenticate, async (req, res) => {
             nameParts.length > 1 ? nameParts.slice(1).join(" ") : "";
 
           // Calculate graduation year from enrollment year (assuming 4-year B.Tech)
-          const graduationYear = record.enrollment_year 
-            ? record.enrollment_year + 4 
+          const graduationYear = record.enrollment_year
+            ? record.enrollment_year + 4
             : null;
 
           preFillData = {
@@ -1337,36 +1384,39 @@ router.get("/onboarding-data", authenticate, async (req, res) => {
             contactNumberLocked: true,
           };
 
-          console.log('✅ Pre-fill data prepared:', preFillData);
+          console.log("✅ Pre-fill data prepared:", preFillData);
         } else {
-          console.log('⚠️ No institute record found for ID:', user.institute_record_id);
+          console.log(
+            "⚠️ No institute record found for ID:",
+            user.institute_record_id
+          );
         }
       } catch (error) {
         console.error("❌ Error fetching institute record:", error);
       }
-    } else if (user.registration_path === 'institute_email') {
+    } else if (user.registration_path === "institute_email") {
       // For institute email users, match by email address
-      console.log('📝 Fetching institute record by email:', user.email);
+      console.log("📝 Fetching institute record by email:", user.email);
       try {
         const recordResult = await query(
           "SELECT * FROM institute_records WHERE LOWER(institute_email) = LOWER($1) AND is_active = true",
           [user.email]
         );
 
-        console.log('📊 Institute records query result (by email):', {
+        console.log("📊 Institute records query result (by email):", {
           rowCount: recordResult.rows.length,
-          hasData: recordResult.rows.length > 0
+          hasData: recordResult.rows.length > 0,
         });
 
         if (recordResult.rows.length > 0) {
           const record = recordResult.rows[0];
 
-          console.log('📋 Institute record data found:', {
+          console.log("📋 Institute record data found:", {
             roll_number: record.roll_number,
             full_name: record.full_name,
             enrollment_year: record.enrollment_year,
             degree: record.degree,
-            branch: record.branch
+            branch: record.branch,
           });
 
           // Split full name into first and last name
@@ -1376,8 +1426,8 @@ router.get("/onboarding-data", authenticate, async (req, res) => {
             nameParts.length > 1 ? nameParts.slice(1).join(" ") : "";
 
           // Calculate graduation year from enrollment year (assuming 4-year B.Tech)
-          const graduationYear = record.enrollment_year 
-            ? record.enrollment_year + 4 
+          const graduationYear = record.enrollment_year
+            ? record.enrollment_year + 4
             : null;
 
           preFillData = {
@@ -1403,18 +1453,23 @@ router.get("/onboarding-data", authenticate, async (req, res) => {
             contactNumberLocked: true,
           };
 
-          console.log('✅ Pre-fill data prepared from institute email:', preFillData);
+          console.log(
+            "✅ Pre-fill data prepared from institute email:",
+            preFillData
+          );
         } else {
-          console.log('⚠️ No institute record found for email:', user.email);
+          console.log("⚠️ No institute record found for email:", user.email);
         }
       } catch (error) {
         console.error("❌ Error fetching institute record by email:", error);
       }
     } else {
-      console.log('ℹ️ No institute_record_id and not institute_email path - using default data');
+      console.log(
+        "ℹ️ No institute_record_id and not institute_email path - using default data"
+      );
     }
 
-    console.log('📤 Sending response with data:', preFillData);
+    console.log("📤 Sending response with data:", preFillData);
     res.json({
       success: true,
       data: preFillData,
@@ -1468,6 +1523,9 @@ router.put("/profile", authenticate, async (req, res) => {
       "currentCompany",
       "currentPosition",
       "employmentStatus",
+      "targetRole",
+      "institutionName",
+      "expectedCompletionYear",
       "currentEmployer",
       "currentJobTitle",
       "industrySector",
@@ -1478,8 +1536,14 @@ router.put("/profile", authenticate, async (req, res) => {
       "industry",
       "workExperienceYears",
       "skills",
+      "professionalInterests",
+      "careerGoals",
+      "interestedInMentoring",
+      "openToReferrals",
+      "availableForSpeaking",
       "linkedinUrl",
       "githubUrl",
+      "twitterUrl",
       "portfolioUrl",
       "currentCity",
       "currentState",
@@ -1544,7 +1608,12 @@ router.put("/profile", authenticate, async (req, res) => {
     if (Object.keys(alumniData).length > 0) {
       console.log("Processing alumni data:", alumniData);
       // Handle array fields properly
-      const arrayFields = ["skills", "interests"];
+      const arrayFields = [
+        "skills",
+        "interests",
+        "professionalInterests",
+        "careerGoals",
+      ];
       arrayFields.forEach((field) => {
         if (alumniData.hasOwnProperty(field)) {
           if (
@@ -1625,9 +1694,17 @@ router.put("/profile", authenticate, async (req, res) => {
     });
   } catch (error) {
     console.error("Update profile error:", error);
+    console.error("Error stack:", error.stack);
+    console.error("Error details:", {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      constraint: error.constraint,
+    });
     res.status(500).json({
       success: false,
       message: "Server error while updating profile",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 });

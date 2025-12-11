@@ -37,124 +37,132 @@
 }
 
 /* Welcome Section */
-.welcomeSection {
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
-  border-radius: 16px;
-  padding: 2.5rem;
-  margin-bottom: 2rem;
-  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.15);
-}
-
-.welcomeContent {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.welcomeTitle {
-  font-size: 2.25rem;
-  color: white;
-  margin-bottom: 1.5rem;
-  font-weight: 700;
-}
-
-/* Profile Status */
-.profileStatus {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.profileStatusHeader {
+/* Welcome Header - Compact */
+.welcomeHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e5e7eb;
   flex-wrap: wrap;
   gap: 1rem;
 }
 
-.profileStatusText {
-  color: white;
-  font-size: 1.1rem;
-  font-weight: 500;
+.welcomeTitle {
+  font-size: 1.75rem;
+  color: #1e3a8a;
+  margin: 0;
+  font-weight: 700;
 }
 
-.completeProfileLink {
-  background: #f97316;
-  color: white;
+.headerActions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.headerButton,
+.headerButtonSecondary {
   padding: 0.5rem 1.25rem;
   border-radius: 6px;
   text-decoration: none;
   font-weight: 600;
-  font-size: 0.9rem;
-  transition: all 0.3s ease;
-}
-
-.completeProfileLink:hover {
-  background: #ea580c;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
-}
-
-/* Progress Bar */
-.progressBar {
-  width: 100%;
-  height: 8px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.progressFill {
-  height: 100%;
-  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
-  border-radius: 4px;
-  transition: width 0.5s ease;
-}
-
-/* Quick Actions */
-.quickActions {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.actionButton,
-.actionButtonSecondary {
-  padding: 0.75rem 1.75rem;
-  border-radius: 8px;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 1rem;
-  transition: all 0.3s ease;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
   display: inline-block;
 }
 
-.actionButton {
-  background: white;
-  color: #1e3a8a;
-  border: 2px solid white;
-}
-
-.actionButton:hover {
-  background: #f8fafc;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
-}
-
-.actionButtonSecondary {
-  background: transparent;
+.headerButton {
+  background: #1e3a8a;
   color: white;
-  border: 2px solid rgba(255, 255, 255, 0.5);
+  border: 2px solid #1e3a8a;
 }
 
-.actionButtonSecondary:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: white;
-  transform: translateY(-2px);
+.headerButton:hover {
+  background: #1e40af;
+  border-color: #1e40af;
+}
+
+.headerButtonSecondary {
+  background: transparent;
+  color: #1e3a8a;
+  border: 2px solid #1e3a8a;
+}
+
+.headerButtonSecondary:hover {
+  background: #f0f4ff;
+}
+
+/* Compact Profile Completion Banner */
+.profileBanner {
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  padding: 0.75rem 1.25rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.bannerContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.bannerLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.bannerIcon {
+  font-size: 1.25rem;
+}
+
+.bannerText {
+  color: #9a3412;
+  font-size: 0.9rem;
+}
+
+.bannerText strong {
+  font-weight: 700;
+  color: #7c2d12;
+}
+
+.bannerButton {
+  background: #f97316;
+  color: white;
+  padding: 0.375rem 1rem;
+  border-radius: 5px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.8rem;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.bannerButton:hover {
+  background: #ea580c;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
+}
+
+.bannerProgress {
+  width: 100%;
+  height: 4px;
+  background: rgba(249, 115, 22, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.bannerProgressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #f97316 0%, #ea580c 100%);
+  border-radius: 2px;
+  transition: width 0.5s ease;
 }
 
 /* Content Grid */

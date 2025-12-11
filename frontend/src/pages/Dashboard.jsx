@@ -238,42 +238,43 @@ const Dashboard = () => {
       </Helmet>
 
       <div className={styles.dashboard}>
-        {/* Welcome Section */}
-        <section className={styles.welcomeSection}>
-          <div className={styles.welcomeContent}>
-            <h1 className={styles.welcomeTitle}>
-              Welcome back, {user.firstName || 'Alumni'}! 👋
-            </h1>
-            
-            {profileCompletion < 100 && (
-              <div className={styles.profileStatus}>
-                <div className={styles.profileStatusHeader}>
-                  <span className={styles.profileStatusText}>
-                    🎓 Your profile is {profileCompletion}% complete
-                  </span>
-                  <Link to="/profile" className={styles.completeProfileLink}>
-                    Complete Profile
-                  </Link>
-                </div>
-                <div className={styles.progressBar}>
-                  <div 
-                    className={styles.progressFill} 
-                    style={{ width: `${profileCompletion}%` }}
-                  />
-                </div>
+        {/* Welcome Header */}
+        <div className={styles.welcomeHeader}>
+          <h1 className={styles.welcomeTitle}>
+            Welcome back, {user.firstName || 'Alumni'}! 👋
+          </h1>
+          <div className={styles.headerActions}>
+            <Link to="/profile" className={styles.headerButton}>
+              Edit Profile
+            </Link>
+            <Link to={`/alumni/${user.alumniProfile?.id}`} className={styles.headerButtonSecondary}>
+              View Public Profile
+            </Link>
+          </div>
+        </div>
+
+        {/* Compact Profile Completion Banner */}
+        {profileCompletion < 100 && (
+          <div className={styles.profileBanner}>
+            <div className={styles.bannerContent}>
+              <div className={styles.bannerLeft}>
+                <span className={styles.bannerIcon}>📝</span>
+                <span className={styles.bannerText}>
+                  Your profile is <strong>{profileCompletion}%</strong> complete
+                </span>
               </div>
-            )}
-            
-            <div className={styles.quickActions}>
-              <Link to="/profile" className={styles.actionButton}>
-                Edit Profile
-              </Link>
-              <Link to={`/alumni/${user.alumniProfile?.id}`} className={styles.actionButtonSecondary}>
-                View Public Profile
+              <Link to="/profile" className={styles.bannerButton}>
+                Complete Now
               </Link>
             </div>
+            <div className={styles.bannerProgress}>
+              <div 
+                className={styles.bannerProgressFill} 
+                style={{ width: `${profileCompletion}%` }}
+              />
+            </div>
           </div>
-        </section>
+        )}
 
         {loading ? (
           <div className={styles.loadingContainer}>

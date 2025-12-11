@@ -138,14 +138,6 @@ router.get("/:id", async (req, res) => {
       });
     }
 
-    // Check privacy settings
-    if (!alumni.isProfilePublic) {
-      return res.status(403).json({
-        success: false,
-        message: "This profile is private",
-      });
-    }
-
     res.json({
       success: true,
       data: {
