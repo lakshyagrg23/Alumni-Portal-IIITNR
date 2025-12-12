@@ -57,9 +57,11 @@ class AlumniProfile {
       industry,
       workExperienceYears = 0,
       skills = [],
+      professionalInterests = [],
       linkedinUrl,
       githubUrl,
       portfolioUrl,
+      twitterUrl,
       currentCity,
       currentState,
       currentCountry = "India",
@@ -73,8 +75,16 @@ class AlumniProfile {
       showAcademicInfo = true,
       isOpenToWork = false,
       isAvailableForMentorship = false,
-      // Accreditation fields (optional)
+      // New professional fields
       employmentStatus,
+      targetRole,
+      institutionName,
+      expectedCompletionYear,
+      careerGoals = [],
+      interestedInMentoring = false,
+      openToReferrals = false,
+      availableForSpeaking = false,
+      // Accreditation fields (optional)
       currentEmployer,
       currentJobTitle,
       industrySector,
@@ -120,16 +130,25 @@ class AlumniProfile {
       industry,
       work_experience_years: workExperienceYears,
       skills,
+      professional_interests: professionalInterests,
       linkedin_url: linkedinUrl,
       github_url: githubUrl,
       portfolio_url: portfolioUrl,
+      twitter_url: twitterUrl,
       current_city: currentCity,
       current_state: currentState,
       current_country: currentCountry,
       employment_status: employmentStatus,
+      target_role: targetRole,
+      institution_name: institutionName,
+      expected_completion_year: expectedCompletionYear,
+      career_goals: careerGoals,
+      interested_in_mentoring: interestedInMentoring,
+      open_to_referrals: openToReferrals,
+      available_for_speaking: availableForSpeaking,
       current_employer: currentEmployer || currentCompany,
       current_job_title: currentJobTitle || currentPosition,
-      industry_sector: industry,
+      industry_sector: industrySector || industry,
       job_location: currentCity || jobLocation,
       job_start_year: workExperienceYears
         ? jobStartYear || workExperienceYears
@@ -211,7 +230,12 @@ class AlumniProfile {
     const dbData = this.convertToDbFormat(updateData);
 
     // Handle array fields properly for PostgreSQL
-    const arrayFields = ["skills", "interests"];
+    const arrayFields = [
+      "skills",
+      "interests",
+      "professional_interests",
+      "career_goals",
+    ];
     arrayFields.forEach((field) => {
       if (dbData.hasOwnProperty(field)) {
         if (
@@ -286,13 +310,6 @@ class AlumniProfile {
     let whereConditions = [];
     let queryParams = [];
     let paramIndex = 1;
-
-    // Only show public profiles by default
-    if (publicOnly) {
-      whereConditions.push(`ap.is_profile_public = $${paramIndex}`);
-      queryParams.push(true);
-      paramIndex++;
-    }
 
     // Only show alumni role users (not admin users)
     whereConditions.push(`u.role = $${paramIndex}`);
@@ -489,7 +506,6 @@ class AlumniProfile {
         COUNT(DISTINCT branch) as branches,
         AVG(work_experience_years)::NUMERIC(4,2) as avg_experience
       FROM alumni_profiles
-      WHERE is_profile_public = true
     `;
 
     const result = await query(statsQuery);
@@ -498,7 +514,7 @@ class AlumniProfile {
     const locationsQuery = `
       SELECT current_city, current_state, COUNT(*) as count
       FROM alumni_profiles
-      WHERE is_profile_public = true AND current_city IS NOT NULL
+      WHERE current_city IS NOT NULL
       GROUP BY current_city, current_state
       ORDER BY count DESC
       LIMIT 10
@@ -510,7 +526,7 @@ class AlumniProfile {
     const industriesQuery = `
       SELECT industry, COUNT(*) as count
       FROM alumni_profiles
-      WHERE is_profile_public = true AND industry IS NOT NULL
+      WHERE industry IS NOT NULL
       GROUP BY industry
       ORDER BY count DESC
       LIMIT 10
@@ -522,7 +538,7 @@ class AlumniProfile {
     const yearQuery = `
       SELECT graduation_year, COUNT(*) as count
       FROM alumni_profiles
-      WHERE is_profile_public = true AND graduation_year IS NOT NULL
+      WHERE graduation_year IS NOT NULL
       GROUP BY graduation_year
       ORDER BY graduation_year DESC
     `;
@@ -568,6 +584,7 @@ class AlumniProfile {
       linkedinUrl: "linkedin_url",
       githubUrl: "github_url",
       portfolioUrl: "portfolio_url",
+      twitterUrl: "twitter_url",
       currentCity: "current_city",
       currentState: "current_state",
       currentCountry: "current_country",
@@ -582,6 +599,15 @@ class AlumniProfile {
       rollNumber: "student_id",
       // Accreditation / profile canonical mappings
       employmentStatus: "employment_status",
+      targetRole: "target_role",
+      institutionName: "institution_name",
+      expectedCompletionYear: "expected_completion_year",
+      professionalInterests: "professional_interests",
+      careerGoals: "career_goals",
+      interestedInMentoring: "interested_in_mentoring",
+      openToReferrals: "open_to_referrals",
+      availableForSpeaking: "available_for_speaking",
+      twitterUrl: "twitter_url",
       currentEmployer: "current_employer",
       currentJobTitle: "current_job_title",
       currentPosition: "current_job_title",
@@ -657,6 +683,7 @@ class AlumniProfile {
       linkedin_url: "linkedinUrl",
       github_url: "githubUrl",
       portfolio_url: "portfolioUrl",
+      twitter_url: "twitterUrl",
       current_city: "currentCity",
       current_state: "currentState",
       current_country: "currentCountry",
@@ -671,6 +698,15 @@ class AlumniProfile {
       user_id: "userId",
       // Accreditation & canonical fields
       employment_status: "employmentStatus",
+      target_role: "targetRole",
+      institution_name: "institutionName",
+      expected_completion_year: "expectedCompletionYear",
+      professional_interests: "professionalInterests",
+      career_goals: "careerGoals",
+      interested_in_mentoring: "interestedInMentoring",
+      open_to_referrals: "openToReferrals",
+      available_for_speaking: "availableForSpeaking",
+      twitter_url: "twitterUrl",
       current_employer: "currentEmployer",
       current_job_title: "currentJobTitle",
       industry_sector: "industrySector",

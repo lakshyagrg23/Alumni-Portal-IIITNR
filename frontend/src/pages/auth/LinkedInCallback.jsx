@@ -108,7 +108,7 @@ const LinkedInCallback = () => {
         
         // Check if user needs to complete profile
         if (response.isNewUser || !response.user.hasAlumniProfile) {
-          navigate('/complete-profile');
+          navigate('/onboarding');
         } else {
           navigate('/dashboard');
         }

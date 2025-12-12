@@ -53,8 +53,7 @@ async function getOverviewKPIs(filters = {}) {
                 COUNT(*) FILTER (WHERE employment_status = 'Self-employed') as self_employed_count,
                 COUNT(*) FILTER (WHERE consent_for_accreditation = true) as consented_count,
                 COUNT(*) FILTER (WHERE profile_verified_at IS NOT NULL) as verified_count,
-                COUNT(*) FILTER (WHERE phone IS NOT NULL) as complete_contact_count,
-                AVG(cgpa) as avg_cgpa
+                COUNT(*) FILTER (WHERE linkedin_url IS NOT NULL) as complete_contact_count
             FROM alumni_profiles
             WHERE ${whereClause}
         ),
@@ -108,7 +107,6 @@ async function getOverviewKPIs(filters = {}) {
             a.consented_count,
             a.verified_count,
             a.complete_contact_count,
-            a.avg_cgpa,
             p.total_placements,
             p.avg_salary,
             p.max_salary,
@@ -738,13 +736,13 @@ async function getContactVerificationStatus(filters = {}) {
     const query = `
         SELECT 
             COUNT(*) as total_alumni,
-            COUNT(*) FILTER (WHERE phone IS NOT NULL) as has_phone,
+            COUNT(*) FILTER (WHERE alternate_email IS NOT NULL) as has_email,
             COUNT(*) FILTER (WHERE linkedin_url IS NOT NULL) as has_linkedin,
             COUNT(*) FILTER (WHERE profile_verified_at IS NOT NULL) as verified_profiles,
-            COUNT(*) FILTER (WHERE phone IS NOT NULL) as complete_contact,
+            COUNT(*) FILTER (WHERE linkedin_url IS NOT NULL) as complete_contact,
             COUNT(*) FILTER (WHERE consent_for_accreditation = true) as has_consent,
             COUNT(*) FILTER (
-                WHERE phone IS NOT NULL 
+                WHERE linkedin_url IS NOT NULL 
                 AND profile_verified_at IS NOT NULL
                 AND consent_for_accreditation = true
             ) as fully_verified,
@@ -807,7 +805,6 @@ async function getProgramOutcomes(program, graduationYear) {
             SELECT 
                 id,
                 graduation_year,
-                cgpa,
                 employment_status
             FROM alumni_profiles
             WHERE program = $1
@@ -844,7 +841,6 @@ async function getProgramOutcomes(program, graduationYear) {
             $1 as program,
             $2 as graduation_year,
             COUNT(*) as total_students,
-            AVG(cgpa) as avg_cgpa,
             po.*,
             he.*,
             ao.*,

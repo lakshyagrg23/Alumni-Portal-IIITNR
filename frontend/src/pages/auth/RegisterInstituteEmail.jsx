@@ -125,7 +125,7 @@ const RegisterInstituteEmail = () => {
       const hasProfile = response.user?.hasAlumniProfile;
       const onboardingDone = response.user?.onboardingCompleted;
       if (response.isNewUser || !hasProfile || !onboardingDone) {
-        navigate('/complete-profile');
+        navigate('/onboarding');
       } else {
         navigate('/dashboard');
       }

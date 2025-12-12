@@ -5,15 +5,11 @@ import styles from './EventCard.module.css';
  * EventCard Component - Displays event information in a card format
  * @param {Object} event - Event data
  * @param {Function} onEventClick - Handler for event click
- * @param {Function} onRegister - Handler for registration (optional)
- * @param {boolean} showRegistration - Whether to show registration button
  * @param {boolean} isPastEvent - Whether this is a past event
  */
 const EventCard = ({ 
   event, 
   onEventClick, 
-  onRegister, 
-  showRegistration = true, 
   isPastEvent = false 
 }) => {
   const formatDate = (dateString) => {
@@ -51,16 +47,6 @@ const EventCard = ({
       case 'hybrid': return '🔄';
       default: return '📍';
     }
-  };
-
-  const isRegistrationOpen = () => {
-    if (isPastEvent) return false;
-    if (!event.registrationDeadline) return true;
-    return new Date(event.registrationDeadline) > new Date();
-  };
-
-  const isEventFull = () => {
-    return event.maxParticipants && event.registeredCount >= event.maxParticipants;
   };
 
   return (
@@ -104,13 +90,12 @@ const EventCard = ({
         </div>
 
         <div className={styles.eventDetails}>
-          <div className={styles.participants}>
-            <span className={styles.icon}>👥</span>
-            <span>
-              {event.registeredCount || 0}
-              {event.maxParticipants && ` / ${event.maxParticipants}`} participants
-            </span>
-          </div>
+          {event.maxParticipants && (
+            <div className={styles.participants}>
+              <span className={styles.icon}>👥</span>
+              <span>Participant limit: {event.maxParticipants}</span>
+            </div>
+          )}
           
           {event.experienceLevel && (
             <div className={styles.level}>
@@ -126,30 +111,10 @@ const EventCard = ({
             <span>Organized by {event.organizerDisplayName}</span>
           </div>
         )}
-      </div>
+        </div>
 
-      {showRegistration && !isPastEvent && (
+      {!isPastEvent && (
         <div className={styles.eventActions}>
-          {isEventFull() ? (
-            <button className={`${styles.registerBtn} ${styles.disabled}`} disabled>
-              Event Full
-            </button>
-          ) : !isRegistrationOpen() ? (
-            <button className={`${styles.registerBtn} ${styles.disabled}`} disabled>
-              Registration Closed
-            </button>
-          ) : (
-            <button 
-              className={styles.registerBtn}
-              onClick={(e) => {
-                e.stopPropagation();
-                onRegister && onRegister(event);
-              }}
-            >
-              Register Now
-            </button>
-          )}
-          
           <button 
             className={styles.viewDetailsBtn}
             onClick={(e) => {

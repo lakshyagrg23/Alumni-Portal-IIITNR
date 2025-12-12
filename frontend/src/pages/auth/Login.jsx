@@ -37,7 +37,7 @@ const Login = () => {
       if (userRole === 'admin') {
         navigate('/admin');
       } else if (!response?.user?.hasAlumniProfile) {
-        navigate('/complete-profile');
+        navigate('/onboarding');
       } else {
         navigate('/dashboard');
       }

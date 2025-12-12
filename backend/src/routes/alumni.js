@@ -138,14 +138,6 @@ router.get("/:id", async (req, res) => {
       });
     }
 
-    // Check privacy settings
-    if (!alumni.isProfilePublic) {
-      return res.status(403).json({
-        success: false,
-        message: "This profile is private",
-      });
-    }
-
     res.json({
       success: true,
       data: {
@@ -642,11 +634,10 @@ router.post(
             first_name,
             last_name,
             profile_picture_url,
-            is_profile_public,
             created_at,
             updated_at
           )
-          VALUES ($1, $2, $3, $4, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
           RETURNING id, profile_picture_url`,
           [req.user.id, firstName, lastName, fileUrl]
         );

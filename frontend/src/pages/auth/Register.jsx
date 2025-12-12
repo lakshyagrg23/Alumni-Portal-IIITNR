@@ -88,7 +88,7 @@ const Register = () => {
       } else {
         // OAuth users or already verified users
         toast.success('Registration successful! Please complete your profile.');
-        navigate('/complete-profile');
+        navigate('/onboarding');
       }
       
     } catch (error) {

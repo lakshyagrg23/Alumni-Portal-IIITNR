@@ -1,4 +1,3 @@
--- Add superadmin role and admin permissions infrastructure
 DO $$
 DECLARE cons_name text;
 BEGIN
@@ -7,7 +6,8 @@ BEGIN
   FROM pg_constraint
   WHERE conrelid = 'public.users'::regclass
     AND contype = 'c'
-    AND pg_get_constraintdef(oid) ILIKE '%role%IN%(\'admin\', \'alumni\')%';
+    -- FIX BELOW: Use two single quotes ('') to represent one single quote in a string
+    AND pg_get_constraintdef(oid) ILIKE '%role%IN%(''admin'', ''alumni'')%';
 
   IF cons_name IS NOT NULL THEN
     EXECUTE format('ALTER TABLE public.users DROP CONSTRAINT %I', cons_name);
@@ -15,6 +15,7 @@ BEGIN
 
   -- Ensure role column exists
   PERFORM 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='role';
+
   -- Re-add a permissive CHECK including superadmin
   BEGIN
     ALTER TABLE public.users ADD CONSTRAINT users_role_check CHECK (role IN ('superadmin','admin','alumni'));
@@ -38,5 +39,3 @@ CREATE TABLE IF NOT EXISTS public.admin_permissions (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_admin_permissions_user_perm ON public.admin_permissions(user_id, permission);
-
--- Helpful defaults: no data seeding here to avoid accidental assignment.
