@@ -563,6 +563,151 @@ class AlumniProfile {
   }
 
   /**
+   * Get unique companies with autocomplete support
+   * Uses DISTINCT and LOWER() to prevent duplicates like "Google" vs "google"
+   * @param {string} searchQuery - Search query
+   * @returns {Promise<Array<string>>}
+   */
+  static async getUniqueCompanies(searchQuery = '') {
+    const searchPattern = `%${searchQuery.toLowerCase()}%`;
+    
+    const sql = `
+      SELECT DISTINCT 
+        INITCAP(TRIM(current_employer)) as company,
+        COUNT(*) as usage_count
+      FROM alumni_profiles
+      WHERE LOWER(TRIM(current_employer)) LIKE $1
+        AND current_employer IS NOT NULL
+        AND current_employer != ''
+        AND LENGTH(TRIM(current_employer)) > 0
+      GROUP BY INITCAP(TRIM(current_employer))
+      ORDER BY usage_count DESC, company ASC
+      LIMIT 20
+    `;
+    
+    const result = await query(sql, [searchPattern]);
+    return result.rows.map(row => row.company);
+  }
+
+  /**
+   * Get unique cities with state and country
+   * Returns formatted "City, State, Country" strings
+   * @param {string} searchQuery - Search query
+   * @returns {Promise<Array<string>>}
+   */
+  static async getUniqueCities(searchQuery = '') {
+    const searchPattern = `%${searchQuery.toLowerCase()}%`;
+    
+    const sql = `
+      SELECT DISTINCT
+        INITCAP(TRIM(current_city)) as city,
+        INITCAP(TRIM(current_state)) as state,
+        INITCAP(TRIM(current_country)) as country,
+        COUNT(*) as alumni_count
+      FROM alumni_profiles
+      WHERE LOWER(TRIM(current_city)) LIKE $1
+        AND current_city IS NOT NULL
+        AND current_city != ''
+        AND LENGTH(TRIM(current_city)) > 0
+      GROUP BY 
+        INITCAP(TRIM(current_city)),
+        INITCAP(TRIM(current_state)),
+        INITCAP(TRIM(current_country))
+      ORDER BY alumni_count DESC, city ASC
+      LIMIT 20
+    `;
+    
+    const result = await query(sql, [searchPattern]);
+    
+    return result.rows.map(row => {
+      const parts = [row.city];
+      if (row.state) parts.push(row.state);
+      if (row.country) parts.push(row.country);
+      return parts.join(', ');
+    });
+  }
+
+  /**
+   * Get unique industries
+   * @param {string} searchQuery - Search query
+   * @returns {Promise<Array<string>>}
+   */
+  static async getUniqueIndustries(searchQuery = '') {
+    const searchPattern = `%${searchQuery.toLowerCase()}%`;
+    
+    const sql = `
+      SELECT DISTINCT
+        INITCAP(TRIM(industry_sector)) as industry,
+        COUNT(*) as usage_count
+      FROM alumni_profiles
+      WHERE LOWER(TRIM(industry_sector)) LIKE $1
+        AND industry_sector IS NOT NULL
+        AND industry_sector != ''
+        AND LENGTH(TRIM(industry_sector)) > 0
+      GROUP BY INITCAP(TRIM(industry_sector))
+      ORDER BY usage_count DESC, industry ASC
+      LIMIT 20
+    `;
+    
+    const result = await query(sql, [searchPattern]);
+    return result.rows.map(row => row.industry);
+  }
+
+  /**
+   * Get unique skills from all profiles
+   * @param {string} searchQuery - Search query
+   * @returns {Promise<Array<string>>}
+   */
+  static async getUniqueSkills(searchQuery = '') {
+    const searchPattern = `%${searchQuery.toLowerCase()}%`;
+    
+    const sql = `
+      SELECT DISTINCT
+        INITCAP(TRIM(skill)) as skill,
+        COUNT(*) as usage_count
+      FROM (
+        SELECT unnest(skills) as skill
+        FROM alumni_profiles
+        WHERE array_length(skills, 1) > 0
+      ) AS skill_list
+      WHERE LOWER(TRIM(skill)) LIKE $1
+        AND LENGTH(TRIM(skill)) > 0
+      GROUP BY INITCAP(TRIM(skill))
+      ORDER BY usage_count DESC, skill ASC
+      LIMIT 20
+    `;
+    
+    const result = await query(sql, [searchPattern]);
+    return result.rows.map(row => row.skill);
+  }
+
+  /**
+   * Get unique branches/departments
+   * @param {string} searchQuery - Search query
+   * @returns {Promise<Array<string>>}
+   */
+  static async getUniqueBranches(searchQuery = '') {
+    const searchPattern = `%${searchQuery.toLowerCase()}%`;
+    
+    const sql = `
+      SELECT DISTINCT
+        INITCAP(TRIM(branch)) as branch,
+        COUNT(*) as usage_count
+      FROM alumni_profiles
+      WHERE LOWER(TRIM(branch)) LIKE $1
+        AND branch IS NOT NULL
+        AND branch != ''
+        AND LENGTH(TRIM(branch)) > 0
+      GROUP BY INITCAP(TRIM(branch))
+      ORDER BY usage_count DESC, branch ASC
+      LIMIT 20
+    `;
+    
+    const result = await query(sql, [searchPattern]);
+    return result.rows.map(row => row.branch);
+  }
+
+  /**
    * Convert camelCase to snake_case for database operations
    * @param {Object} data - Data object
    * @returns {Object}

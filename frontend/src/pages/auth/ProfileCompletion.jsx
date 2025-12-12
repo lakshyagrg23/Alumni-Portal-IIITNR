@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async'
 import { useAuth } from '@hooks/useAuth'
 import API from '../../services/authService'
 import ProfilePictureUpload from '../../components/profile/ProfilePictureUpload'
+import AutocompleteInput from '../../components/common/AutocompleteInput'
 import styles from './ProfileCompletion.module.css'
 
 const ProfileCompletion = () => {
@@ -549,21 +550,20 @@ const ProfileCompletion = () => {
                         ? 'Company Name *'
                         : 'Current Organization/Status *'}
                     </label>
-                    <input
-                      type="text"
-                      id="currently_at"
-                      name="currently_at"
+                    <AutocompleteInput
                       value={formData.currently_at}
                       onChange={handleInputChange}
+                      apiEndpoint="companies"
+                      name="currently_at"
                       className={errors.currently_at ? styles.error : ''}
                       placeholder={
                         formData.employment_status === 'Higher Studies' 
-                          ? 'e.g., IIT Delhi, Stanford University' 
+                          ? 'Start typing institution... (e.g., IIT Delhi, Stanford)' 
                           : formData.employment_status === 'Employed'
-                          ? 'e.g., Google, Microsoft, Accenture'
+                          ? 'Start typing company... (e.g., Google, Microsoft)'
                           : formData.employment_status === 'Entrepreneur'
-                          ? 'e.g., My Startup Name'
-                          : 'e.g., Freelancing, Self-employed'
+                          ? 'Enter your startup name...'
+                          : 'Enter organization...'
                       }
                     />
                     {errors.currently_at && (
@@ -602,14 +602,13 @@ const ProfileCompletion = () => {
 
                 <div className={styles.formGroup}>
                   <label htmlFor="current_city">Current City *</label>
-                  <input
-                    type="text"
-                    id="current_city"
-                    name="current_city"
+                  <AutocompleteInput
                     value={formData.current_city}
                     onChange={handleInputChange}
+                    apiEndpoint="cities"
+                    name="current_city"
                     className={errors.current_city ? styles.error : ''}
-                    placeholder="e.g., Bangalore, Mumbai, Raipur"
+                    placeholder="Start typing city... (e.g., Bangalore, Mumbai, Raipur)"
                   />
                   {errors.current_city && (
                     <span className={styles.errorText}>{errors.current_city}</span>

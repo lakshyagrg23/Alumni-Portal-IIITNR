@@ -278,44 +278,63 @@ router.put("/:id", async (req, res) => {
 
 /**
  * @route   GET /api/alumni/search/suggestions
- * @desc    Get search suggestions for alumni directory
+ * @desc    Get search suggestions for alumni directory (autocomplete)
  * @access  Public
  */
 router.get("/search/suggestions", async (req, res) => {
   try {
-    const { type, query } = req.query;
+    const { type, query = '' } = req.query;
+
+    if (!type) {
+      return res.status(400).json({
+        success: false,
+        message: "Suggestion type is required. Use: companies, cities, industries, skills, branches",
+      });
+    }
 
     let suggestions = [];
 
-    switch (type) {
+    switch (type.toLowerCase()) {
       case "companies":
         suggestions = await AlumniProfile.getUniqueCompanies(query);
         break;
+      
+      case "cities":
       case "locations":
-        suggestions = await AlumniProfile.getUniqueLocations(query);
+        suggestions = await AlumniProfile.getUniqueCities(query);
         break;
+      
+      case "industries":
+        suggestions = await AlumniProfile.getUniqueIndustries(query);
+        break;
+      
       case "skills":
         suggestions = await AlumniProfile.getUniqueSkills(query);
         break;
+      
       case "branches":
         suggestions = await AlumniProfile.getUniqueBranches(query);
         break;
+      
       default:
         return res.status(400).json({
           success: false,
-          message: "Invalid suggestion type",
+          message: `Invalid suggestion type: ${type}. Use: companies, cities, industries, skills, branches`,
         });
     }
 
     res.json({
       success: true,
       data: suggestions,
+      count: suggestions.length,
+      type: type,
     });
   } catch (error) {
     console.error("Get suggestions error:", error);
     res.status(500).json({
       success: false,
       message: "Server error while fetching suggestions",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 });

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '@hooks/useAuth'
 import { authService } from '../services/authService'
 import ProfilePictureUpload from '../components/profile/ProfilePictureUpload'
+import AutocompleteInput from '../components/common/AutocompleteInput'
 import styles from './Profile.module.css'
 
 const Profile = () => {
@@ -140,6 +141,33 @@ const Profile = () => {
       setErrors(prev => ({ ...prev, [name]: '' }))
     }
   }
+
+  // Handle location selection from autocomplete
+  const handleLocationSelect = (locationString) => {
+    // Parse "City, State, Country" format
+    const parts = locationString.split(',').map(part => part.trim());
+    
+    if (parts.length === 3) {
+      setProfileData(prev => ({
+        ...prev,
+        currentCity: parts[0],
+        currentState: parts[1],
+        currentCountry: parts[2],
+      }));
+    } else if (parts.length === 2) {
+      setProfileData(prev => ({
+        ...prev,
+        currentCity: parts[0],
+        currentState: '',
+        currentCountry: parts[1],
+      }));
+    } else if (parts.length === 1) {
+      setProfileData(prev => ({
+        ...prev,
+        currentCity: parts[0],
+      }));
+    }
+  };
 
   const validateForm = () => {
     const newErrors = {}
@@ -485,13 +513,13 @@ const Profile = () => {
                 <div className={styles.formRow}>
                   <div className={styles.formGroup}>
                     <label htmlFor="currentCompany">Current Company</label>
-                    <input
-                      type="text"
-                      id="currentCompany"
-                      name="currentCompany"
+                    <AutocompleteInput
                       value={profileData.currentCompany}
                       onChange={handleInputChange}
-                      placeholder="e.g., Google, Microsoft"
+                      apiEndpoint="companies"
+                      placeholder="Start typing company name... (e.g., Google, Microsoft)"
+                      name="currentCompany"
+                      className={styles.input}
                     />
                   </div>
                   
@@ -510,15 +538,19 @@ const Profile = () => {
 
                 <div className={styles.formRow}>
                   <div className={styles.formGroup}>
-                    <label htmlFor="currentCity">City</label>
-                    <input
-                      type="text"
-                      id="currentCity"
-                      name="currentCity"
+                    <label htmlFor="currentCity">Location (City, State, Country)</label>
+                    <AutocompleteInput
                       value={profileData.currentCity}
                       onChange={handleInputChange}
-                      placeholder="e.g., Bangalore"
+                      onSelect={handleLocationSelect}
+                      apiEndpoint="cities"
+                      placeholder="Start typing city... (e.g., Bangalore, Karnataka, India)"
+                      name="currentCity"
+                      className={styles.input}
                     />
+                    <small className={styles.helpText}>
+                      Select from suggestions to auto-fill city, state, and country
+                    </small>
                   </div>
                   
                   <div className={styles.formGroup}>
