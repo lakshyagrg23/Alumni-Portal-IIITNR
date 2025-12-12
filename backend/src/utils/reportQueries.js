@@ -1,49 +1,56 @@
-/**
+﻿/**
  * Report Query Utilities for Accreditation Dashboard
  * Contains all database queries for generating accreditation reports
  */
 
-import { query as dbQuery } from '../config/database.js';
+import { query as dbQuery } from "../config/database.js";
 
 /**
  * Get dashboard overview KPIs
  */
 async function getOverviewKPIs(filters = {}) {
-    const { startYear, endYear, program, department } = filters;
-    
-    let whereConditions = ['1=1'];
-    let params = [];
-    let paramCount = 1;
-    
-    if (startYear) {
-        whereConditions.push(`graduation_year >= $${paramCount}`);
-        params.push(startYear);
-        paramCount++;
-    }
-    
-    if (endYear) {
-        whereConditions.push(`graduation_year <= $${paramCount}`);
-        params.push(endYear);
-        paramCount++;
-    }
-    
-    if (program) {
-        whereConditions.push(`program = $${paramCount}`);
-        params.push(program);
-        paramCount++;
-    }
-    
-    if (department) {
-        whereConditions.push(`department = $${paramCount}`);
-        params.push(department);
-        paramCount++;
-    }
-    
-    const whereClause = whereConditions.join(' AND ');
-    
-    console.log('getOverviewKPIs: filters=', filters, 'params=', params, 'whereClause=', whereClause);
-    
-    const query = `
+  const { startYear, endYear, program, department } = filters;
+
+  let whereConditions = ["1=1"];
+  let params = [];
+  let paramCount = 1;
+
+  if (startYear) {
+    whereConditions.push(`graduation_year >= $${paramCount}`);
+    params.push(startYear);
+    paramCount++;
+  }
+
+  if (endYear) {
+    whereConditions.push(`graduation_year <= $${paramCount}`);
+    params.push(endYear);
+    paramCount++;
+  }
+
+  if (program) {
+    whereConditions.push(`program = $${paramCount}`);
+    params.push(program);
+    paramCount++;
+  }
+
+  if (department) {
+    whereConditions.push(`department = $${paramCount}`);
+    params.push(department);
+    paramCount++;
+  }
+
+  const whereClause = whereConditions.join(" AND ");
+
+  console.log(
+    "getOverviewKPIs: filters=",
+    filters,
+    "params=",
+    params,
+    "whereClause=",
+    whereClause
+  );
+
+  const query = `
         WITH alumni_stats AS (
             SELECT 
                 COUNT(*) as total_profiles_alumni,
@@ -73,7 +80,7 @@ async function getOverviewKPIs(filters = {}) {
             FROM placement_data pd
             JOIN alumni_profiles ap ON pd.alumni_id = ap.id
             WHERE pd.verification_status = 'verified'
-                AND ${whereClause.replace('graduation_year', 'ap.graduation_year').replace('program', 'ap.program').replace('department', 'ap.department')}
+                AND ${whereClause.replace("graduation_year", "ap.graduation_year").replace("program", "ap.program").replace("department", "ap.department")}
         ),
         contribution_stats AS (
             SELECT 
@@ -84,7 +91,7 @@ async function getOverviewKPIs(filters = {}) {
             FROM alumni_contributions ac
             JOIN alumni_profiles ap ON ac.alumni_id = ap.id
             WHERE ac.is_verified = true
-                AND ${whereClause.replace('graduation_year', 'ap.graduation_year').replace('program', 'ap.program').replace('department', 'ap.department')}
+                AND ${whereClause.replace("graduation_year", "ap.graduation_year").replace("program", "ap.program").replace("department", "ap.department")}
         ),
         achievement_stats AS (
             SELECT 
@@ -95,7 +102,7 @@ async function getOverviewKPIs(filters = {}) {
             FROM alumni_achievements aa
             JOIN alumni_profiles ap ON aa.alumni_id = ap.id
             WHERE aa.is_verified = true
-                AND ${whereClause.replace('graduation_year', 'ap.graduation_year').replace('program', 'ap.program').replace('department', 'ap.department')}
+                AND ${whereClause.replace("graduation_year", "ap.graduation_year").replace("program", "ap.program").replace("department", "ap.department")}
         )
         SELECT 
             u.total_alumni_users as total_alumni,
@@ -146,60 +153,68 @@ async function getOverviewKPIs(filters = {}) {
         CROSS JOIN contribution_stats c
         CROSS JOIN achievement_stats ach
     `;
-    
-    console.log('getOverviewKPIs: executing query with params:', params);
-    console.log('getOverviewKPIs: SQL query length:', query.length);
-    
-    const result = await dbQuery(query, params);
-    console.log('getOverviewKPIs: query successful, result=', result.rows[0]);
-    return result.rows[0];
+
+  console.log("getOverviewKPIs: executing query with params:", params);
+  console.log("getOverviewKPIs: SQL query length:", query.length);
+
+  const result = await dbQuery(query, params);
+  console.log("getOverviewKPIs: query successful, result=", result.rows[0]);
+  return result.rows[0];
 }
 
 /**
  * Get placement details with filtering
  */
 async function getPlacementDetails(filters = {}) {
-    const { startYear, endYear, program, department, companyName, limit = 100, offset = 0 } = filters;
-    
-    let whereConditions = ['pd.verification_status = \'verified\''];
-    let params = [];
-    let paramCount = 1;
-    
-    if (startYear) {
-        whereConditions.push(`pd.placement_year >= $${paramCount}`);
-        params.push(startYear);
-        paramCount++;
-    }
-    
-    if (endYear) {
-        whereConditions.push(`pd.placement_year <= $${paramCount}`);
-        params.push(endYear);
-        paramCount++;
-    }
-    
-    if (program) {
-        whereConditions.push(`pd.program = $${paramCount}`);
-        params.push(program);
-        paramCount++;
-    }
-    
-    if (department) {
-        whereConditions.push(`pd.department = $${paramCount}`);
-        params.push(department);
-        paramCount++;
-    }
-    
-    if (companyName) {
-        whereConditions.push(`pd.company_name ILIKE $${paramCount}`);
-        params.push(`%${companyName}%`);
-        paramCount++;
-    }
-    
-    const whereClause = whereConditions.join(' AND ');
-    
-    params.push(limit, offset);
-    
-    const query = `
+  const {
+    startYear,
+    endYear,
+    program,
+    department,
+    companyName,
+    limit = 100,
+    offset = 0,
+  } = filters;
+
+  let whereConditions = ["pd.verification_status = 'verified'"];
+  let params = [];
+  let paramCount = 1;
+
+  if (startYear) {
+    whereConditions.push(`pd.placement_year >= $${paramCount}`);
+    params.push(startYear);
+    paramCount++;
+  }
+
+  if (endYear) {
+    whereConditions.push(`pd.placement_year <= $${paramCount}`);
+    params.push(endYear);
+    paramCount++;
+  }
+
+  if (program) {
+    whereConditions.push(`pd.program = $${paramCount}`);
+    params.push(program);
+    paramCount++;
+  }
+
+  if (department) {
+    whereConditions.push(`pd.department = $${paramCount}`);
+    params.push(department);
+    paramCount++;
+  }
+
+  if (companyName) {
+    whereConditions.push(`pd.company_name ILIKE $${paramCount}`);
+    params.push(`%${companyName}%`);
+    paramCount++;
+  }
+
+  const whereClause = whereConditions.join(" AND ");
+
+  params.push(limit, offset);
+
+  const query = `
         SELECT 
             pd.*,
             ap.first_name,
@@ -219,51 +234,51 @@ async function getPlacementDetails(filters = {}) {
         ORDER BY pd.placement_year DESC, pd.salary_package DESC NULLS LAST
         LIMIT $${paramCount} OFFSET $${paramCount + 1}
     `;
-    
-    const countQuery = `
+
+  const countQuery = `
         SELECT COUNT(*) as total
         FROM placement_data pd
         WHERE ${whereClause}
     `;
-    
-    const [data, count] = await Promise.all([
-        dbQuery(query, params),
-        dbQuery(countQuery, params.slice(0, -2))
-    ]);
-    
-    return {
-        data: data.rows,
-        total: parseInt(count.rows[0].total),
-        limit,
-        offset
-    };
+
+  const [data, count] = await Promise.all([
+    dbQuery(query, params),
+    dbQuery(countQuery, params.slice(0, -2)),
+  ]);
+
+  return {
+    data: data.rows,
+    total: parseInt(count.rows[0].total),
+    limit,
+    offset,
+  };
 }
 
 /**
  * Get placement statistics by year
  */
 async function getPlacementTrends(filters = {}) {
-    const { startYear = 2015, endYear = 2025, program, department } = filters;
-    
-    let whereConditions = ['verification_status = \'verified\''];
-    let params = [startYear, endYear];
-    let paramCount = 3;
-    
-    if (program) {
-        whereConditions.push(`program = $${paramCount}`);
-        params.push(program);
-        paramCount++;
-    }
-    
-    if (department) {
-        whereConditions.push(`department = $${paramCount}`);
-        params.push(department);
-        paramCount++;
-    }
-    
-    const whereClause = whereConditions.join(' AND ');
-    
-    const query = `
+  const { startYear = 2015, endYear = 2025, program, department } = filters;
+
+  let whereConditions = ["verification_status = 'verified'"];
+  let params = [startYear, endYear];
+  let paramCount = 3;
+
+  if (program) {
+    whereConditions.push(`program = $${paramCount}`);
+    params.push(program);
+    paramCount++;
+  }
+
+  if (department) {
+    whereConditions.push(`department = $${paramCount}`);
+    params.push(department);
+    paramCount++;
+  }
+
+  const whereClause = whereConditions.join(" AND ");
+
+  const query = `
         SELECT 
             placement_year,
             COUNT(*) as total_placements,
@@ -283,38 +298,38 @@ async function getPlacementTrends(filters = {}) {
         GROUP BY placement_year
         ORDER BY placement_year DESC
     `;
-    
-    const result = await dbQuery(query, params);
-    return result.rows;
+
+  const result = await dbQuery(query, params);
+  return result.rows;
 }
 
 /**
  * Get top employers
  */
 async function getTopEmployers(filters = {}) {
-    const { startYear, endYear, limit = 20 } = filters;
-    
-    let whereConditions = ['verification_status = \'verified\''];
-    let params = [];
-    let paramCount = 1;
-    
-    if (startYear) {
-        whereConditions.push(`placement_year >= $${paramCount}`);
-        params.push(startYear);
-        paramCount++;
-    }
-    
-    if (endYear) {
-        whereConditions.push(`placement_year <= $${paramCount}`);
-        params.push(endYear);
-        paramCount++;
-    }
-    
-    params.push(limit);
-    
-    const whereClause = whereConditions.join(' AND ');
-    
-    const query = `
+  const { startYear, endYear, limit = 20 } = filters;
+
+  let whereConditions = ["verification_status = 'verified'"];
+  let params = [];
+  let paramCount = 1;
+
+  if (startYear) {
+    whereConditions.push(`placement_year >= $${paramCount}`);
+    params.push(startYear);
+    paramCount++;
+  }
+
+  if (endYear) {
+    whereConditions.push(`placement_year <= $${paramCount}`);
+    params.push(endYear);
+    paramCount++;
+  }
+
+  params.push(limit);
+
+  const whereClause = whereConditions.join(" AND ");
+
+  const query = `
         SELECT 
             company_name,
             COUNT(*) as hire_count,
@@ -331,36 +346,39 @@ async function getTopEmployers(filters = {}) {
         ORDER BY hire_count DESC, avg_salary DESC NULLS LAST
         LIMIT $${paramCount}
     `;
-    
-    const result = await dbQuery(query, params);
-    return result.rows;
+
+  const result = await dbQuery(query, params);
+  return result.rows;
 }
 
 /**
  * Get industry distribution
  */
 async function getIndustryDistribution(filters = {}) {
-    const { startYear, endYear } = filters;
-    
-    let whereConditions = ['verification_status = \'verified\'', 'industry_sector IS NOT NULL'];
-    let params = [];
-    let paramCount = 1;
-    
-    if (startYear) {
-        whereConditions.push(`placement_year >= $${paramCount}`);
-        params.push(startYear);
-        paramCount++;
-    }
-    
-    if (endYear) {
-        whereConditions.push(`placement_year <= $${paramCount}`);
-        params.push(endYear);
-        paramCount++;
-    }
-    
-    const whereClause = whereConditions.join(' AND ');
-    
-    const query = `
+  const { startYear, endYear } = filters;
+
+  let whereConditions = [
+    "verification_status = 'verified'",
+    "industry_sector IS NOT NULL",
+  ];
+  let params = [];
+  let paramCount = 1;
+
+  if (startYear) {
+    whereConditions.push(`placement_year >= $${paramCount}`);
+    params.push(startYear);
+    paramCount++;
+  }
+
+  if (endYear) {
+    whereConditions.push(`placement_year <= $${paramCount}`);
+    params.push(endYear);
+    paramCount++;
+  }
+
+  const whereClause = whereConditions.join(" AND ");
+
+  const query = `
         SELECT 
             industry_sector,
             COUNT(*) as alumni_count,
@@ -372,56 +390,64 @@ async function getIndustryDistribution(filters = {}) {
         GROUP BY industry_sector
         ORDER BY alumni_count DESC
     `;
-    
-    const result = await dbQuery(query, params);
-    return result.rows;
+
+  const result = await dbQuery(query, params);
+  return result.rows;
 }
 
 /**
  * Get higher education details
  */
 async function getHigherEducationDetails(filters = {}) {
-    const { startYear, endYear, program, department, country, limit = 100, offset = 0 } = filters;
-    
-    let whereConditions = ['hed.verification_status = \'verified\''];
-    let params = [];
-    let paramCount = 1;
-    
-    if (startYear) {
-        whereConditions.push(`hed.ug_graduation_year >= $${paramCount}`);
-        params.push(startYear);
-        paramCount++;
-    }
-    
-    if (endYear) {
-        whereConditions.push(`hed.ug_graduation_year <= $${paramCount}`);
-        params.push(endYear);
-        paramCount++;
-    }
-    
-    if (program) {
-        whereConditions.push(`hed.ug_program = $${paramCount}`);
-        params.push(program);
-        paramCount++;
-    }
-    
-    if (department) {
-        whereConditions.push(`hed.ug_department = $${paramCount}`);
-        params.push(department);
-        paramCount++;
-    }
-    
-    if (country) {
-        whereConditions.push(`hed.institution_country = $${paramCount}`);
-        params.push(country);
-        paramCount++;
-    }
-    
-    const whereClause = whereConditions.join(' AND ');
-    
-    params.push(limit, offset);
-    
-    const query = `
+  const {
+    startYear,
+    endYear,
+    program,
+    department,
+    country,
+    limit = 100,
+    offset = 0,
+  } = filters;
+
+  let whereConditions = ["hed.verification_status = 'verified'"];
+  let params = [];
+  let paramCount = 1;
+
+  if (startYear) {
+    whereConditions.push(`hed.ug_graduation_year >= $${paramCount}`);
+    params.push(startYear);
+    paramCount++;
+  }
+
+  if (endYear) {
+    whereConditions.push(`hed.ug_graduation_year <= $${paramCount}`);
+    params.push(endYear);
+    paramCount++;
+  }
+
+  if (program) {
+    whereConditions.push(`hed.ug_program = $${paramCount}`);
+    params.push(program);
+    paramCount++;
+  }
+
+  if (department) {
+    whereConditions.push(`hed.ug_department = $${paramCount}`);
+    params.push(department);
+    paramCount++;
+  }
+
+  if (country) {
+    whereConditions.push(`hed.institution_country = $${paramCount}`);
+    params.push(country);
+    paramCount++;
+  }
+
+  const whereClause = whereConditions.join(" AND ");
+
+  params.push(limit, offset);
+
+  const query = `
         SELECT 
             hed.*,
             ap.first_name,
@@ -434,65 +460,65 @@ async function getHigherEducationDetails(filters = {}) {
         ORDER BY hed.admission_year DESC, hed.institution_name
         LIMIT $${paramCount} OFFSET $${paramCount + 1}
     `;
-    
-    const countQuery = `
+
+  const countQuery = `
         SELECT COUNT(*) as total
         FROM higher_education_data hed
         WHERE ${whereClause}
             AND hed.is_public = true
     `;
-    
-    const [data, count] = await Promise.all([
-        dbQuery(query, params),
-        dbQuery(countQuery, params.slice(0, -2))
-    ]);
-    
-    return {
-        data: data.rows,
-        total: parseInt(count.rows[0].total),
-        limit,
-        offset
-    };
+
+  const [data, count] = await Promise.all([
+    dbQuery(query, params),
+    dbQuery(countQuery, params.slice(0, -2)),
+  ]);
+
+  return {
+    data: data.rows,
+    total: parseInt(count.rows[0].total),
+    limit,
+    offset,
+  };
 }
 
 /**
  * Get higher education statistics
  */
 async function getHigherEducationStats(filters = {}) {
-    const { startYear, endYear, program, department } = filters;
-    
-    let whereConditions = ['verification_status = \'verified\''];
-    let params = [];
-    let paramCount = 1;
-    
-    if (startYear) {
-        whereConditions.push(`ug_graduation_year >= $${paramCount}`);
-        params.push(startYear);
-        paramCount++;
-    }
-    
-    if (endYear) {
-        whereConditions.push(`ug_graduation_year <= $${paramCount}`);
-        params.push(endYear);
-        paramCount++;
-    }
-    
-    if (program) {
-        whereConditions.push(`ug_program = $${paramCount}`);
-        params.push(program);
-        paramCount++;
-    }
-    
-    if (department) {
-        whereConditions.push(`ug_department = $${paramCount}`);
-        params.push(department);
-        paramCount++;
-    }
-    
-    const whereClause = whereConditions.join(' AND ');
-    
-    // Country distribution
-    const countryQuery = `
+  const { startYear, endYear, program, department } = filters;
+
+  let whereConditions = ["verification_status = 'verified'"];
+  let params = [];
+  let paramCount = 1;
+
+  if (startYear) {
+    whereConditions.push(`ug_graduation_year >= $${paramCount}`);
+    params.push(startYear);
+    paramCount++;
+  }
+
+  if (endYear) {
+    whereConditions.push(`ug_graduation_year <= $${paramCount}`);
+    params.push(endYear);
+    paramCount++;
+  }
+
+  if (program) {
+    whereConditions.push(`ug_program = $${paramCount}`);
+    params.push(program);
+    paramCount++;
+  }
+
+  if (department) {
+    whereConditions.push(`ug_department = $${paramCount}`);
+    params.push(department);
+    paramCount++;
+  }
+
+  const whereClause = whereConditions.join(" AND ");
+
+  // Country distribution
+  const countryQuery = `
         SELECT 
             institution_country,
             COUNT(*) as student_count,
@@ -503,9 +529,9 @@ async function getHigherEducationStats(filters = {}) {
         ORDER BY student_count DESC
         LIMIT 10
     `;
-    
-    // Program level distribution
-    const programQuery = `
+
+  // Program level distribution
+  const programQuery = `
         SELECT 
             program_level,
             COUNT(*) as student_count,
@@ -515,9 +541,9 @@ async function getHigherEducationStats(filters = {}) {
         GROUP BY program_level
         ORDER BY student_count DESC
     `;
-    
-    // Top institutions
-    const institutionQuery = `
+
+  // Top institutions
+  const institutionQuery = `
         SELECT 
             institution_name,
             institution_country,
@@ -529,9 +555,9 @@ async function getHigherEducationStats(filters = {}) {
         ORDER BY student_count DESC
         LIMIT 15
     `;
-    
-    // Funding distribution
-    const fundingQuery = `
+
+  // Funding distribution
+  const fundingQuery = `
         SELECT 
             funding_type,
             COUNT(*) as count,
@@ -541,55 +567,59 @@ async function getHigherEducationStats(filters = {}) {
         GROUP BY funding_type
         ORDER BY count DESC
     `;
-    
-    const [countries, programs, institutions, funding] = await Promise.all([
-        dbQuery(countryQuery, params),
-        dbQuery(programQuery, params),
-        dbQuery(institutionQuery, params),
-        dbQuery(fundingQuery, params)
-    ]);
-    
-    return {
-        byCountry: countries.rows,
-        byProgramLevel: programs.rows,
-        topInstitutions: institutions.rows,
-        byFunding: funding.rows
-    };
+
+  const [countries, programs, institutions, funding] = await Promise.all([
+    dbQuery(countryQuery, params),
+    dbQuery(programQuery, params),
+    dbQuery(institutionQuery, params),
+    dbQuery(fundingQuery, params),
+  ]);
+
+  return {
+    byCountry: countries.rows,
+    byProgramLevel: programs.rows,
+    topInstitutions: institutions.rows,
+    byFunding: funding.rows,
+  };
 }
 
 /**
  * Get alumni contributions summary
  */
 async function getContributionsSummary(filters = {}) {
-    const { startYear, endYear, type, minAmount, limit = 50 } = filters;
-    
-    let whereConditions = ['ac.is_verified = true'];
-    let params = [];
-    let paramCount = 1;
-    
-    if (startYear) {
-        whereConditions.push(`EXTRACT(YEAR FROM ac.contribution_date) >= $${paramCount}`);
-        params.push(startYear);
-        paramCount++;
-    }
-    
-    if (endYear) {
-        whereConditions.push(`EXTRACT(YEAR FROM ac.contribution_date) <= $${paramCount}`);
-        params.push(endYear);
-        paramCount++;
-    }
-    
-    if (type) {
-        whereConditions.push(`ac.contribution_type = $${paramCount}`);
-        params.push(type);
-        paramCount++;
-    }
-    
-    params.push(limit);
-    
-    const whereClause = whereConditions.join(' AND ');
-    
-    const query = `
+  const { startYear, endYear, type, minAmount, limit = 50 } = filters;
+
+  let whereConditions = ["ac.is_verified = true"];
+  let params = [];
+  let paramCount = 1;
+
+  if (startYear) {
+    whereConditions.push(
+      `EXTRACT(YEAR FROM ac.contribution_date) >= $${paramCount}`
+    );
+    params.push(startYear);
+    paramCount++;
+  }
+
+  if (endYear) {
+    whereConditions.push(
+      `EXTRACT(YEAR FROM ac.contribution_date) <= $${paramCount}`
+    );
+    params.push(endYear);
+    paramCount++;
+  }
+
+  if (type) {
+    whereConditions.push(`ac.contribution_type = $${paramCount}`);
+    params.push(type);
+    paramCount++;
+  }
+
+  params.push(limit);
+
+  const whereClause = whereConditions.join(" AND ");
+
+  const query = `
         SELECT 
             ac.*,
             ap.first_name,
@@ -602,9 +632,9 @@ async function getContributionsSummary(filters = {}) {
         ORDER BY ac.contribution_date DESC, ac.amount DESC NULLS LAST
         LIMIT $${paramCount}
     `;
-    
-    // Summary statistics
-    const statsQuery = `
+
+  // Summary statistics
+  const statsQuery = `
         SELECT 
             contribution_type as type,
             COUNT(*) as count,
@@ -615,57 +645,61 @@ async function getContributionsSummary(filters = {}) {
         GROUP BY contribution_type
         ORDER BY count DESC
     `;
-    
-    const [contributions, stats] = await Promise.all([
-        dbQuery(query, params),
-        dbQuery(statsQuery, params.slice(0, -1))
-    ]);
-    
-    return {
-        contributions: contributions.rows,
-        summary: stats.rows
-    };
+
+  const [contributions, stats] = await Promise.all([
+    dbQuery(query, params),
+    dbQuery(statsQuery, params.slice(0, -1)),
+  ]);
+
+  return {
+    contributions: contributions.rows,
+    summary: stats.rows,
+  };
 }
 
 /**
  * Get alumni achievements
  */
 async function getAchievementsSummary(filters = {}) {
-    const { startYear, endYear, type, recognitionLevel, limit = 50 } = filters;
-    
-    let whereConditions = ['aa.is_verified = true'];
-    let params = [];
-    let paramCount = 1;
-    
-    if (startYear) {
-        whereConditions.push(`EXTRACT(YEAR FROM aa.achievement_date) >= $${paramCount}`);
-        params.push(startYear);
-        paramCount++;
-    }
-    
-    if (endYear) {
-        whereConditions.push(`EXTRACT(YEAR FROM aa.achievement_date) <= $${paramCount}`);
-        params.push(endYear);
-        paramCount++;
-    }
-    
-    if (type) {
-        whereConditions.push(`aa.achievement_type = $${paramCount}`);
-        params.push(type);
-        paramCount++;
-    }
-    
-    if (recognitionLevel) {
-        whereConditions.push(`aa.visibility = $${paramCount}`);
-        params.push(recognitionLevel);
-        paramCount++;
-    }
-    
-    params.push(limit);
-    
-    const whereClause = whereConditions.join(' AND ');
-    
-    const query = `
+  const { startYear, endYear, type, recognitionLevel, limit = 50 } = filters;
+
+  let whereConditions = ["aa.is_verified = true"];
+  let params = [];
+  let paramCount = 1;
+
+  if (startYear) {
+    whereConditions.push(
+      `EXTRACT(YEAR FROM aa.achievement_date) >= $${paramCount}`
+    );
+    params.push(startYear);
+    paramCount++;
+  }
+
+  if (endYear) {
+    whereConditions.push(
+      `EXTRACT(YEAR FROM aa.achievement_date) <= $${paramCount}`
+    );
+    params.push(endYear);
+    paramCount++;
+  }
+
+  if (type) {
+    whereConditions.push(`aa.achievement_type = $${paramCount}`);
+    params.push(type);
+    paramCount++;
+  }
+
+  if (recognitionLevel) {
+    whereConditions.push(`aa.visibility = $${paramCount}`);
+    params.push(recognitionLevel);
+    paramCount++;
+  }
+
+  params.push(limit);
+
+  const whereClause = whereConditions.join(" AND ");
+
+  const query = `
         SELECT 
             aa.*,
             ap.first_name,
@@ -678,9 +712,9 @@ async function getAchievementsSummary(filters = {}) {
         ORDER BY aa.achievement_date DESC, aa.created_at DESC
         LIMIT $${paramCount}
     `;
-    
-    // Summary statistics
-    const statsQuery = `
+
+  // Summary statistics
+  const statsQuery = `
         SELECT 
             achievement_type as type,
             COUNT(*) as count,
@@ -691,49 +725,49 @@ async function getAchievementsSummary(filters = {}) {
         GROUP BY ROLLUP(achievement_type, visibility)
         ORDER BY achievement_type, count DESC
     `;
-    
-    const [achievements, stats] = await Promise.all([
-        dbQuery(query, params),
-        dbQuery(statsQuery, params.slice(0, -1))
-    ]);
-    
-    return {
-        achievements: achievements.rows,
-        summary: stats.rows
-    };
+
+  const [achievements, stats] = await Promise.all([
+    dbQuery(query, params),
+    dbQuery(statsQuery, params.slice(0, -1)),
+  ]);
+
+  return {
+    achievements: achievements.rows,
+    summary: stats.rows,
+  };
 }
 
 /**
  * Get contact verification status
  */
 async function getContactVerificationStatus(filters = {}) {
-    const { program, department, graduationYear } = filters;
-    
-    let whereConditions = ['1=1'];
-    let params = [];
-    let paramCount = 1;
-    
-    if (program) {
-        whereConditions.push(`program = $${paramCount}`);
-        params.push(program);
-        paramCount++;
-    }
-    
-    if (department) {
-        whereConditions.push(`department = $${paramCount}`);
-        params.push(department);
-        paramCount++;
-    }
-    
-    if (graduationYear) {
-        whereConditions.push(`graduation_year = $${paramCount}`);
-        params.push(graduationYear);
-        paramCount++;
-    }
-    
-    const whereClause = whereConditions.join(' AND ');
-    
-    const query = `
+  const { program, department, graduationYear } = filters;
+
+  let whereConditions = ["1=1"];
+  let params = [];
+  let paramCount = 1;
+
+  if (program) {
+    whereConditions.push(`program = $${paramCount}`);
+    params.push(program);
+    paramCount++;
+  }
+
+  if (department) {
+    whereConditions.push(`department = $${paramCount}`);
+    params.push(department);
+    paramCount++;
+  }
+
+  if (graduationYear) {
+    whereConditions.push(`graduation_year = $${paramCount}`);
+    params.push(graduationYear);
+    paramCount++;
+  }
+
+  const whereClause = whereConditions.join(" AND ");
+
+  const query = `
         SELECT 
             COUNT(*) as total_alumni,
             COUNT(*) FILTER (WHERE alternate_email IS NOT NULL) as has_email,
@@ -750,36 +784,40 @@ async function getContactVerificationStatus(filters = {}) {
         FROM alumni_profiles
         WHERE ${whereClause}
     `;
-    
-    const result = await dbQuery(query, params);
-    return result.rows[0];
+
+  const result = await dbQuery(query, params);
+  return result.rows[0];
 }
 
 /**
  * Get event participation statistics
  */
 async function getEventParticipationStats(filters = {}) {
-    const { startYear, endYear } = filters;
-    
-    let whereConditions = ['e.status = \'completed\''];
-    let params = [];
-    let paramCount = 1;
-    
-    if (startYear) {
-        whereConditions.push(`EXTRACT(YEAR FROM e.start_datetime) >= $${paramCount}`);
-        params.push(startYear);
-        paramCount++;
-    }
-    
-    if (endYear) {
-        whereConditions.push(`EXTRACT(YEAR FROM e.start_datetime) <= $${paramCount}`);
-        params.push(endYear);
-        paramCount++;
-    }
-    
-    const whereClause = whereConditions.join(' AND ');
-    
-    const query = `
+  const { startYear, endYear } = filters;
+
+  let whereConditions = ["e.status = 'completed'"];
+  let params = [];
+  let paramCount = 1;
+
+  if (startYear) {
+    whereConditions.push(
+      `EXTRACT(YEAR FROM e.start_datetime) >= $${paramCount}`
+    );
+    params.push(startYear);
+    paramCount++;
+  }
+
+  if (endYear) {
+    whereConditions.push(
+      `EXTRACT(YEAR FROM e.start_datetime) <= $${paramCount}`
+    );
+    params.push(endYear);
+    paramCount++;
+  }
+
+  const whereClause = whereConditions.join(" AND ");
+
+  const query = `
         SELECT 
             COUNT(DISTINCT e.id) as total_events,
             COUNT(DISTINCT er.user_id) as unique_participants,
@@ -791,16 +829,16 @@ async function getEventParticipationStats(filters = {}) {
         LEFT JOIN event_registrations er ON e.id = er.event_id
         WHERE ${whereClause}
     `;
-    
-    const result = await dbQuery(query, params);
-    return result.rows[0];
+
+  const result = await dbQuery(query, params);
+  return result.rows[0];
 }
 
 /**
  * Get program-wise outcomes (for NBA)
  */
 async function getProgramOutcomes(program, graduationYear) {
-    const query = `
+  const query = `
         WITH program_alumni AS (
             SELECT 
                 id,
@@ -854,23 +892,22 @@ async function getProgramOutcomes(program, graduationYear) {
                  he.higher_ed_count, he.foreign_admits, he.funded_admits,
                  ao.entrepreneurs, ao.patents, ao.publications
     `;
-    
-    const result = await dbQuery(query, [program, graduationYear]);
-    return result.rows[0];
+
+  const result = await dbQuery(query, [program, graduationYear]);
+  return result.rows[0];
 }
 
 export default {
-    getOverviewKPIs,
-    getPlacementDetails,
-    getPlacementTrends,
-    getTopEmployers,
-    getIndustryDistribution,
-    getHigherEducationDetails,
-    getHigherEducationStats,
-    getContributionsSummary,
-    getAchievementsSummary,
-    getContactVerificationStatus,
-    getEventParticipationStats,
-    getProgramOutcomes
+  getOverviewKPIs,
+  getPlacementDetails,
+  getPlacementTrends,
+  getTopEmployers,
+  getIndustryDistribution,
+  getHigherEducationDetails,
+  getHigherEducationStats,
+  getContributionsSummary,
+  getAchievementsSummary,
+  getContactVerificationStatus,
+  getEventParticipationStats,
+  getProgramOutcomes,
 };
-

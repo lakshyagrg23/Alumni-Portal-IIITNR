@@ -116,8 +116,13 @@ const OnboardingNew = () => {
   const [message, setMessage] = useState({ type: '', text: '' })
 
   useEffect(() => {
+    // Redirect admins - they don't need onboarding
+    if (user?.role === 'admin' || user?.role === 'superadmin') {
+      navigate('/admin')
+      return
+    }
     loadUserData()
-  }, [])
+  }, [user, navigate])
 
   const loadUserData = async () => {
     try {

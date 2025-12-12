@@ -1,449 +1,538 @@
-import React, { useEffect, useState } from 'react'
-import styles from './AdminPanel.module.css'
-import reportsService from '@services/reportsService'
-import { 
-  EmploymentStatusChart, 
-  PlacementTrendsChart, 
-  IndustryDistributionChart,
-  TopEmployersChart,
-  HigherEducationChart,
-  ContributionsChart
-} from './components/AccreditationCharts'
+import React, { useState, useEffect } from 'react';
 import {
-  PlacementTable,
-  HigherEducationTable,
-  ContributionsTable,
-  AchievementsTable
-} from './components/AccreditationTables'
+  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+} from 'recharts';
+import axios from 'axios';
+import styles from './AccreditationDashboard.module.css';
+
+const COLORS = ['#1e3a8a', '#f97316', '#10b981', '#8b5cf6', '#ef4444', '#f59e0b', '#06b6d4'];
 
 const AccreditationDashboard = () => {
-  const [activeTab, setActiveTab] = useState('overview')
-  const [overview, setOverview] = useState(null)
-  const [placements, setPlacements] = useState(null)
-  const [placementTrends, setPlacementTrends] = useState(null)
-  const [topEmployers, setTopEmployers] = useState(null)
-  const [industryDist, setIndustryDist] = useState(null)
-  const [higherEd, setHigherEd] = useState(null)
-  const [higherEdStats, setHigherEdStats] = useState(null)
-  const [contributions, setContributions] = useState(null)
-  const [achievements, setAchievements] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [filters, setFilters] = useState({
-    startYear: '',
-    endYear: '',
-    program: '',
-    department: ''
-  })
+  const [activeTab, setActiveTab] = useState('coverage');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [yearRange, setYearRange] = useState({
+    startYear: 2015,
+    endYear: 2024
+  });
+
+  // State for all data
+  const [overviewData, setOverviewData] = useState(null);
+  const [batchCoverage, setBatchCoverage] = useState([]);
+  const [employmentOutcomes, setEmploymentOutcomes] = useState([]);
+  const [employmentSummary, setEmploymentSummary] = useState([]);
+  const [topIndustries, setTopIndustries] = useState([]);
+  const [topCompanies, setTopCompanies] = useState([]);
+  const [geographicDistribution, setGeographicDistribution] = useState([]);
+  const [profileQuality, setProfileQuality] = useState([]);
 
   useEffect(() => {
-    loadData()
-  }, [])
+    fetchAllData();
+  }, [yearRange]);
 
-  const loadData = async () => {
+  const fetchAllData = async () => {
+    setLoading(true);
+    setError(null);
+
     try {
-      setLoading(true)
-      setError(null)
-      const overviewData = await reportsService.getOverview(filters)
-      setOverview(overviewData)
+      const { startYear, endYear } = yearRange;
+      const token = localStorage.getItem('token');
+      const config = {
+        headers: { 'Authorization': `Bearer ${token}` },
+        params: { startYear, endYear }
+      };
+
+      // Fetch all data in parallel
+      const [
+        overviewRes,
+        coverageRes,
+        outcomesRes,
+        summaryRes,
+        industriesRes,
+        companiesRes,
+        geoRes,
+        qualityRes
+      ] = await Promise.all([
+        axios.get(`${import.meta.env.VITE_API_URL}/admin/accreditation/overview`, config),
+        axios.get(`${import.meta.env.VITE_API_URL}/admin/accreditation/batch-coverage`, config),
+        axios.get(`${import.meta.env.VITE_API_URL}/admin/accreditation/employment-outcomes`, config),
+        axios.get(`${import.meta.env.VITE_API_URL}/admin/accreditation/employment-summary`, config),
+        axios.get(`${import.meta.env.VITE_API_URL}/admin/accreditation/top-industries`, config),
+        axios.get(`${import.meta.env.VITE_API_URL}/admin/accreditation/top-companies`, config),
+        axios.get(`${import.meta.env.VITE_API_URL}/admin/accreditation/geographic-distribution`, config),
+        axios.get(`${import.meta.env.VITE_API_URL}/admin/accreditation/profile-quality`, config)
+      ]);
+
+      setOverviewData(overviewRes.data.data);
+      setBatchCoverage(coverageRes.data.data);
+      setEmploymentOutcomes(outcomesRes.data.data);
+      setEmploymentSummary(summaryRes.data.data);
+      setTopIndustries(industriesRes.data.data);
+      setTopCompanies(companiesRes.data.data);
+      setGeographicDistribution(geoRes.data.data);
+      setProfileQuality(qualityRes.data.data);
+
+      setLoading(false);
     } catch (err) {
-      console.error('Failed to load accreditation overview', err)
-      setError(err.message || 'Failed to load data')
-    } finally {
-      setLoading(false)
+      console.error('Error fetching accreditation data:', err);
+      setError('Failed to load accreditation data');
+      setLoading(false);
     }
+  };
+
+  const handleYearChange = (e) => {
+    const { name, value } = e.target;
+    setYearRange(prev => ({ ...prev, [name]: parseInt(value) }));
+  };
+
+  const exportToExcel = () => {
+    // Simple CSV export
+    let csvContent = "IIIT Naya Raipur - Accreditation Dashboard Report\n";
+    csvContent += `Generated on: ${new Date().toLocaleDateString()}\n`;
+    csvContent += `Year Range: ${yearRange.startYear} - ${yearRange.endYear}\n\n`;
+
+    // Overview Stats
+    csvContent += "OVERVIEW STATISTICS\n";
+    csvContent += `Total Alumni (from Institute Records),${overviewData?.totalAlumni || 0}\n`;
+    csvContent += `Registered Alumni,${overviewData?.totalRegistered || 0}\n`;
+    csvContent += `Registration Rate,${overviewData?.registrationRate || 0}%\n`;
+    csvContent += `Alumni with Complete Profiles,${overviewData?.totalWithProfiles || 0}\n`;
+    csvContent += `Profile Completion Rate,${overviewData?.profileCompletionRate || 0}%\n`;
+    csvContent += `Employed,${overviewData?.employed || 0}\n`;
+    csvContent += `Higher Education,${overviewData?.higherEducation || 0}\n`;
+    csvContent += `Entrepreneurs,${overviewData?.entrepreneur || 0}\n`;
+    csvContent += `Positive Outcome Rate,${overviewData?.outcomeRate || 0}%\n\n`;
+
+    // Batch Coverage
+    csvContent += "BATCH-WISE COVERAGE\n";
+    csvContent += "Batch,Total Alumni,Registered,With Profile,Coverage %,Profile %\n";
+    batchCoverage.forEach(row => {
+      csvContent += `${row.batch},${row.total_alumni},${row.registered},${row.with_profile},${row.coverage_pct}%,${row.profile_pct}%\n`;
+    });
+    csvContent += "\n";
+
+    // Employment Outcomes
+    csvContent += "EMPLOYMENT OUTCOMES BY BATCH\n";
+    csvContent += "Batch,Total,Employed,Entrepreneur,Higher Ed,Freelancing,Looking,Career Break,Positive Outcomes,Outcome Rate %\n";
+    employmentOutcomes.forEach(row => {
+      csvContent += `${row.batch},${row.total_registered},${row.employed},${row.entrepreneur},${row.higher_education},${row.freelancing},${row.looking},${row.career_break},${row.positive_outcome},${row.outcome_rate}%\n`;
+    });
+
+    // Download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `accreditation_report_${yearRange.startYear}_${yearRange.endYear}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  if (loading) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loading}>
+          <div className={styles.spinner}></div>
+          <p>Loading accreditation data...</p>
+        </div>
+      </div>
+    );
   }
 
-  const loadPlacements = async () => {
-    try {
-      setLoading(true)
-      const [details, trends, employers, industry] = await Promise.all([
-        reportsService.getPlacementDetails(filters),
-        reportsService.getPlacementTrends(filters),
-        reportsService.getTopEmployers(filters),
-        reportsService.getIndustryDistribution(filters)
-      ])
-      setPlacements(details)
-      setPlacementTrends(trends)
-      setTopEmployers(employers)
-      setIndustryDist(industry)
-    } catch (err) {
-      console.error('Failed to load placements', err)
-      setError(err.message || 'Failed to load placements')
-    } finally {
-      setLoading(false)
-    }
+  if (error) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.error}>
+          <h3>Error</h3>
+          <p>{error}</p>
+          <button onClick={fetchAllData} className={styles.retryButton}>
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
-
-  const loadHigherEducation = async () => {
-    try {
-      setLoading(true)
-      const [details, stats] = await Promise.all([
-        reportsService.getHigherEducationDetails(filters),
-        reportsService.getHigherEducationStats(filters)
-      ])
-      setHigherEd(details)
-      setHigherEdStats(stats)
-    } catch (err) {
-      console.error('Failed to load higher education data', err)
-      setError(err.message || 'Failed to load higher education data')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadContributions = async () => {
-    try {
-      setLoading(true)
-      const data = await reportsService.getContributions(filters)
-      setContributions(data)
-    } catch (err) {
-      console.error('Failed to load contributions', err)
-      setError(err.message || 'Failed to load contributions')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadAchievements = async () => {
-    try {
-      setLoading(true)
-      const data = await reportsService.getAchievements(filters)
-      setAchievements(data)
-    } catch (err) {
-      console.error('Failed to load achievements', err)
-      setError(err.message || 'Failed to load achievements')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleTabChange = (tab) => {
-    setActiveTab(tab)
-    setError(null)
-    
-    // Load data for the specific tab if not already loaded
-    if (tab === 'placements' && !placements) {
-      loadPlacements()
-    } else if (tab === 'higher-education' && !higherEd) {
-      loadHigherEducation()
-    } else if (tab === 'contributions' && !contributions) {
-      loadContributions()
-    } else if (tab === 'achievements' && !achievements) {
-      loadAchievements()
-    }
-  }
-
-  const handleFilterChange = (e) => {
-    const { name, value } = e.target
-    setFilters(prev => ({ ...prev, [name]: value }))
-  }
-
-  const applyFilters = () => {
-    loadData()
-    if (activeTab === 'placements') loadPlacements()
-    if (activeTab === 'higher-education') loadHigherEducation()
-    if (activeTab === 'contributions') loadContributions()
-    if (activeTab === 'achievements') loadAchievements()
-  }
-
-  const clearFilters = () => {
-    setFilters({
-      startYear: '',
-      endYear: '',
-      program: '',
-      department: ''
-    })
-  }
-
-  const data = overview?.data || overview
 
   return (
-    <div>
-      <div className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>Accreditation Dashboard</h1>
-        <p className={styles.pageSubtitle}>Overview KPIs for accreditation (NAAC / NIRF / NBA)</p>
-      </div>
-
-      {/* Filters Section */}
-      <div style={{ padding: '1.5rem', background: '#f8f9fa', borderRadius: '8px', margin: '1rem 0' }}>
-        <h3 style={{ marginBottom: '1rem', fontSize: '1rem', fontWeight: '600' }}>Filters</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>Start Year</label>
-            <input
-              type="number"
-              name="startYear"
-              value={filters.startYear}
-              onChange={handleFilterChange}
-              placeholder="2015"
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
-            />
-          </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>End Year</label>
-            <input
-              type="number"
-              name="endYear"
-              value={filters.endYear}
-              onChange={handleFilterChange}
-              placeholder="2025"
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
-            />
-          </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>Program</label>
-            <input
-              type="text"
-              name="program"
-              value={filters.program}
-              onChange={handleFilterChange}
-              placeholder="BTech, MTech, etc."
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
-            />
-          </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>Department</label>
-            <input
-              type="text"
-              name="department"
-              value={filters.department}
-              onChange={handleFilterChange}
-              placeholder="CSE, ECE, etc."
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
-            />
-          </div>
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <div>
+          <h1>Accreditation Dashboard</h1>
+          <p className={styles.subtitle}>
+            Alumni-only metrics based on registered users (not current students)
+          </p>
         </div>
-        <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
-          <button onClick={applyFilters} style={{ padding: '0.5rem 1.5rem', background: '#1e3a8a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '500' }}>
-            Apply Filters
-          </button>
-          <button onClick={clearFilters} style={{ padding: '0.5rem 1.5rem', background: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '500' }}>
-            Clear
+
+        <div className={styles.controls}>
+          <div className={styles.yearFilter}>
+            <label>
+              From:
+              <input
+                type="number"
+                name="startYear"
+                value={yearRange.startYear}
+                onChange={handleYearChange}
+                min="2000"
+                max={new Date().getFullYear()}
+              />
+            </label>
+            <label>
+              To:
+              <input
+                type="number"
+                name="endYear"
+                value={yearRange.endYear}
+                onChange={handleYearChange}
+                min="2000"
+                max={new Date().getFullYear()}
+              />
+            </label>
+          </div>
+          <button onClick={exportToExcel} className={styles.exportButton}>
+            📊 Export to CSV
           </button>
         </div>
       </div>
 
-      {/* Tabs Navigation */}
-      <div style={{ borderBottom: '2px solid #e0e0e0', marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {['overview', 'placements', 'higher-education', 'contributions', 'achievements'].map(tab => (
-            <button
-              key={tab}
-              onClick={() => handleTabChange(tab)}
-              style={{
-                padding: '0.75rem 1.5rem',
-                background: activeTab === tab ? '#1e3a8a' : 'transparent',
-                color: activeTab === tab ? 'white' : '#666',
-                border: 'none',
-                borderBottom: activeTab === tab ? '3px solid #f97316' : '3px solid transparent',
-                cursor: 'pointer',
-                fontWeight: activeTab === tab ? '600' : '500',
-                textTransform: 'capitalize',
-                transition: 'all 0.2s'
-              }}
-            >
-              {tab}
-            </button>
+      {/* Overview KPI Cards */}
+      <div className={styles.kpiGrid}>
+        <div className={styles.kpiCard}>
+          <h3>Total Alumni</h3>
+          <p className={styles.kpiValue}>{overviewData?.totalAlumni || 0}</p>
+          <p className={styles.kpiLabel}>From Institute Records</p>
+        </div>
+        <div className={styles.kpiCard}>
+          <h3>Registered</h3>
+          <p className={styles.kpiValue}>{overviewData?.totalRegistered || 0}</p>
+          <p className={styles.kpiLabel}>{overviewData?.registrationRate || 0}% Coverage</p>
+        </div>
+        <div className={styles.kpiCard}>
+          <h3>Complete Profiles</h3>
+          <p className={styles.kpiValue}>{overviewData?.totalWithProfiles || 0}</p>
+          <p className={styles.kpiLabel}>{overviewData?.profileCompletionRate || 0}% of Registered</p>
+        </div>
+        <div className={styles.kpiCard}>
+          <h3>Positive Outcomes</h3>
+          <p className={styles.kpiValue}>{overviewData?.positiveOutcomes || 0}</p>
+          <p className={styles.kpiLabel}>{overviewData?.outcomeRate || 0}% Rate</p>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className={styles.tabs}>
+        <button
+          className={activeTab === 'coverage' ? styles.activeTab : ''}
+          onClick={() => setActiveTab('coverage')}
+        >
+          Coverage & Registration
+        </button>
+        <button
+          className={activeTab === 'employment' ? styles.activeTab : ''}
+          onClick={() => setActiveTab('employment')}
+        >
+          Employment Outcomes
+        </button>
+        <button
+          className={activeTab === 'insights' ? styles.activeTab : ''}
+          onClick={() => setActiveTab('insights')}
+        >
+          Career Insights
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      <div className={styles.tabContent}>
+        {activeTab === 'coverage' && (
+          <CoverageTab
+            batchCoverage={batchCoverage}
+            profileQuality={profileQuality}
+          />
+        )}
+
+        {activeTab === 'employment' && (
+          <EmploymentTab
+            employmentOutcomes={employmentOutcomes}
+            employmentSummary={employmentSummary}
+          />
+        )}
+
+        {activeTab === 'insights' && (
+          <InsightsTab
+            topIndustries={topIndustries}
+            topCompanies={topCompanies}
+            geographicDistribution={geographicDistribution}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Coverage Tab Component
+const CoverageTab = ({ batchCoverage, profileQuality }) => {
+  return (
+    <div className={styles.tabPanel}>
+      <div className={styles.section}>
+        <h2>Batch-wise Registration Coverage</h2>
+        <p className={styles.sectionNote}>
+          Shows how many alumni from each batch have registered compared to total alumni records
+        </p>
+        <ResponsiveContainer width="100%" height={400}>
+          <BarChart data={batchCoverage}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="batch" />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Bar dataKey="total_alumni" fill="#94a3b8" name="Total Alumni" />
+            <Bar dataKey="registered" fill="#1e3a8a" name="Registered" />
+            <Bar dataKey="with_profile" fill="#10b981" name="With Profile" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className={styles.section}>
+        <h2>Registration Rate by Batch</h2>
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={batchCoverage}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="batch" />
+            <YAxis />
+            <Tooltip formatter={(value) => `${value}%`} />
+            <Legend />
+            <Line type="monotone" dataKey="coverage_pct" stroke="#1e3a8a" name="Registration %" strokeWidth={2} />
+            <Line type="monotone" dataKey="profile_pct" stroke="#10b981" name="Profile Completion %" strokeWidth={2} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className={styles.section}>
+        <h2>Batch-wise Details</h2>
+        <div className={styles.tableContainer}>
+          <table className={styles.dataTable}>
+            <thead>
+              <tr>
+                <th>Batch</th>
+                <th>Total Alumni</th>
+                <th>Registered</th>
+                <th>Coverage %</th>
+                <th>With Profile</th>
+                <th>Profile %</th>
+              </tr>
+            </thead>
+            <tbody>
+              {batchCoverage.map(row => (
+                <tr key={row.batch}>
+                  <td><strong>{row.batch}</strong></td>
+                  <td>{row.total_alumni}</td>
+                  <td>{row.registered}</td>
+                  <td><span className={styles.badge}>{row.coverage_pct}%</span></td>
+                  <td>{row.with_profile}</td>
+                  <td><span className={styles.badge}>{row.profile_pct}%</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className={styles.section}>
+        <h2>Profile Quality Metrics</h2>
+        <div className={styles.qualityGrid}>
+          {profileQuality.map((metric, idx) => (
+            <div key={idx} className={styles.qualityCard}>
+              <h4>{metric.metric_name}</h4>
+              <p className={styles.qualityValue}>{metric.count}</p>
+              <p className={styles.qualityPercentage}>{metric.percentage}%</p>
+              <p className={styles.qualityTotal}>of {metric.total_profiles} profiles</p>
+            </div>
           ))}
         </div>
       </div>
-
-      {loading && (
-        <div style={{ padding: '2rem', textAlign: 'center' }}>
-          <div className={styles.loadingSpinner}><div className={styles.spinner}></div></div>
-        </div>
-      )}
-
-      {error && (
-        <div className={styles.errorMessage}>{error}</div>
-      )}
-
-      {/* Overview Tab */}
-      {!loading && !error && activeTab === 'overview' && data && (
-        <div style={{ padding: '1rem 0' }}>
-          {/* KPI Cards */}
-          <div className={styles.statsGrid} style={{ marginBottom: '2rem' }}>
-            <div className={styles.statCard}>
-              <div className={styles.statValue}>{data.total_alumni || '0'}</div>
-              <div className={styles.statLabel}>Total Alumni (Approved)</div>
-              <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.25rem' }}>
-                {data.total_profiles_alumni || '0'} profiles
-              </div>
-            </div>
-            <div className={styles.statCard}>
-              <div className={styles.statValue}>{data.employed_count || '0'}</div>
-              <div className={styles.statLabel}>Employed</div>
-              <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.25rem' }}>
-                {data.placement_rate || '0'}% placement rate
-              </div>
-            </div>
-            <div className={styles.statCard}>
-              <div className={styles.statValue}>{data.higher_studies_count || '0'}</div>
-              <div className={styles.statLabel}>Higher Studies</div>
-              <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.25rem' }}>
-                {data.higher_studies_rate || '0'}% rate
-              </div>
-            </div>
-            <div className={styles.statCard}>
-              <div className={styles.statValue}>{data.entrepreneur_count || '0'}</div>
-              <div className={styles.statLabel}>Entrepreneurs</div>
-            </div>
-          </div>
-
-          {/* Additional Metrics */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-            <div style={{ padding: '1.5rem', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd' }}>
-              <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#0369a1' }}>Placement Statistics</h4>
-              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0c4a6e' }}>{data.total_placements || '0'}</div>
-              <div style={{ fontSize: '0.75rem', color: '#0369a1', marginTop: '0.25rem' }}>
-                Avg: ₹{data.avg_salary ? Number(data.avg_salary).toFixed(2) : '0'} LPA
-              </div>
-            </div>
-
-            <div style={{ padding: '1.5rem', background: '#fef3c7', borderRadius: '8px', border: '1px solid #fde68a' }}>
-              <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#92400e' }}>Contributions</h4>
-              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#78350f' }}>{data.total_contributions || '0'}</div>
-              <div style={{ fontSize: '0.75rem', color: '#92400e', marginTop: '0.25rem' }}>
-                ₹{data.total_donations ? Number(data.total_donations).toLocaleString() : '0'} donated
-              </div>
-            </div>
-
-            <div style={{ padding: '1.5rem', background: '#fce7f3', borderRadius: '8px', border: '1px solid #fbcfe8' }}>
-              <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#9f1239' }}>Achievements</h4>
-              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#881337' }}>{data.total_achievements || '0'}</div>
-              <div style={{ fontSize: '0.75rem', color: '#9f1239', marginTop: '0.25rem' }}>
-                {data.publications || '0'} publications
-              </div>
-            </div>
-
-            <div style={{ padding: '1.5rem', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-              <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#166534' }}>Data Quality</h4>
-              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#14532d' }}>{data.verified_count || '0'}</div>
-              <div style={{ fontSize: '0.75rem', color: '#166534', marginTop: '0.25rem' }}>
-                {data.consented_count || '0'} consented · {data.contact_completeness || '0'}% contact complete
-              </div>
-            </div>
-          </div>
-
-          {/* Employment Status Chart */}
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e0e0e0', marginBottom: '2rem' }}>
-            <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>Employment Status Distribution</h3>
-            <EmploymentStatusChart data={data} />
-          </div>
-        </div>
-      )}
-
-      {/* Placements Tab */}
-      {!loading && !error && activeTab === 'placements' && (
-        <div style={{ padding: '1rem 0' }}>
-          {placementTrends && placementTrends.length > 0 && (
-            <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e0e0e0', marginBottom: '2rem' }}>
-              <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>Placement Trends (Year-wise)</h3>
-              <PlacementTrendsChart data={placementTrends} />
-            </div>
-          )}
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-            {topEmployers && topEmployers.length > 0 && (
-              <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-                <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>Top Employers</h3>
-                <TopEmployersChart data={topEmployers} />
-              </div>
-            )}
-
-            {industryDist && industryDist.length > 0 && (
-              <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-                <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>Industry Distribution</h3>
-                <IndustryDistributionChart data={industryDist} />
-              </div>
-            )}
-          </div>
-
-          {placements && (
-            <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-              <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>Placement Records</h3>
-              <PlacementTable data={placements} />
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Higher Education Tab */}
-      {!loading && !error && activeTab === 'higher-education' && (
-        <div style={{ padding: '1rem 0' }}>
-          {higherEdStats && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-              <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-                <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>Program Level Distribution</h3>
-                <HigherEducationChart data={higherEdStats} />
-              </div>
-
-              {higherEdStats.byCountry && higherEdStats.byCountry.length > 0 && (
-                <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-                  <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>Top Destinations</h3>
-                  <div style={{ fontSize: '0.875rem' }}>
-                    {higherEdStats.byCountry.slice(0, 5).map((item, index) => (
-                      <div key={index} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid #e0e0e0' }}>
-                        <span>{item.institution_country}</span>
-                        <span style={{ fontWeight: '600' }}>{item.student_count} students ({item.percentage}%)</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {higherEd && (
-            <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-              <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>Higher Education Records</h3>
-              <HigherEducationTable data={higherEd} />
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Contributions Tab */}
-      {!loading && !error && activeTab === 'contributions' && contributions && (
-        <div style={{ padding: '1rem 0' }}>
-          {contributions.summary && contributions.summary.length > 0 && (
-            <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e0e0e0', marginBottom: '2rem' }}>
-              <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>Contributions by Type</h3>
-              <ContributionsChart data={contributions} />
-            </div>
-          )}
-
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-            <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>Contribution Records</h3>
-            <ContributionsTable data={contributions} />
-          </div>
-        </div>
-      )}
-
-      {/* Achievements Tab */}
-      {!loading && !error && activeTab === 'achievements' && achievements && (
-        <div style={{ padding: '1rem 0' }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-            <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>Achievement Records</h3>
-            <AchievementsTable data={achievements} />
-          </div>
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!loading && !error && activeTab !== 'overview' && (
-        (activeTab === 'placements' && !placements) ||
-        (activeTab === 'higher-education' && !higherEd) ||
-        (activeTab === 'contributions' && !contributions) ||
-        (activeTab === 'achievements' && !achievements)
-      ) && (
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#666' }}>
-          <p>Click "Apply Filters" to load {activeTab.replace('-', ' ')} data...</p>
-        </div>
-      )}
     </div>
-  )
-}
+  );
+};
 
-export default AccreditationDashboard
+// Employment Tab Component
+const EmploymentTab = ({ employmentOutcomes, employmentSummary }) => {
+  return (
+    <div className={styles.tabPanel}>
+      <div className={styles.section}>
+        <h2>Employment Status Distribution</h2>
+        <p className={styles.sectionNote}>Overall distribution across all registered alumni</p>
+        <ResponsiveContainer width="100%" height={350}>
+          <PieChart>
+            <Pie
+              data={employmentSummary}
+              dataKey="count"
+              nameKey="employment_status"
+              cx="50%"
+              cy="50%"
+              outerRadius={120}
+              label={(entry) => `${entry.employment_status}: ${entry.percentage}%`}
+            >
+              {employmentSummary.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className={styles.section}>
+        <h2>Batch-wise Employment Outcomes</h2>
+        <p className={styles.sectionNote}>
+          Positive outcomes = Employed + Higher Education + Entrepreneurship
+        </p>
+        <ResponsiveContainer width="100%" height={400}>
+          <BarChart data={employmentOutcomes}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="batch" />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Bar dataKey="employed" fill="#1e3a8a" name="Employed" stackId="a" />
+            <Bar dataKey="higher_education" fill="#10b981" name="Higher Ed" stackId="a" />
+            <Bar dataKey="entrepreneur" fill="#f97316" name="Entrepreneur" stackId="a" />
+            <Bar dataKey="freelancing" fill="#8b5cf6" name="Freelancing" stackId="a" />
+            <Bar dataKey="looking" fill="#f59e0b" name="Looking" stackId="a" />
+            <Bar dataKey="career_break" fill="#94a3b8" name="Career Break" stackId="a" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className={styles.section}>
+        <h2>Positive Outcome Rate by Batch</h2>
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={employmentOutcomes}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="batch" />
+            <YAxis domain={[0, 100]} />
+            <Tooltip formatter={(value) => `${value}%`} />
+            <Legend />
+            <Line type="monotone" dataKey="outcome_rate" stroke="#10b981" name="Positive Outcome %" strokeWidth={3} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className={styles.section}>
+        <h2>Detailed Employment Outcomes by Batch</h2>
+        <div className={styles.tableContainer}>
+          <table className={styles.dataTable}>
+            <thead>
+              <tr>
+                <th>Batch</th>
+                <th>Total</th>
+                <th>Employed</th>
+                <th>Higher Ed</th>
+                <th>Entrepreneur</th>
+                <th>Freelancing</th>
+                <th>Looking</th>
+                <th>Positive Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {employmentOutcomes.map(row => (
+                <tr key={row.batch}>
+                  <td><strong>{row.batch}</strong></td>
+                  <td>{row.total_registered}</td>
+                  <td>{row.employed}</td>
+                  <td>{row.higher_education}</td>
+                  <td>{row.entrepreneur}</td>
+                  <td>{row.freelancing}</td>
+                  <td>{row.looking}</td>
+                  <td>
+                    <span className={styles.outcomeBadge}>
+                      {row.outcome_rate}%
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Insights Tab Component
+const InsightsTab = ({ topIndustries, topCompanies, geographicDistribution }) => {
+  return (
+    <div className={styles.tabPanel}>
+      <div className={styles.section}>
+        <h2>Top Industries</h2>
+        <p className={styles.sectionNote}>Where employed alumni are working</p>
+        <ResponsiveContainer width="100%" height={350}>
+          <BarChart data={topIndustries} layout="vertical">
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis type="number" />
+            <YAxis dataKey="industry" type="category" width={150} />
+            <Tooltip />
+            <Bar dataKey="count" fill="#1e3a8a" name="Alumni Count" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className={styles.twoColumnSection}>
+        <div className={styles.section}>
+          <h2>Top Companies</h2>
+          <div className={styles.listContainer}>
+            {topCompanies.map((company, idx) => (
+              <div key={idx} className={styles.listItem}>
+                <span className={styles.listRank}>{idx + 1}</span>
+                <span className={styles.listName}>{company.company}</span>
+                <span className={styles.listCount}>{company.count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className={styles.section}>
+          <h2>Geographic Distribution</h2>
+          <div className={styles.listContainer}>
+            {geographicDistribution.map((loc, idx) => (
+              <div key={idx} className={styles.listItem}>
+                <span className={styles.listRank}>{idx + 1}</span>
+                <span className={styles.listName}>
+                  {loc.city}, {loc.country}
+                </span>
+                <span className={styles.listCount}>{loc.count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.section}>
+        <h2>Industry Distribution</h2>
+        <div className={styles.tableContainer}>
+          <table className={styles.dataTable}>
+            <thead>
+              <tr>
+                <th>Industry</th>
+                <th>Alumni Count</th>
+                <th>Percentage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {topIndustries.map((industry, idx) => (
+                <tr key={idx}>
+                  <td>{industry.industry}</td>
+                  <td>{industry.count}</td>
+                  <td><span className={styles.badge}>{industry.percentage}%</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AccreditationDashboard;

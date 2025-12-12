@@ -34,9 +34,15 @@ const Login = () => {
       const response = await login(data);
       toast.success('Login successful!');
       const userRole = response?.user?.role;
-      if (userRole === 'admin') {
+      
+      // Admin users go to admin panel
+      if (userRole === 'admin' || userRole === 'superadmin') {
         navigate('/admin');
-      } else if (!response?.user?.hasAlumniProfile) {
+        return;
+      }
+      
+      // Alumni users: check if they need onboarding
+      if (!response?.user?.hasAlumniProfile) {
         navigate('/onboarding');
       } else {
         navigate('/dashboard');

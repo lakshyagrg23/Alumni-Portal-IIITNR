@@ -121,7 +121,14 @@ const RegisterInstituteEmail = () => {
         name: decoded.name,
       });
 
-      // Redirect based on onboarding status/profile
+      // Admin users go to admin panel
+      const userRole = response.user?.role;
+      if (userRole === 'admin' || userRole === 'superadmin') {
+        navigate('/admin');
+        return;
+      }
+
+      // Alumni users: redirect based on onboarding status/profile
       const hasProfile = response.user?.hasAlumniProfile;
       const onboardingDone = response.user?.onboardingCompleted;
       if (response.isNewUser || !hasProfile || !onboardingDone) {

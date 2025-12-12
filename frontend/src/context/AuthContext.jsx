@@ -112,8 +112,8 @@ export const AuthProvider = ({ children }) => {
           // Set token in auth service
           authService.setToken(token)
           
-          // Get user profile - the service returns full response
-          const response = await authService.getProfile()
+          // Get user info from /auth/me endpoint (works for all roles)
+          const response = await authService.getCurrentUser()
           
           dispatch({
             type: authActions.LOAD_USER,
@@ -149,15 +149,15 @@ export const AuthProvider = ({ children }) => {
         payload: response,
       })
 
-      // Eagerly load full profile so consumers have it without refresh
+      // Eagerly load user data using /auth/me (works for all roles)
       try {
-        const profile = await authService.getProfile()
-        if (profile?.success && profile?.data) {
-          dispatch({ type: authActions.LOAD_USER, payload: profile.data })
+        const userData = await authService.getCurrentUser()
+        if (userData?.success && userData?.data) {
+          dispatch({ type: authActions.LOAD_USER, payload: userData.data })
         }
       } catch (e) {
-        // non-fatal; components can still call getProfile themselves
-        console.warn('Post-login profile fetch failed', e?.message || e)
+        // non-fatal; components can still use basic user info
+        console.warn('Post-login user data fetch failed', e?.message || e)
       }
       
       return response

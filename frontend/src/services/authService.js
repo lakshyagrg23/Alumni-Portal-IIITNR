@@ -84,7 +84,14 @@ export const authService = {
     return response;
   },
 
-  // Get current user profile
+  // Get current user (works for all roles including admins)
+  getCurrentUser: async () => {
+    const timestamp = Date.now();
+    const response = await API.get(`/auth/me?t=${timestamp}`);
+    return response; // Return the full response (already includes success and data)
+  },
+
+  // Get current user profile (alumni only - admins will get 403)
   getProfile: async () => {
     // Add cache-busting parameter to ensure fresh data
     const timestamp = Date.now();

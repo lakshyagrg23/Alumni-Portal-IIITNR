@@ -106,7 +106,14 @@ const LinkedInCallback = () => {
         sessionStorage.removeItem('linkedin_redirect_uri');
         sessionStorage.removeItem('linkedin_processed_code');
         
-        // Check if user needs to complete profile
+        // Admin users go to admin panel
+        const userRole = response.user?.role;
+        if (userRole === 'admin' || userRole === 'superadmin') {
+          navigate('/admin');
+          return;
+        }
+        
+        // Alumni users: check if they need to complete profile
         if (response.isNewUser || !response.user.hasAlumniProfile) {
           navigate('/onboarding');
         } else {

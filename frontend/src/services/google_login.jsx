@@ -36,6 +36,15 @@ export default function GoogleLoginButton({ verificationToken = null, onSuccess,
       }
 
       // Default navigation logic
+      const userRole = response.user?.role;
+      
+      // Admin users go to admin panel
+      if (userRole === 'admin' || userRole === 'superadmin') {
+        navigate('/admin');
+        return;
+      }
+      
+      // Alumni users: check if they need onboarding
       const hasProfile = response.user?.hasAlumniProfile;
       const onboardingDone = response.user?.onboardingCompleted;
       if (response.isNewUser || !hasProfile || !onboardingDone) {

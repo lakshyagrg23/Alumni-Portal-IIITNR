@@ -544,7 +544,7 @@ router.post("/login", async (req, res) => {
 
     // Determine if alumni profile exists (only for non-admin users)
     let hasAlumniProfile = false;
-    if (user.role !== 'admin' && user.role !== 'superadmin') {
+    if (user.role !== "admin" && user.role !== "superadmin") {
       try {
         const result = await query(
           "SELECT 1 FROM alumni_profiles WHERE user_id = $1 LIMIT 1",
@@ -566,7 +566,7 @@ router.post("/login", async (req, res) => {
     };
 
     // Only include onboarding/profile data for alumni
-    if (user.role !== 'admin' && user.role !== 'superadmin') {
+    if (user.role !== "admin" && user.role !== "superadmin") {
       userResponse.onboardingCompleted = user.onboarding_completed || false;
       userResponse.hasAlumniProfile = hasAlumniProfile;
     }
@@ -920,7 +920,7 @@ router.post("/google", async (req, res) => {
     };
 
     // Only include profile/onboarding data for alumni
-    if (user.role !== 'admin' && user.role !== 'superadmin') {
+    if (user.role !== "admin" && user.role !== "superadmin") {
       userResponse.hasAlumniProfile = hasAlumniProfile;
       userResponse.needsProfileSetup = !hasAlumniProfile;
       userResponse.onboardingCompleted = user.onboarding_completed || false;
@@ -1050,7 +1050,7 @@ router.post("/linkedin", async (req, res) => {
     };
 
     // Only include profile/onboarding data for alumni
-    if (user.role !== 'admin' && user.role !== 'superadmin') {
+    if (user.role !== "admin" && user.role !== "superadmin") {
       userResponse.hasAlumniProfile = hasAlumniProfile;
       userResponse.needsProfileSetup = !hasAlumniProfile;
     }
@@ -1181,7 +1181,7 @@ router.get("/me", authenticate, async (req, res) => {
     };
 
     // Only include profile/onboarding data for alumni
-    if (user.role !== 'admin' && user.role !== 'superadmin') {
+    if (user.role !== "admin" && user.role !== "superadmin") {
       let hasAlumniProfile = false;
       try {
         const result = await query(
@@ -1219,10 +1219,10 @@ router.get("/me", authenticate, async (req, res) => {
 router.get("/profile", authenticate, async (req, res) => {
   try {
     // Admin users should not access alumni profile endpoint
-    if (req.user.role === 'admin' || req.user.role === 'superadmin') {
+    if (req.user.role === "admin" || req.user.role === "superadmin") {
       return res.status(403).json({
         success: false,
-        message: 'Admin accounts do not have alumni profiles',
+        message: "Admin accounts do not have alumni profiles",
       });
     }
 
@@ -1423,10 +1423,10 @@ router.get("/profile", authenticate, async (req, res) => {
 router.get("/onboarding-data", authenticate, async (req, res) => {
   try {
     // Admin users do not need onboarding
-    if (req.user.role === 'admin' || req.user.role === 'superadmin') {
+    if (req.user.role === "admin" || req.user.role === "superadmin") {
       return res.status(403).json({
         success: false,
-        message: 'Admin accounts do not require onboarding',
+        message: "Admin accounts do not require onboarding",
       });
     }
 
@@ -1866,10 +1866,10 @@ router.put("/profile", authenticate, async (req, res) => {
 router.post("/complete-onboarding", authenticate, async (req, res) => {
   try {
     // Admin users do not have onboarding
-    if (req.user.role === 'admin' || req.user.role === 'superadmin') {
+    if (req.user.role === "admin" || req.user.role === "superadmin") {
       return res.status(403).json({
         success: false,
-        message: 'Admin accounts do not require onboarding',
+        message: "Admin accounts do not require onboarding",
       });
     }
 
