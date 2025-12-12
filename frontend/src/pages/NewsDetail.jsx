@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { BiChevronLeft, BiTime, BiCalendar, BiUser, BiShare, BiLink, BiBookmark, BiTrendingUp } from 'react-icons/bi';
 import styles from './NewsDetail.module.css';
 
 // API Base URL
@@ -194,174 +195,250 @@ const NewsDetail = () => {
   const safeTitle = String(article.title || 'News Article')
   const safeDescription = String(article.excerpt || 'Read the latest news from IIIT Naya Raipur')
 
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: safeTitle,
+          text: safeDescription,
+          url: window.location.href
+        });
+      } catch (err) {
+        console.log('Share cancelled');
+      }
+    }
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    alert('Link copied to clipboard!');
+  };
+
   return (
-    <div className='w-100'>
+    <>
       <Helmet>
         <title>{`${safeTitle} - IIIT Naya Raipur Alumni Portal`}</title>
         <meta name="description" content={safeDescription} />
       </Helmet>
       
-      <article className={styles.container}>
-        {/* Navigation */}
-        <nav className={styles.breadcrumb}>
-          <Link to="/news" className={styles.breadcrumbLink}>News</Link>
-          <span className={styles.breadcrumbSeparator}>→</span>
-          <span className={styles.breadcrumbCurrent}>{safeTitle}</span>
-        </nav>
-
-        {/* Article Header */}
-        <header className={styles.articleHeader}>
-          <div className={styles.metadata}>
-            {article.category && (
-              <span 
-                className={styles.categoryTag}
-                style={{ backgroundColor: getCategoryColor(article.category) }}
-              >
-                {String(article.category).replace('-', ' ').toUpperCase()}
-              </span>
-            )}
-            {article.isFeatured && (
-              <span className={styles.featuredBadge}>Featured</span>
-            )}
-          </div>
-          
-          <h1 className={styles.articleTitle}>{safeTitle}</h1>
-          
-          <div className={styles.articleMeta}>
-            <div className={styles.authorSection}>
-              <span className={styles.authorName}>
-                By {article.authorName || 'Unknown Author'}
-              </span>
-              {article.publishedAt && (
-                <time className={styles.publishDate}>
-                  Published on {formatDate(article.publishedAt)}
-                </time>
-              )}
-              {article.updatedAt && article.updatedAt !== article.createdAt && (
-                <time className={styles.updateDate}>
-                  Updated on {formatDate(article.updatedAt)}
-                </time>
-              )}
+      <div className={styles.pageWrapper}>
+        {/* Back Navigation Bar */}
+        <nav className={styles.topNav}>
+          <div className={styles.navContainer}>
+            <Link to="/news" className={styles.backButton}>
+              <BiChevronLeft size={24} />
+              <span>Back to News</span>
+            </Link>
+            
+            <div className={styles.navActions}>
+              <button onClick={handleShare} className={styles.iconButton} title="Share">
+                <BiShare size={20} />
+              </button>
+              <button onClick={handleCopyLink} className={styles.iconButton} title="Copy Link">
+                <BiLink size={20} />
+              </button>
+              <button className={styles.iconButton} title="Bookmark">
+                <BiBookmark size={20} />
+              </button>
             </div>
           </div>
+        </nav>
 
-          {article.excerpt && (
-            <p className={styles.excerpt}>{article.excerpt}</p>
-          )}
-        </header>
-
-        {/* Hero Section */}
-        {article.featuredImageUrl && (
-          <section className={styles.heroSection} ref={heroRef}>
-            <div className={styles.heroMediaWrap}>
+        <article className={styles.container}>
+          {/* Hero Image Section */}
+          {article.featuredImageUrl && (
+            <div className={styles.heroImageWrapper}>
               <img
                 src={article.featuredImageUrl}
                 alt={safeTitle}
                 className={styles.heroImage}
-                style={{ transform: `translateY(${parallax}px) scale(1.02)` }}
+                style={{ transform: `translateY(${Math.min(parallax * 0.5, 15)}px)` }}
               />
-              <div className={styles.heroOverlay}></div>
-              <div className={styles.heroContent}>
-                <h1 className={styles.heroTitle}>{safeTitle}</h1>
-                {article.excerpt && <p className={styles.heroSubtitle}>{article.excerpt}</p>}
-                <div className={styles.heroMetaRow}>
-                  <span className={styles.heroAuthor}>By {article.authorName || 'Unknown'}</span>
-                  {article.publishedAt && (
-                    <span className={styles.heroDate}>{formatDate(article.publishedAt)}</span>
-                  )}
-                  {readTime && <span className={styles.heroReadTime}>{readTime} min read</span>}
-                </div>
-              </div>
+              <div className={styles.heroGradient}></div>
             </div>
-          </section>
-        )}
+          )}
 
-        {/* Two-column Premium Layout */}
-        <section className={styles.premiumSection}>
-          <div className={styles.premiumGrid}>
-            {/* Left Column: Publisher + Article */}
-            <div className={styles.leftCol}>
-              <div className={styles.publisherCard}>
-                <div className={styles.publisherAvatar} aria-hidden="true" />
-                <div className={styles.publisherInfo}>
-                  <h3 className={styles.publisherName}>{article.authorName || 'Unknown Author'}</h3>
-                  <p className={styles.publisherRole}>Alumni Contributor</p>
-                  <p className={styles.publisherBio}>Building a connected alumni community through stories and events.</p>
-                  <div className={styles.publisherMetaRow}>
-                    {article.publishedAt && (
-                      <span className={styles.publisherDate}>Published {formatDate(article.publishedAt)}</span>
-                    )}
-                  </div>
+          {/* Article Content Container */}
+          <div className={styles.contentWrapper}>
+            {/* Main Content */}
+            <div className={styles.mainContent}>
+              {/* Article Header */}
+              <header className={styles.articleHeader}>
+                <div className={styles.headerMeta}>
+                  {article.category && (
+                    <span 
+                      className={styles.categoryBadge}
+                      style={{ backgroundColor: getCategoryColor(article.category) }}
+                    >
+                      {String(article.category).replace('-', ' ').toUpperCase()}
+                    </span>
+                  )}
+                  {article.isFeatured && (
+                    <span className={styles.featuredBadge}>
+                      <BiTrendingUp size={16} />
+                      Featured
+                    </span>
+                  )}
                 </div>
-              </div>
+                
+                <h1 className={styles.articleTitle}>{safeTitle}</h1>
+                
+                {article.excerpt && (
+                  <p className={styles.articleExcerpt}>{article.excerpt}</p>
+                )}
+                
+                <div className={styles.metaInfo}>
+                  <div className={styles.metaItem}>
+                    <BiUser size={18} />
+                    <span>{article.authorName || 'Unknown Author'}</span>
+                  </div>
+                  
+                  {article.publishedAt && (
+                    <div className={styles.metaItem}>
+                      <BiCalendar size={18} />
+                      <time>{formatDate(article.publishedAt)}</time>
+                    </div>
+                  )}
+                  
+                  {readTime && (
+                    <div className={styles.metaItem}>
+                      <BiTime size={18} />
+                      <span>{readTime} min read</span>
+                    </div>
+                  )}
+                </div>
+              </header>
 
-              <div className={styles.articleMain}>
-                <h1 className={styles.articleHeroTitle}>{safeTitle}</h1>
+              {/* Article Body */}
+              <div className={styles.articleBody}>
                 <div
                   className={styles.content}
                   dangerouslySetInnerHTML={formatContent(article.content)}
                 />
-                {article.excerpt && (
-                  <blockquote className={styles.pullQuote}>{article.excerpt}</blockquote>
-                )}
               </div>
-            </div>
 
-            {/* Column Divider */}
-            <div className={styles.columnDivider} aria-hidden="true" />
-
-            {/* Right Column: Sticky Visual Feed */}
-            <aside className={styles.rightCol}>
-              {/* Carousel */}
-              {article.featuredImageUrl && (
-                <div className={styles.carousel}>
-                  <div className={styles.carouselViewport}>
-                    <img src={article.featuredImageUrl} alt={safeTitle} className={styles.carouselImage} />
-                  </div>
-                  <div className={styles.carouselDots}>
-                    <span className={styles.dotActive} />
-                    <span className={styles.dot} />
-                    <span className={styles.dot} />
+              {/* Tags Section */}
+              {article.tags && article.tags.length > 0 && (
+                <div className={styles.tagsSection}>
+                  <h3 className={styles.tagsTitle}>Related Topics</h3>
+                  <div className={styles.tagsList}>
+                    {article.tags.map((tag, index) => (
+                      <span key={index} className={styles.tag}>
+                        #{tag}
+                      </span>
+                    ))}
                   </div>
                 </div>
               )}
 
-              {/* Thumbnails Grid */}
-              <div className={styles.thumbGrid}>
-                {[article.featuredImageUrl, article.featuredImageUrl, article.featuredImageUrl].filter(Boolean).map((src, i) => (
-                  <div key={i} className={styles.thumbWrap}>
-                    <img src={src} alt={`visual-${i+1}`} className={styles.thumb} />
-                  </div>
-                ))}
+              {/* Share Section */}
+              <div className={styles.shareSection}>
+                <h3 className={styles.shareTitle}>Share this article</h3>
+                <div className={styles.shareButtons}>
+                  <button onClick={handleShare} className={styles.shareBtn}>
+                    <BiShare size={18} />
+                    Share
+                  </button>
+                  <button onClick={handleCopyLink} className={styles.shareBtn}>
+                    <BiLink size={18} />
+                    Copy Link
+                  </button>
+                </div>
               </div>
+            </div>
 
+            {/* Sidebar */}
+            <aside className={styles.sidebar}>
+              {/* Table of Contents */}
+              {toc.length > 0 && (
+                <div className={styles.tocCard}>
+                  <h3 className={styles.sidebarTitle}>Table of Contents</h3>
+                  <ul className={styles.tocList}>
+                    {toc.map((item, idx) => (
+                      <li key={idx} className={styles[`toc-${item.level}`]}>
+                        <a href={`#${item.id}`}>{item.text}</a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Article Info */}
+              <div className={styles.infoCard}>
+                <h3 className={styles.sidebarTitle}>Article Info</h3>
+                <div className={styles.infoList}>
+                  <div className={styles.infoItem}>
+                    <span className={styles.infoLabel}>Author</span>
+                    <span className={styles.infoValue}>{article.authorName || 'Unknown'}</span>
+                  </div>
+                  {article.publishedAt && (
+                    <div className={styles.infoItem}>
+                      <span className={styles.infoLabel}>Published</span>
+                      <span className={styles.infoValue}>{formatDate(article.publishedAt)}</span>
+                    </div>
+                  )}
+                  {article.updatedAt && article.updatedAt !== article.publishedAt && (
+                    <div className={styles.infoItem}>
+                      <span className={styles.infoLabel}>Updated</span>
+                      <span className={styles.infoValue}>{formatDate(article.updatedAt)}</span>
+                    </div>
+                  )}
+                  {readTime && (
+                    <div className={styles.infoItem}>
+                      <span className={styles.infoLabel}>Read Time</span>
+                      <span className={styles.infoValue}>{readTime} min</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </aside>
           </div>
-        </section>
 
-        {/* Tags */}
-        {article.tags && article.tags.length > 0 && (
-          <div className={styles.tagsSection}>
-            <h3 className={styles.tagsTitle}>Tags</h3>
-            <div className={styles.tags}>
-              {article.tags.map((tag, index) => (
-                <span key={index} className={styles.tag}>
-                  #{tag}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-
-        {/* Back to News */}
-        <div className={styles.navigationFooter}>
-          <Link to="/news" className={styles.backToNewsBtn}>
-            ← Back to All News
-          </Link>
-        </div>
-      </article>
-    </div>
+          {/* Related Articles */}
+          {relatedArticles && relatedArticles.length > 0 && (
+            <section className={styles.relatedSection}>
+              <h2 className={styles.relatedTitle}>Related Articles</h2>
+              <div className={styles.relatedGrid}>
+                {relatedArticles.slice(0, 3).map((related) => (
+                  <Link
+                    key={related.id}
+                    to={`/news/${related.slug || related.id}`}
+                    className={styles.relatedCard}
+                  >
+                    {related.featuredImageUrl && (
+                      <div className={styles.relatedImageContainer}>
+                        <img 
+                          src={related.featuredImageUrl} 
+                          alt={related.title}
+                          className={styles.relatedImage}
+                        />
+                      </div>
+                    )}
+                    <div className={styles.relatedContent}>
+                      {related.category && (
+                        <span 
+                          className={styles.relatedCategory}
+                          style={{ backgroundColor: getCategoryColor(related.category) }}
+                        >
+                          {String(related.category).replace('-', ' ').toUpperCase()}
+                        </span>
+                      )}
+                      <h3 className={styles.relatedCardTitle}>{related.title}</h3>
+                      {related.excerpt && (
+                        <p className={styles.relatedExcerpt}>{related.excerpt}</p>
+                      )}
+                      {related.publishedAt && (
+                        <time className={styles.relatedDate}>{formatDate(related.publishedAt)}</time>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+        </article>
+      </div>
+    </>
   );
 };
 

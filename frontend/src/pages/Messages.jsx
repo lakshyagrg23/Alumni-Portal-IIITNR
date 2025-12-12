@@ -6,6 +6,7 @@ import { getSocket, closeSocket, getLastSocketUrl } from '../utils/socketClient'
 import * as crypto from '../utils/crypto'
 import axios from 'axios'
 import { useLocation } from 'react-router-dom'
+import { BiMessageRounded, BiSearch, BiX, BiGroup, BiPaperclip, BiImage, BiFile,  BiSend } from 'react-icons/bi'
 import styles from './Messages.module.css'
 
 function useQuery() {
@@ -38,6 +39,10 @@ const Messages = () => {
   const messagesListRef = useRef(null)
   const messagesEndRef = useRef(null)
   const [showSidebar, setShowSidebar] = useState(true)
+  const [showNewChatModal, setShowNewChatModal] = useState(false)
+  const [alumniList, setAlumniList] = useState([])
+  const [searchAlumni, setSearchAlumni] = useState('')
+  const [loadingAlumni, setLoadingAlumni] = useState(false)
   // Use global messaging context for unread counts
   const { conversationUnreadMap, clearConversationUnread, setActiveConversationUserId } = useMessaging()
 
@@ -330,7 +335,7 @@ const Messages = () => {
       } catch (e) {
         // Recipient hasn't generated encryption keys yet
         if (e.response?.status === 404) {
-          console.warn('⚠️ Recipient has not set up encrypted messaging keys yet.')
+          console.warn('Recipient has not set up encrypted messaging keys yet.')
           setErrorMsg('Recipient has not initialized encryption keys. Ask them to open Messages once, then retry.')
         }
         // Fallback to per-message keys (will try again when sending)
@@ -445,7 +450,7 @@ const Messages = () => {
 
   const handleSend = async () => {
     setErrorMsg('')
-    console.log('🔍 handleSend called', { toUserId, text: text?.substring(0, 20), textLength: text?.length })
+    console.log('handleSend called', { toUserId, text: text?.substring(0, 20), textLength: text?.length })
     
     if (!toUserId || (!text && !attachmentMeta)) {
       setErrorMsg('Provide a message or attachment for a recipient')
@@ -568,20 +573,62 @@ const Messages = () => {
     typingTimerRef.current = setTimeout(() => setIsTyping(false), 1200)
   }
 
+  const loadAlumniList = async () => {
+    if (loadingAlumni) return
+    setLoadingAlumni(true)
+    try {
+      const res = await axios.get(`${API}/alumni`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { limit: 50, sortBy: 'first_name', sortOrder: 'ASC' }
+      })
+      const data = res.data?.data || []
+      // Filter out current user and existing conversations
+      const existingUserIds = new Set(conversations.map(c => c.partnerUserId))
+      const filtered = data.filter(a => {
+        const userId = a.userId || a.user_id
+        return userId && userId !== user.id && !existingUserIds.has(userId)
+      })
+      setAlumniList(filtered)
+    } catch (err) {
+      console.error('Failed to load alumni list', err)
+    } finally {
+      setLoadingAlumni(false)
+    }
+  }
+
+  const handleStartNewChat = async (alumni) => {
+    const userId = alumni.userId || alumni.user_id
+    if (!userId) return
+    setToUserId(userId)
+    setActiveConversationUserId(userId)
+    setShowNewChatModal(false)
+    if (localKeysRef.current) await loadConversation(userId, localKeysRef.current)
+  }
+
+  const filteredAlumni = useMemo(() => {
+    if (!searchAlumni) return alumniList
+    const term = searchAlumni.toLowerCase()
+    return alumniList.filter(a => {
+      const name = `${a.firstName || ''} ${a.lastName || ''}`.toLowerCase()
+      return name.includes(term)
+    })
+  }, [searchAlumni, alumniList])
+
   return (
     <>
       <Helmet><title>Messages - IIIT Naya Raipur Alumni Portal</title></Helmet>
       <div className={styles.container}>
         <div className={`${styles.layout} ${showSidebar ? '' : styles.collapsed}`}> 
           {/* Sidebar */}
+          {showSidebar && (
           <aside className={styles.sidebarShell} aria-label="Conversations list">
             <div className={styles.sidebarHeader}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <h2 className={styles.sidebarTitle}>Conversations</h2>
-                <button onClick={() => setShowSidebar(s => !s)} style={{ background:'transparent', border:'none', cursor:'pointer', fontSize:12, color:'#1e3a8a' }}>{showSidebar ? 'Hide' : 'Show'}</button>
+                <button onClick={() => setShowSidebar(s => !s)} className={styles.toggleSidebarBtn} title="Hide sidebar">✕</button>
               </div>
               <div className={styles.searchBox}>
-                <span className={styles.searchIcon}>🔍</span>
+                <span className={styles.searchIcon}><BiSearch size={18} /></span>
                 <input className={styles.searchInput} placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} aria-label="Search conversations" />
               </div>
             </div>
@@ -619,10 +666,16 @@ const Messages = () => {
               })}
             </div>
           </aside>
+          )}
 
           {/* Chat */}
           <section className={styles.chatShell} aria-label="Chat conversation">
             <header className={styles.chatHeader}>
+              {!showSidebar && (
+                <button onClick={() => setShowSidebar(true)} className={styles.showSidebarBtn} title="Show conversations">
+                  <BiMessageRounded size={24} />
+                </button>
+              )}  
               <div style={{ display:'flex', alignItems:'center', gap:14 }}>
                 <div className={styles.avatar}>{(conversations.find(c => c.partnerUserId === toUserId)?.partnerName || 'Chat').slice(0,2).toUpperCase()}</div>
                 <div>
@@ -637,13 +690,13 @@ const Messages = () => {
               {!toUserId ? (
                 <div style={{ height:'100%', display:'grid', placeItems:'center' }}>
                   <div style={{ textAlign:'center', color:'#6b7280' }}>
-                    <div style={{ fontSize:48, lineHeight:1 }}>💬</div>
+                    <div style={{ fontSize:48, lineHeight:1 }}><BiMessageRounded size={64} /></div>
                     <div style={{ fontSize:16, marginTop:8 }}>Select a conversation to start messaging</div>
                   </div>
                 </div>
               ) : (
                 <>
-                  {groupedMessages.length === 0 && <div style={{ padding:'1rem', fontSize:13, color:'#6b7280' }}>No messages yet. Say hello 👋</div>}
+                  {groupedMessages.length === 0 && <div style={{ padding:'1rem', fontSize:13, color:'#6b7280', display:'flex', alignItems:'center', gap:6 }}>No messages yet. Say hello </div>}
                   {groupedMessages.map((g, idx) => {
                 if (g.type === 'date') return <div key={`d-${idx}`} className={styles.dateSeparator}>{g.label}</div>
                 const m = g.data
@@ -664,7 +717,7 @@ const Messages = () => {
                       {m.file && !m.file.mimeType?.startsWith('image/') && (
                         <div style={{ marginBottom:6 }}>
                           <a href={m.file.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration:'none', color:'#1e3a8a', fontSize:12, display:'flex', alignItems:'center', gap:6 }}>
-                            📎 {m.file.name} ({Math.round(m.file.size/1024)} KB)
+                            <BiPaperclip size={14} /> {m.file.name} ({Math.round(m.file.size/1024)} KB)
                           </a>
                         </div>
                       )}
@@ -702,15 +755,21 @@ const Messages = () => {
                 />
                 <div className={styles.composerActions}>
                   <input ref={fileInputRef} type="file" style={{ display:'none' }} onChange={handleFileChange} accept="image/*,application/pdf" />
-                  <button className={styles.attachButton} type="button" onClick={handleFileChoose} disabled={!toUserId || uploading}>{uploading ? 'Uploading…' : '📎 Attach'}</button>
-                  <button className={styles.sendButton} onClick={handleSend} disabled={ !toUserId }>{sending ? 'Sending…' : 'Send'}</button>
+                  <button className={styles.attachButton} type="button" onClick={handleFileChoose} disabled={!toUserId || uploading}>
+                    <BiPaperclip size={16} />
+                    {uploading ? 'Uploading…' : 'Attach'}
+                  </button>
+                  <button className={styles.sendButton} onClick={handleSend} disabled={ !toUserId }>
+                    <BiSend size={16} />
+                    {sending ? 'Sending…' : 'Send'}
+                  </button>
                 </div>
                 {attachmentMeta && (
                   <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:12, marginTop:6 }}>
-                    <div style={{ padding:'4px 8px', background:'#e2e8f0', borderRadius:6 }}>
-                      {attachmentMeta.mimeType?.startsWith('image/') ? '🖼️ Image' : '📄 File'}: {attachmentMeta.name} ({Math.round(attachmentMeta.size/1024)} KB)
+                    <div style={{ padding:'4px 8px', background:'#e2e8f0', borderRadius:6, display:'flex', alignItems:'center', gap:4 }}>
+                      {attachmentMeta.mimeType?.startsWith('image/') ? <><BiImage size={14} /> Image</> : <><BiFile size={14} /> File</>}: {attachmentMeta.name} ({Math.round(attachmentMeta.size/1024)} KB)
                     </div>
-                    <button type="button" onClick={clearAttachment} style={{ background:'transparent', border:'none', color:'#ef4444', cursor:'pointer' }} aria-label="Remove attachment">✕</button>
+                    <button type="button" onClick={clearAttachment} style={{ background:'transparent', border:'none', color:'#ef4444', cursor:'pointer' }} aria-label="Remove attachment"><BiX size={20} /></button>
                   </div>
                 )}
               </div>
@@ -727,6 +786,93 @@ const Messages = () => {
             </div>
           </section>
         </div>
+
+        {/* Floating Action Button */}
+        <button
+          className={styles.fab}
+          onClick={() => {
+            setShowNewChatModal(true)
+            loadAlumniList()
+          }}
+          aria-label="Start new chat"
+          title="Start new chat"
+        >
+          <span className={styles.fabIcon}><BiMessageRounded size={28} /></span>
+        </button>
+
+        {/* New Chat Modal */}
+        {showNewChatModal && (
+          <div className={styles.modalOverlay} onClick={() => setShowNewChatModal(false)}>
+            <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.modalHeader}>
+                <h3 className={styles.modalTitle}>Start New Chat</h3>
+                <button
+                  className={styles.modalClose}
+                  onClick={() => setShowNewChatModal(false)}
+                  aria-label="Close"
+                >
+                  <BiX size={24} />
+                </button>
+              </div>
+
+              <div className={styles.modalSearch}>
+                <span className={styles.searchIcon}><BiSearch size={18} /></span>
+                <input
+                  type="text"
+                  className={styles.modalSearchInput}
+                  placeholder="Search alumni..."
+                  value={searchAlumni}
+                  onChange={(e) => setSearchAlumni(e.target.value)}
+                  autoFocus
+                />
+              </div>
+
+              <div className={styles.modalContent}>
+                {loadingAlumni ? (
+                  <div className={styles.modalLoading}>
+                    <div className={styles.spinner}></div>
+                    <p>Loading alumni...</p>
+                  </div>
+                ) : filteredAlumni.length === 0 ? (
+                  <div className={styles.emptyState}>
+                    <span className={styles.emptyIcon}><BiGroup size={48} /></span>
+                    <p>No alumni found</p>
+                  </div>
+                ) : (
+                  <div className={styles.alumniGrid}>
+                    {filteredAlumni.map((alumni) => {
+                      const userId = alumni.userId || alumni.user_id
+                      const fullName = `${alumni.firstName || ''} ${alumni.lastName || ''}`.trim()
+                      const initials = `${alumni.firstName?.charAt(0) || ''}${alumni.lastName?.charAt(0) || ''}`
+                      return (
+                        <div
+                          key={userId}
+                          className={styles.alumniItem}
+                          onClick={() => handleStartNewChat(alumni)}
+                        >
+                          <div className={styles.alumniAvatar}>{initials}</div>
+                          <div className={styles.alumniInfo}>
+                            <div className={styles.alumniName}>{fullName}</div>
+                            {alumni.currentCompany && (
+                              <div className={styles.alumniMeta}>
+                                {alumni.currentCompany}
+                              </div>
+                            )}
+                            {alumni.graduationYear && (
+                              <div className={styles.alumniMeta}>
+                                Class of {alumni.graduationYear}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   )

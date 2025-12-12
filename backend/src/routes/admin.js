@@ -382,6 +382,7 @@ router.post("/news", requirePermission("manage_news"), async (req, res) => {
  */
 router.put("/news/:id", requirePermission("manage_news"), async (req, res) => {
   try {
+    const { query } = await import("../config/database.js");
     const { id } = req.params;
     const { title, content, excerpt, category, tags, isPublished } = req.body;
 
@@ -517,6 +518,49 @@ router.get("/superadmin/admins", requireSuperadminAuth, async (req, res) => {
   } catch (e) {
     console.error("list admins error", e);
     res.status(500).json({ success: false, message: "Failed to list admins" });
+  }
+});
+
+// Create a new admin user (superadmin only)
+router.post('/superadmin/create-admin', requireSuperadminAuth, async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const normalizedEmail = String(email || '').toLowerCase().trim();
+    if (!normalizedEmail || !password) {
+      return res.status(400).json({ success: false, message: 'email and password are required' });
+    }
+
+    // Ensure email is unique
+    const existing = await User.findByEmail(normalizedEmail);
+    if (existing) {
+      return res.status(409).json({ success: false, message: 'Email already registered' });
+    }
+
+    // Create admin with local provider and immediate approval
+    const created = await User.create({
+      email: normalizedEmail,
+      password,
+      provider: 'local',
+      role: 'admin',
+      isApproved: true,
+      emailVerified: true,
+      isActive: true,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Admin user created',
+      data: {
+        id: created.id,
+        email: created.email,
+        role: created.role,
+        is_active: created.is_active,
+        is_approved: created.is_approved,
+      }
+    });
+  } catch (e) {
+    console.error('create-admin error', e);
+    res.status(500).json({ success: false, message: 'Failed to create admin' });
   }
 });
 

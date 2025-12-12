@@ -298,12 +298,23 @@ const AlumniDirectory = () => {
                       </p>
                     )}
 
-                    <button 
-                      className={styles.viewButton}
-                      onClick={() => navigate(`/alumni/${alum.id}`)}
-                    >
-                      View Profile
-                    </button>
+                    <div className={styles.actionsRow}>
+                      <button 
+                        className={styles.viewButton}
+                        onClick={() => navigate(`/alumni/${alum.id}`)}
+                      >
+                        View Profile
+                      </button>
+                      {userId && (
+                        <button
+                          className={styles.messageButton}
+                          onClick={() => navigate(`/messages?to=${userId}`)}
+                          aria-label={`Message ${alum.firstName} ${alum.lastName}`}
+                        >
+                          Message
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
                   )

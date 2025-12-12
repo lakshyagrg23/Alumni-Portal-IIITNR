@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { BiNews, BiTrendingUp, BiCalendar, BiBookmark, BiGlobe, BiAward } from 'react-icons/bi';
 import styles from './News.module.css';
 
 // API Base URL
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-const NewsCard = ({ article }) => {
+const NewsCard = ({ article, index = 0 }) => {
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -27,7 +28,7 @@ const NewsCard = ({ article }) => {
   };
 
   return (
-    <article className={styles.newsCard}>
+    <article className={styles.newsCard} style={{ animationDelay: `${index * 60}ms` }}>
       {article.featuredImageUrl && (
         <div className={styles.imageContainer}>
           <img 
@@ -174,6 +175,18 @@ const News = () => {
     }
   };
 
+  const SkeletonCard = () => (
+    <div className={styles.skeletonCard}>
+      <div className={styles.skeletonImage}></div>
+      <div className={styles.skeletonContent}>
+        <div className={styles.skeletonLine} style={{ width: '60%' }}></div>
+        <div className={styles.skeletonLine} style={{ width: '85%' }}></div>
+        <div className={styles.skeletonLine} style={{ width: '75%' }}></div>
+        <div className={styles.skeletonTags}></div>
+      </div>
+    </div>
+  );
+
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
     setPagination(prev => ({ ...prev, page: 1 })); // Reset to first page
@@ -224,9 +237,34 @@ const News = () => {
         {/* Hero Section with Featured Articles */}
         {featuredArticles.length > 0 && (
           <section className={styles.heroSection}>
-            <h1 className={styles.pageTitle}>Latest News</h1>
+            {/* Hero Header with Icons */}
+            <div className={styles.heroHeader}>
+              <div className={styles.heroIconsGrid}>
+                <div className={styles.heroIconItem}>
+                  <BiNews size={32} className={styles.heroIcon} />
+                  <span className={styles.heroIconLabel}>Latest Updates</span>
+                </div>
+                <div className={styles.heroIconItem}>
+                  <BiTrendingUp size={32} className={styles.heroIcon} />
+                  <span className={styles.heroIconLabel}>Trending Stories</span>
+                </div>
+                <div className={styles.heroIconItem}>
+                  <BiAward size={32} className={styles.heroIcon} />
+                  <span className={styles.heroIconLabel}>Achievements</span>
+                </div>
+                <div className={styles.heroIconItem}>
+                  <BiCalendar size={32} className={styles.heroIcon} />
+                  <span className={styles.heroIconLabel}>Events</span>
+                </div>
+              </div>
+            </div>
+            
+            <h1 className={styles.pageTitle}>
+              <BiGlobe size={48} className={styles.pageTitleIcon} />
+              Latest News & Updates
+            </h1>
             <p className={styles.pageSubtitle}>
-              Stay updated with the latest happenings at IIIT Naya Raipur
+              Stay connected with the latest happenings, achievements, and announcements from IIIT Naya Raipur Alumni Community
             </p>
             
             <div className={styles.featuredGrid}>
@@ -305,10 +343,13 @@ const News = () => {
         {/* Articles Grid */}
         <section className={styles.articlesSection}>
           {loading ? (
-            <div className={styles.loadingState}>
-              <div className={styles.spinner}></div>
-              <p>Loading news articles...</p>
-            </div>
+            <>
+              <div className={styles.articlesGrid}>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <SkeletonCard key={i} />
+                ))}
+              </div>
+            </>
           ) : articles.length === 0 ? (
             <div className={styles.emptyState}>
               <h3>No Articles Found</h3>
@@ -317,8 +358,8 @@ const News = () => {
           ) : (
             <>
               <div className={styles.articlesGrid}>
-                {articles.map(article => (
-                  <NewsCard key={article.id} article={article} />
+                {articles.map((article, idx) => (
+                  <NewsCard key={article.id} article={article} index={idx} />
                 ))}
               </div>
               
