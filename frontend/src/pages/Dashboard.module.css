@@ -133,6 +133,13 @@
   color: #7c2d12;
 }
 
+.bannerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .bannerButton {
   background: #f97316;
   color: white;
@@ -148,6 +155,22 @@
 .bannerButton:hover {
   background: #ea580c;
   box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
+}
+
+.bannerDismiss {
+  background: transparent;
+  color: #9a3412;
+  border: 1px solid #f97316;
+  padding: 0.35rem 0.9rem;
+  border-radius: 5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bannerDismiss:hover {
+  background: #fff7ed;
+  color: #7c2d12;
 }
 
 .bannerProgress {

@@ -17,6 +17,7 @@ const Dashboard = () => {
   const [latestNews, setLatestNews] = useState([])
   const [upcomingEvents, setUpcomingEvents] = useState([])
   const [calendarDate, setCalendarDate] = useState(new Date())
+  const [showProfileReminder, setShowProfileReminder] = useState(true)
 
   // Normalize events to include start/end dates for multi-day support
   const normalizedEvents = React.useMemo(() => {
@@ -34,7 +35,6 @@ const Dashboard = () => {
     sameCity: [],
     sameBatch: []
   })
-  const [profileCompletion, setProfileCompletion] = useState(0)
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
   const ASSETS_BASE_URL = API_URL.replace(/\/api$/, '')
@@ -51,34 +51,12 @@ const Dashboard = () => {
     }
   }, [isAuthenticated, user])
 
-  // Calculate profile completion percentage
   useEffect(() => {
-    if (user && user.alumniProfile) {
-      calculateProfileCompletion()
+    const isDismissed = localStorage.getItem('hideProfileReminder') === 'true'
+    if (isDismissed) {
+      setShowProfileReminder(false)
     }
-  }, [user])
-
-  const calculateProfileCompletion = () => {
-    const profile = user.alumniProfile
-    const fields = [
-      profile.firstName || profile.first_name,
-      profile.lastName || profile.last_name,
-      profile.graduationYear || profile.graduation_year,
-      profile.branch,
-      profile.degree,
-      profile.bio,
-      profile.currentCompany || profile.current_company,
-      profile.currentPosition || profile.current_position,
-      profile.currentCity || profile.current_city,
-      (profile.skills && profile.skills.length > 0) || 
-        (typeof profile.skills === 'string' && profile.skills.trim().length > 0),
-      profile.linkedinUrl || profile.linkedin_url,
-    ]
-    
-    const filledFields = fields.filter(field => field).length
-    const percentage = Math.round((filledFields / fields.length) * 100)
-    setProfileCompletion(percentage)
-  }
+  }, [])
 
   const fetchDashboardData = async () => {
     try {
@@ -244,34 +222,37 @@ const Dashboard = () => {
             Welcome back, {user.firstName || 'Alumni'}! 👋
           </h1>
           <div className={styles.headerActions}>
-            <Link to="/profile" className={styles.headerButton}>
-              Edit Profile
-            </Link>
             <Link to={`/alumni/${user.alumniProfile?.id}`} className={styles.headerButtonSecondary}>
               View Public Profile
             </Link>
           </div>
         </div>
 
-        {/* Compact Profile Completion Banner */}
-        {profileCompletion < 100 && (
+        {/* Profile Update Reminder */}
+        {showProfileReminder && (
           <div className={styles.profileBanner}>
             <div className={styles.bannerContent}>
               <div className={styles.bannerLeft}>
-                <span className={styles.bannerIcon}>📝</span>
+                <span className={styles.bannerIcon}>ℹ️</span>
                 <span className={styles.bannerText}>
-                  Your profile is <strong>{profileCompletion}%</strong> complete
+                  Keep your profile up to date to help fellow alumni connect with you
                 </span>
               </div>
-              <Link to="/profile" className={styles.bannerButton}>
-                Complete Now
-              </Link>
-            </div>
-            <div className={styles.bannerProgress}>
-              <div 
-                className={styles.bannerProgressFill} 
-                style={{ width: `${profileCompletion}%` }}
-              />
+              <div className={styles.bannerActions}>
+                <Link to="/profile" className={styles.bannerButton}>
+                  Update Profile
+                </Link>
+                <button
+                  type="button"
+                  className={styles.bannerDismiss}
+                  onClick={() => {
+                    setShowProfileReminder(false)
+                    localStorage.setItem('hideProfileReminder', 'true')
+                  }}
+                >
+                  Dismiss
+                </button>
+              </div>
             </div>
           </div>
         )}

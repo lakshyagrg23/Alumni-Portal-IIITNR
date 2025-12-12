@@ -262,8 +262,8 @@ const OnboardingNew = () => {
     }
 
     // Professional interests
-    if (formData.professionalInterests.length < 3) {
-      newErrors.professionalInterests = 'Please select at least 3 professional interests'
+    if (formData.professionalInterests.length < 1) {
+      newErrors.professionalInterests = 'Please select at least 1 professional interest'
     }
     if (formData.professionalInterests.length > 7) {
       newErrors.professionalInterests = 'Please select at most 7 professional interests'
@@ -467,7 +467,7 @@ const OnboardingNew = () => {
                 <span className={styles.required}>*</span>
               </div>
               <p className={styles.helpText}>
-                Select 3-7 areas you're passionate about ({formData.professionalInterests.length}/7 selected)
+                Select 1-7 areas you're passionate about ({formData.professionalInterests.length}/7 selected)
               </p>
               
               <div className={styles.chipsGrid}>

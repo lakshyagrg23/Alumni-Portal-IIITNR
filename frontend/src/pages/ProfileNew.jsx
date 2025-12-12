@@ -330,8 +330,8 @@ const Profile = () => {
     }
 
     // Validate professional interests (required for all)
-    if (profileData.professionalInterests.length < 3) {
-      newErrors.professionalInterests = 'Please select at least 3 professional interests'
+    if (profileData.professionalInterests.length < 1) {
+      newErrors.professionalInterests = 'Please select at least 1 professional interest'
     }
     if (profileData.professionalInterests.length > 7) {
       newErrors.professionalInterests = 'Please select at most 7 professional interests'
@@ -425,38 +425,6 @@ const Profile = () => {
     }
   }
 
-  const calculateProfileCompletion = () => {
-    let completed = 0
-    let total = 0
-
-    // Common fields for all users
-    if (instituteData.profilePicture) completed++
-    total++ // Profile picture
-
-    if (profileData.professionalInterests.length >= 3) completed++
-    total++ // Professional interests
-
-    if (profileData.linkedinUrl) completed++
-    total++ // LinkedIn
-
-    if (profileData.careerGoals.length > 0) completed++
-    total++ // Career goals
-
-    // Additional fields for alumni only
-    if (!isCurrentStudent) {
-      if (profileData.currentCity && profileData.currentState) completed++
-      total++ // Location
-
-      if (profileData.employmentStatus && profileData.industry) completed++
-      total++ // Employment status
-      
-      if (profileData.interestedInMentoring || profileData.openToReferrals || profileData.availableForSpeaking) completed++
-      total++ // Engagement
-    }
-
-    return Math.round((completed / total) * 100)
-  }
-
   if (loading) {
     return (
       <div className={styles.loadingContainer}>
@@ -466,8 +434,6 @@ const Profile = () => {
     )
   }
 
-  const completion = calculateProfileCompletion()
-
   return (
     <>
       <Helmet>
@@ -476,22 +442,6 @@ const Profile = () => {
 
       <div className={styles.profilePage}>
         <div className={styles.container}>
-          {/* Profile Completion Banner */}
-          <div className={styles.completionBanner}>
-            <div className={styles.completionContent}>
-              <div className={styles.completionInfo}>
-                <span className={styles.completionText}>Profile Completion</span>
-                <span className={styles.completionPercentage}>{completion}%</span>
-              </div>
-              <div className={styles.progressBar}>
-                <div 
-                  className={styles.progressFill} 
-                  style={{ width: `${completion}%` }}
-                ></div>
-              </div>
-            </div>
-          </div>
-
           {/* Message Display */}
           {message.text && (
             <div className={`${styles.message} ${styles[message.type]}`}>
@@ -910,7 +860,7 @@ const Profile = () => {
                     Professional Interests <span className={styles.required}>*</span>
                   </h4>
                   <p className={styles.helpText}>
-                    Select 3-7 areas that match your expertise and interests
+                    Select 1-7 areas that match your expertise and interests
                   </p>
                   <div className={styles.chipContainer}>
                     {PROFESSIONAL_INTERESTS.map(interest => (
