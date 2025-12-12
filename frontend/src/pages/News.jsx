@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { BiNews, BiTrendingUp, BiCalendar, BiBookmark, BiGlobe, BiAward } from 'react-icons/bi';
 import styles from './News.module.css';
 
 // API Base URL
@@ -236,9 +237,34 @@ const News = () => {
         {/* Hero Section with Featured Articles */}
         {featuredArticles.length > 0 && (
           <section className={styles.heroSection}>
-            <h1 className={styles.pageTitle}>Latest News</h1>
+            {/* Hero Header with Icons */}
+            <div className={styles.heroHeader}>
+              <div className={styles.heroIconsGrid}>
+                <div className={styles.heroIconItem}>
+                  <BiNews size={32} className={styles.heroIcon} />
+                  <span className={styles.heroIconLabel}>Latest Updates</span>
+                </div>
+                <div className={styles.heroIconItem}>
+                  <BiTrendingUp size={32} className={styles.heroIcon} />
+                  <span className={styles.heroIconLabel}>Trending Stories</span>
+                </div>
+                <div className={styles.heroIconItem}>
+                  <BiAward size={32} className={styles.heroIcon} />
+                  <span className={styles.heroIconLabel}>Achievements</span>
+                </div>
+                <div className={styles.heroIconItem}>
+                  <BiCalendar size={32} className={styles.heroIcon} />
+                  <span className={styles.heroIconLabel}>Events</span>
+                </div>
+              </div>
+            </div>
+            
+            <h1 className={styles.pageTitle}>
+              <BiGlobe size={48} className={styles.pageTitleIcon} />
+              Latest News & Updates
+            </h1>
             <p className={styles.pageSubtitle}>
-              Stay updated with the latest happenings at IIIT Naya Raipur
+              Stay connected with the latest happenings, achievements, and announcements from IIIT Naya Raipur Alumni Community
             </p>
             
             <div className={styles.featuredGrid}>
