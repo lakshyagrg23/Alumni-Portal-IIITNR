@@ -1,9 +1,11 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '@hooks/useAuth'
 import styles from './Footer.module.css'
 
 const Footer = () => {
   const currentYear = new Date().getFullYear()
+  const { isAuthenticated } = useAuth()
 
   return (
     <footer className={styles.footer}>
@@ -41,9 +43,13 @@ const Footer = () => {
             <h3 className={styles.sectionTitle}>Alumni Services</h3>
             <ul className={styles.linkList}>
               <li><Link to="/directory">Alumni Directory</Link></li>
-              <li><Link to="/connect">Connect & Network</Link></li>
+              <li><Link to="/messages">Messages</Link></li>
               <li><Link to="/events">Volunteer Opportunities</Link></li>
-              <li><Link to="/register">Join Alumni Network</Link></li>
+              <li>
+                <Link to={isAuthenticated ? '/dashboard' : '/login'}>
+                  {isAuthenticated ? 'Dashboard' : 'Join Alumni Network'}
+                </Link>
+              </li>
             </ul>
           </div>
 

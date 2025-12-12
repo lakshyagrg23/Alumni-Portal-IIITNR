@@ -178,10 +178,15 @@ const Header = () => {
               
               {isUserDropdownOpen && (
                 <div className={styles.dropdown}>
-                  <Link to="/profile" className={styles.dropdownItem} onClick={closeAllMenus}>
-                    My Profile
-                  </Link>
-                  <hr className={styles.divider} />
+                  {/* Only show profile link for alumni */}
+                  {!(user?.role === 'admin' || user?.role === 'superadmin') && (
+                    <Link to="/profile" className={styles.dropdownItem} onClick={closeAllMenus}>
+                      My Profile
+                    </Link>
+                  )}
+                  {!(user?.role === 'admin' || user?.role === 'superadmin') && (
+                    <hr className={styles.divider} />
+                  )}
                   <button className={styles.dropdownItem} onClick={handleLogout}>
                     Logout
                   </button>
@@ -250,9 +255,12 @@ const Header = () => {
                 <Link to="/directory" className={styles.mobileNavLink} onClick={closeAllMenus}>
                   Directory
                 </Link>
-                <Link to="/profile" className={styles.mobileNavLink} onClick={closeAllMenus}>
-                  My Profile
-                </Link>
+                {/* Only show profile link for alumni */}
+                {!(user?.role === 'admin' || user?.role === 'superadmin') && (
+                  <Link to="/profile" className={styles.mobileNavLink} onClick={closeAllMenus}>
+                    My Profile
+                  </Link>
+                )}
                 <Link to="/messages" className={styles.mobileNavLink} onClick={closeAllMenus}>
                   Messages
                 </Link>
