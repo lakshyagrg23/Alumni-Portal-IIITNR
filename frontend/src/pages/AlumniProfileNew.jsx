@@ -12,6 +12,7 @@ const AlumniProfileNew = () => {
   const [alumni, setAlumni] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [isCurrentStudent, setIsCurrentStudent] = useState(false)
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -22,7 +23,13 @@ const AlumniProfileNew = () => {
         const response = await axios.get(`${API_URL}/alumni/${id}`)
         
         if (response.data.success) {
-          setAlumni(response.data.data.alumni)
+          const alumniData = response.data.data.alumni
+          setAlumni(alumniData)
+          
+          // Determine if current student
+          const currentYear = new Date().getFullYear()
+          setIsCurrentStudent(alumniData.graduationYear > currentYear)
+          
           setError(null)
         } else {
           setError('Alumni profile not found')
@@ -72,6 +79,10 @@ const AlumniProfileNew = () => {
   }
 
   const getEmploymentDisplay = () => {
+    if (isCurrentStudent) {
+      return `${alumni.degree} Student at IIIT Naya Raipur`
+    }
+    
     switch (alumni.employmentStatus) {
       case 'Employed Full-time':
         return `${alumni.currentPosition || 'Professional'} at ${alumni.currentCompany || 'Company'}`
@@ -130,14 +141,14 @@ const AlumniProfileNew = () => {
                     {alumni.degree} - {alumni.branch}
                   </span>
                   <span className={styles.tag}>
-                    Class of {alumni.graduationYear}
+                    📅 {isCurrentStudent ? `Expected ${alumni.graduationYear}` : `Class of ${alumni.graduationYear}`}
                   </span>
-                  {alumni.currentCity && (
+                  {!isCurrentStudent && alumni.currentCity && (
                     <span className={styles.tag}>
-                      Location: {alumni.currentCity}, {alumni.currentState || alumni.currentCountry}
+                      📍 {alumni.currentCity}, {alumni.currentState || alumni.currentCountry}
                     </span>
                   )}
-                  {alumni.industry && (
+                  {!isCurrentStudent && alumni.industry && (
                     <span className={styles.tag}>
                       Industry: {alumni.industry}
                     </span>
@@ -193,52 +204,54 @@ const AlumniProfileNew = () => {
               </div>
 
               <div className={styles.cardGrid}>
-                {/* Current Status */}
-                <div className={styles.card}>
-                  <h3 className={styles.cardTitle}>Current Status</h3>
-                  <div className={styles.infoList}>
-                    <div className={styles.infoItem}>
-                      <span className={styles.infoLabel}>Employment Status</span>
-                      <span className={styles.infoValue}>{alumni.employmentStatus || 'Not specified'}</span>
+                {/* Current Status - Alumni Only */}
+                {!isCurrentStudent && (
+                  <div className={styles.card}>
+                    <h3 className={styles.cardTitle}>Current Status</h3>
+                    <div className={styles.infoList}>
+                      <div className={styles.infoItem}>
+                        <span className={styles.infoLabel}>Employment Status</span>
+                        <span className={styles.infoValue}>{alumni.employmentStatus || 'Not specified'}</span>
+                      </div>
+                      {alumni.industry && (
+                        <div className={styles.infoItem}>
+                          <span className={styles.infoLabel}>Industry</span>
+                          <span className={styles.infoValue}>{alumni.industry}</span>
+                        </div>
+                      )}
+                      {alumni.currentCompany && (
+                        <div className={styles.infoItem}>
+                          <span className={styles.infoLabel}>Company</span>
+                          <span className={styles.infoValue}>{alumni.currentCompany}</span>
+                        </div>
+                      )}
+                      {alumni.currentPosition && (
+                        <div className={styles.infoItem}>
+                          <span className={styles.infoLabel}>Position</span>
+                          <span className={styles.infoValue}>{alumni.currentPosition}</span>
+                        </div>
+                      )}
+                      {alumni.targetRole && (
+                        <div className={styles.infoItem}>
+                          <span className={styles.infoLabel}>Target Role</span>
+                          <span className={styles.infoValue}>{alumni.targetRole}</span>
+                        </div>
+                      )}
+                      {alumni.institutionName && (
+                        <div className={styles.infoItem}>
+                          <span className={styles.infoLabel}>Institution</span>
+                          <span className={styles.infoValue}>{alumni.institutionName}</span>
+                        </div>
+                      )}
+                      {alumni.expectedCompletionYear && (
+                        <div className={styles.infoItem}>
+                          <span className={styles.infoLabel}>Expected Completion</span>
+                          <span className={styles.infoValue}>{alumni.expectedCompletionYear}</span>
+                        </div>
+                      )}
                     </div>
-                    {alumni.industry && (
-                      <div className={styles.infoItem}>
-                        <span className={styles.infoLabel}>Industry</span>
-                        <span className={styles.infoValue}>{alumni.industry}</span>
-                      </div>
-                    )}
-                    {alumni.currentCompany && (
-                      <div className={styles.infoItem}>
-                        <span className={styles.infoLabel}>Company</span>
-                        <span className={styles.infoValue}>{alumni.currentCompany}</span>
-                      </div>
-                    )}
-                    {alumni.currentPosition && (
-                      <div className={styles.infoItem}>
-                        <span className={styles.infoLabel}>Position</span>
-                        <span className={styles.infoValue}>{alumni.currentPosition}</span>
-                      </div>
-                    )}
-                    {alumni.targetRole && (
-                      <div className={styles.infoItem}>
-                        <span className={styles.infoLabel}>Target Role</span>
-                        <span className={styles.infoValue}>{alumni.targetRole}</span>
-                      </div>
-                    )}
-                    {alumni.institutionName && (
-                      <div className={styles.infoItem}>
-                        <span className={styles.infoLabel}>Institution</span>
-                        <span className={styles.infoValue}>{alumni.institutionName}</span>
-                      </div>
-                    )}
-                    {alumni.expectedCompletionYear && (
-                      <div className={styles.infoItem}>
-                        <span className={styles.infoLabel}>Expected Completion</span>
-                        <span className={styles.infoValue}>{alumni.expectedCompletionYear}</span>
-                      </div>
-                    )}
                   </div>
-                </div>
+                )}
 
                 {/* Academic Background */}
                 <div className={styles.card}>
@@ -263,8 +276,8 @@ const AlumniProfileNew = () => {
                   </div>
                 </div>
 
-                {/* Location */}
-                {alumni.currentCity && (
+                {/* Location - Alumni Only */}
+                {!isCurrentStudent && alumni.currentCity && (
                   <div className={styles.card}>
                     <h3 className={styles.cardTitle}>Location</h3>
                     <div className={styles.infoList}>
@@ -327,8 +340,8 @@ const AlumniProfileNew = () => {
                   </div>
                 )}
 
-                {/* Engagement */}
-                {(alumni.interestedInMentoring || alumni.openToReferrals || alumni.availableForSpeaking) && (
+              {/* Engagement - Alumni Only */}
+              {!isCurrentStudent && (alumni.interestedInMentoring || alumni.openToReferrals || alumni.availableForSpeaking) && (
                   <div className={styles.card}>
                     <h3 className={styles.cardTitle}>Community Engagement</h3>
                     <div className={styles.engagementList}>

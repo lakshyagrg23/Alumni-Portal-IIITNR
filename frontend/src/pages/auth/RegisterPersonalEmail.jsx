@@ -14,6 +14,20 @@ const VerifyIdentityStep = ({ onVerified }) => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
+  const getFriendlyError = (error) => {
+    if (error?.response?.status === 404) {
+      return (
+        error.response?.data?.message ||
+        'We could not find a matching record. Please double-check your roll number, full name, and date of birth.'
+      );
+    }
+    return (
+      error?.response?.data?.message ||
+      error?.message ||
+      'Verification failed. Please check your details and try again.'
+    );
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -68,7 +82,7 @@ const VerifyIdentityStep = ({ onVerified }) => {
     } catch (error) {
       console.error('Verification error:', error);
       setErrors({
-        submit: error.message || 'Verification failed. Please check your details and try again.'
+        submit: getFriendlyError(error),
       });
     } finally {
       setLoading(false);
@@ -170,6 +184,16 @@ const CreateAccountStep = ({ verificationToken, userData, onBack }) => {
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
+  const getFriendlyError = (error, fallback) => {
+    if (error?.response?.status === 404) {
+      return (
+        error.response?.data?.message ||
+        'We could not find a matching record. Please double-check your roll number, full name, and date of birth.'
+      );
+    }
+    return error?.response?.data?.message || error?.message || fallback;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -233,7 +257,7 @@ const CreateAccountStep = ({ verificationToken, userData, onBack }) => {
     } catch (error) {
       console.error('Registration error:', error);
       setErrors({
-        submit: error.message || 'Registration failed. Please try again.'
+        submit: getFriendlyError(error, 'Registration failed. Please try again.'),
       });
     } finally {
       setLoading(false);
@@ -259,7 +283,7 @@ const CreateAccountStep = ({ verificationToken, userData, onBack }) => {
         if (response.user.onboardingCompleted) {
           navigate('/dashboard');
         } else {
-          navigate('/complete-profile');
+          navigate('/onboarding');
         }
       }
     } catch (error) {

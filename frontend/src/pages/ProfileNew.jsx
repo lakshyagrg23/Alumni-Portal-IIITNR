@@ -77,7 +77,7 @@ const Profile = () => {
   const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState('professional')
+  const [activeTab, setActiveTab] = useState('interests') // Default to interests for both
   const [message, setMessage] = useState({ type: '', text: '' })
 
   // Institute data (read-only)
@@ -121,6 +121,7 @@ const Profile = () => {
 
   const [errors, setErrors] = useState({})
   const [uploadingPicture, setUploadingPicture] = useState(false)
+  const [isCurrentStudent, setIsCurrentStudent] = useState(false)
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -137,6 +138,10 @@ const Profile = () => {
         const alumni = data.alumniProfile || {}
 
         // Set institute data (read-only)
+        const gradYear = alumni.graduationYear || 0
+        const currentYear = new Date().getFullYear()
+        const isStudent = gradYear > currentYear
+        
         setInstituteData({
           firstName: data.firstName || alumni.firstName || '',
           lastName: data.lastName || alumni.lastName || '',
@@ -146,6 +151,8 @@ const Profile = () => {
           graduationYear: alumni.graduationYear || '',
           profilePicture: alumni.profilePictureUrl || data.profilePicture || '',
         })
+        
+        setIsCurrentStudent(isStudent)
 
         // Set editable profile data
         setProfileData({
@@ -270,25 +277,27 @@ const Profile = () => {
   const validateForm = () => {
     const newErrors = {}
 
-    // Validate professional details
-    if (!profileData.currentCity.trim()) {
-      newErrors.currentCity = 'City is required'
-    }
-    if (!profileData.currentState.trim()) {
-      newErrors.currentState = 'State is required'
-    }
-    if (!profileData.currentCountry.trim()) {
-      newErrors.currentCountry = 'Country is required'
-    }
-    if (!profileData.employmentStatus) {
-      newErrors.employmentStatus = 'Employment status is required'
-    }
-    if (!profileData.industry) {
-      newErrors.industry = 'Industry/domain is required'
-    }
+    // Skip professional validation for current students
+    if (!isCurrentStudent) {
+      // Validate professional details (alumni only)
+      if (!profileData.currentCity.trim()) {
+        newErrors.currentCity = 'City is required'
+      }
+      if (!profileData.currentState.trim()) {
+        newErrors.currentState = 'State is required'
+      }
+      if (!profileData.currentCountry.trim()) {
+        newErrors.currentCountry = 'Country is required'
+      }
+      if (!profileData.employmentStatus) {
+        newErrors.employmentStatus = 'Employment status is required'
+      }
+      if (!profileData.industry) {
+        newErrors.industry = 'Industry/domain is required'
+      }
 
-    // Conditional validation based on employment status
-    if (profileData.employmentStatus === 'Employed Full-time') {
+      // Conditional validation based on employment status (alumni only)
+      if (profileData.employmentStatus === 'Employed Full-time') {
       if (!profileData.currentCompany.trim()) {
         newErrors.currentCompany = 'Company name is required'
       }
@@ -318,8 +327,9 @@ const Profile = () => {
         newErrors.currentPosition = 'Program/degree is required'
       }
     }
+    }
 
-    // Validate professional interests
+    // Validate professional interests (required for all)
     if (profileData.professionalInterests.length < 3) {
       newErrors.professionalInterests = 'Please select at least 3 professional interests'
     }
@@ -371,26 +381,30 @@ const Profile = () => {
         branch: instituteData.branch,
         graduationYear: instituteData.graduationYear,
         
-        // Editable fields - convert empty strings to null for optional fields
-        currentCity: profileData.currentCity || null,
-        currentState: profileData.currentState || null,
-        currentCountry: profileData.currentCountry || 'India',
-        employmentStatus: profileData.employmentStatus || null,
-        currentCompany: profileData.currentCompany || null,
-        currentPosition: profileData.currentPosition || null,
-        targetRole: profileData.targetRole || null,
-        institutionName: profileData.institutionName || null,
-        expectedCompletionYear: profileData.expectedCompletionYear || null,
-        industry: profileData.industry || null,
+        // Common fields for all users
         professionalInterests: profileData.professionalInterests,
         linkedinUrl: profileData.linkedinUrl || null,
         githubUrl: profileData.githubUrl || null,
         twitterUrl: profileData.twitterUrl || null,
         portfolioUrl: profileData.portfolioUrl || null,
         careerGoals: profileData.careerGoals,
-        interestedInMentoring: profileData.interestedInMentoring,
-        openToReferrals: profileData.openToReferrals,
-        availableForSpeaking: profileData.availableForSpeaking,
+      }
+      
+      // Add professional fields only for alumni
+      if (!isCurrentStudent) {
+        submitData.currentCity = profileData.currentCity || null
+        submitData.currentState = profileData.currentState || null
+        submitData.currentCountry = profileData.currentCountry || 'India'
+        submitData.employmentStatus = profileData.employmentStatus || null
+        submitData.currentCompany = profileData.currentCompany || null
+        submitData.currentPosition = profileData.currentPosition || null
+        submitData.targetRole = profileData.targetRole || null
+        submitData.institutionName = profileData.institutionName || null
+        submitData.expectedCompletionYear = profileData.expectedCompletionYear || null
+        submitData.industry = profileData.industry || null
+        submitData.interestedInMentoring = profileData.interestedInMentoring
+        submitData.openToReferrals = profileData.openToReferrals
+        submitData.availableForSpeaking = profileData.availableForSpeaking
       }
 
       console.log('Submitting profile data:', submitData)
@@ -413,15 +427,32 @@ const Profile = () => {
 
   const calculateProfileCompletion = () => {
     let completed = 0
-    const total = 7
+    let total = 0
 
+    // Common fields for all users
     if (instituteData.profilePicture) completed++
-    if (profileData.currentCity && profileData.currentState) completed++
-    if (profileData.employmentStatus && profileData.industry) completed++
+    total++ // Profile picture
+
     if (profileData.professionalInterests.length >= 3) completed++
+    total++ // Professional interests
+
     if (profileData.linkedinUrl) completed++
+    total++ // LinkedIn
+
     if (profileData.careerGoals.length > 0) completed++
-    if (profileData.interestedInMentoring || profileData.openToReferrals || profileData.availableForSpeaking) completed++
+    total++ // Career goals
+
+    // Additional fields for alumni only
+    if (!isCurrentStudent) {
+      if (profileData.currentCity && profileData.currentState) completed++
+      total++ // Location
+
+      if (profileData.employmentStatus && profileData.industry) completed++
+      total++ // Employment status
+      
+      if (profileData.interestedInMentoring || profileData.openToReferrals || profileData.availableForSpeaking) completed++
+      total++ // Engagement
+    }
 
     return Math.round((completed / total) * 100)
   }
@@ -554,12 +585,14 @@ const Profile = () => {
 
           {/* Tab Navigation */}
           <div className={styles.tabNav}>
-            <button 
-              className={`${styles.tab} ${activeTab === 'professional' ? styles.active : ''}`}
-              onClick={() => setActiveTab('professional')}
-            >
-              Professional Details
-            </button>
+            {!isCurrentStudent && (
+              <button 
+                className={`${styles.tab} ${activeTab === 'professional' ? styles.active : ''}`}
+                onClick={() => setActiveTab('professional')}
+              >
+                Professional Details
+              </button>
+            )}
             <button 
               className={`${styles.tab} ${activeTab === 'interests' ? styles.active : ''}`}
               onClick={() => setActiveTab('interests')}
@@ -570,14 +603,14 @@ const Profile = () => {
               className={`${styles.tab} ${activeTab === 'social' ? styles.active : ''}`}
               onClick={() => setActiveTab('social')}
             >
-              Social & Community
+              {isCurrentStudent ? 'Social Profiles' : 'Social & Community'}
             </button>
           </div>
 
           {/* Editable Profile Form */}
           <form onSubmit={handleSubmit} className={styles.profileForm}>
-            {/* Professional Details Tab */}
-            {activeTab === 'professional' && (
+            {/* Professional Details Tab - Alumni Only */}
+            {!isCurrentStudent && activeTab === 'professional' && (
               <div className={styles.tabContent}>
                 <h3>Professional Details</h3>
 
@@ -932,7 +965,7 @@ const Profile = () => {
             {/* Social & Community Tab */}
             {activeTab === 'social' && (
               <div className={styles.tabContent}>
-                <h3>Social Profiles & Community Engagement</h3>
+                <h3>{isCurrentStudent ? 'Social Profiles' : 'Social Profiles & Community Engagement'}</h3>
 
                 {/* Social Profiles */}
                 <div className={styles.section}>
@@ -1001,58 +1034,60 @@ const Profile = () => {
                   </div>
                 </div>
 
-                {/* Community Engagement */}
-                <div className={styles.section}>
-                  <h4>Community Engagement</h4>
-                  <p className={styles.helpText}>
-                    Let us know how you'd like to contribute to the alumni community
-                  </p>
+                {/* Community Engagement - Alumni Only */}
+                {!isCurrentStudent && (
+                  <div className={styles.section}>
+                    <h4>Community Engagement</h4>
+                    <p className={styles.helpText}>
+                      Let us know how you'd like to contribute to the alumni community
+                    </p>
 
-                  <div className={styles.toggleGroup}>
-                    <label className={styles.toggleLabel}>
-                      <input
-                        type="checkbox"
-                        name="interestedInMentoring"
-                        checked={profileData.interestedInMentoring}
-                        onChange={handleInputChange}
-                      />
-                      <span className={styles.toggleSwitch}></span>
-                      <span className={styles.toggleText}>
-                        Interested in Mentoring Juniors
-                      </span>
-                    </label>
-                  </div>
+                    <div className={styles.toggleGroup}>
+                      <label className={styles.toggleLabel}>
+                        <input
+                          type="checkbox"
+                          name="interestedInMentoring"
+                          checked={profileData.interestedInMentoring}
+                          onChange={handleInputChange}
+                        />
+                        <span className={styles.toggleSwitch}></span>
+                        <span className={styles.toggleText}>
+                          Interested in Mentoring Juniors
+                        </span>
+                      </label>
+                    </div>
 
-                  <div className={styles.toggleGroup}>
-                    <label className={styles.toggleLabel}>
-                      <input
-                        type="checkbox"
-                        name="openToReferrals"
-                        checked={profileData.openToReferrals}
-                        onChange={handleInputChange}
-                      />
-                      <span className={styles.toggleSwitch}></span>
-                      <span className={styles.toggleText}>
-                        Open to Providing Job Referrals
-                      </span>
-                    </label>
-                  </div>
+                    <div className={styles.toggleGroup}>
+                      <label className={styles.toggleLabel}>
+                        <input
+                          type="checkbox"
+                          name="openToReferrals"
+                          checked={profileData.openToReferrals}
+                          onChange={handleInputChange}
+                        />
+                        <span className={styles.toggleSwitch}></span>
+                        <span className={styles.toggleText}>
+                          Open to Providing Job Referrals
+                        </span>
+                      </label>
+                    </div>
 
-                  <div className={styles.toggleGroup}>
-                    <label className={styles.toggleLabel}>
-                      <input
-                        type="checkbox"
-                        name="availableForSpeaking"
-                        checked={profileData.availableForSpeaking}
-                        onChange={handleInputChange}
-                      />
-                      <span className={styles.toggleSwitch}></span>
-                      <span className={styles.toggleText}>
-                        Available for Guest Lectures/Talks
-                      </span>
-                    </label>
+                    <div className={styles.toggleGroup}>
+                      <label className={styles.toggleLabel}>
+                        <input
+                          type="checkbox"
+                          name="availableForSpeaking"
+                          checked={profileData.availableForSpeaking}
+                          onChange={handleInputChange}
+                        />
+                        <span className={styles.toggleSwitch}></span>
+                        <span className={styles.toggleText}>
+                          Available for Guest Lectures/Talks
+                        </span>
+                      </label>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
 

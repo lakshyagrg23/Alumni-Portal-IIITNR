@@ -757,12 +757,10 @@ router.post("/forgot-password", async (req, res) => {
     });
   } catch (error) {
     console.error("Forgot password error:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Server error while requesting password reset",
-      });
+    res.status(500).json({
+      success: false,
+      message: "Server error while requesting password reset",
+    });
   }
 });
 
@@ -775,29 +773,23 @@ router.post("/reset-password", async (req, res) => {
   try {
     const { token, password } = req.body;
     if (!token || !password) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Token and new password are required",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Token and new password are required",
+      });
     }
     if (String(password).length < 6) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Password must be at least 6 characters",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters",
+      });
     }
     const result = await User.resetPasswordByToken(token, password);
     if (!result.success) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: result.message || "Unable to reset password",
-        });
+      return res.status(400).json({
+        success: false,
+        message: result.message || "Unable to reset password",
+      });
     }
     return res.json({
       success: true,
@@ -1211,6 +1203,7 @@ router.get("/profile", authenticate, async (req, res) => {
 
     // Get alumni profile which contains most of the profile data
     let alumniProfile = null;
+    let isIncompleteProfile = false;
     try {
       const result = await query(
         "SELECT * FROM alumni_profiles WHERE user_id = $1",
@@ -1218,13 +1211,120 @@ router.get("/profile", authenticate, async (req, res) => {
       );
       if (result.rows.length > 0) {
         alumniProfile = AlumniProfile.convertFromDbFormat(result.rows[0]);
+
+        // Check if profile is incomplete (missing key institute data)
+        // This happens when profile was auto-created during picture upload
+        isIncompleteProfile =
+          !alumniProfile.degree ||
+          !alumniProfile.branch ||
+          !alumniProfile.studentId ||
+          alumniProfile.firstName === "Alumni";
+
+        if (isIncompleteProfile) {
+          console.log(
+            "[Profile] Alumni profile exists but is incomplete, will fetch institute data"
+          );
+        }
       }
     } catch (error) {
       console.log("No alumni profile found for user:", userId);
     }
 
-    // If no alumni profile exists, return basic user data with empty alumni profile
-    if (!alumniProfile) {
+    // If no alumni profile exists OR profile is incomplete, fetch institute record data
+    if (!alumniProfile || isIncompleteProfile) {
+      // Try to get institute record data if user has linked institute record
+      let instituteData = {
+        firstName: "",
+        lastName: "",
+        degree: "",
+        branch: "",
+        graduationYear: "",
+        rollNumber: "",
+      };
+
+      try {
+        // First try using institute_record_id from users table
+        if (user.institute_record_id) {
+          console.log(
+            "[Profile] Fetching institute record with ID:",
+            user.institute_record_id
+          );
+          const instituteResult = await query(
+            "SELECT * FROM institute_records WHERE id = $1 AND is_active = true",
+            [user.institute_record_id]
+          );
+          if (instituteResult.rows.length > 0) {
+            const record = instituteResult.rows[0];
+            console.log("[Profile] Institute record found:", {
+              id: record.id,
+              full_name: record.full_name,
+              roll_number: record.roll_number,
+              degree: record.degree,
+              branch: record.branch,
+              enrollment_year: record.enrollment_year,
+            });
+
+            // Split full name into first and last name
+            const nameParts = (record.full_name || "").trim().split(/\s+/);
+            const firstName = nameParts[0] || "";
+            const lastName = nameParts.slice(1).join(" ") || "";
+
+            // Calculate graduation year from enrollment year (assuming 4 years for B.Tech)
+            let graduationYear = "";
+            if (record.enrollment_year) {
+              const duration = record.degree === "M.Tech" ? 2 : 4;
+              graduationYear = parseInt(record.enrollment_year) + duration;
+            }
+
+            instituteData = {
+              firstName: firstName,
+              lastName: lastName,
+              degree: record.degree || "",
+              branch: record.branch || "",
+              graduationYear: graduationYear.toString() || "",
+              rollNumber: record.roll_number || "",
+            };
+          } else {
+            console.log(
+              "[Profile] No institute record found with ID:",
+              user.institute_record_id
+            );
+          }
+        } else {
+          // Fallback: Try matching by email (for institute email users)
+          const instituteResult = await query(
+            "SELECT * FROM institute_records WHERE LOWER(institute_email) = LOWER($1) AND is_active = true",
+            [user.email]
+          );
+          if (instituteResult.rows.length > 0) {
+            const record = instituteResult.rows[0];
+
+            // Split full name into first and last name
+            const nameParts = (record.full_name || "").trim().split(/\s+/);
+            const firstName = nameParts[0] || "";
+            const lastName = nameParts.slice(1).join(" ") || "";
+
+            // Calculate graduation year from enrollment year (assuming 4 years for B.Tech)
+            let graduationYear = "";
+            if (record.enrollment_year) {
+              const duration = record.degree === "M.Tech" ? 2 : 4;
+              graduationYear = parseInt(record.enrollment_year) + duration;
+            }
+
+            instituteData = {
+              firstName: firstName,
+              lastName: lastName,
+              degree: record.degree || "",
+              branch: record.branch || "",
+              graduationYear: graduationYear.toString() || "",
+              rollNumber: record.roll_number || "",
+            };
+          }
+        }
+      } catch (error) {
+        console.log("No institute record found for user:", user.id);
+      }
+
       return res.json({
         success: true,
         data: {
@@ -1236,9 +1336,13 @@ router.get("/profile", authenticate, async (req, res) => {
           provider: user.provider,
           createdAt: user.created_at,
           onboardingCompleted: user.onboarding_completed || false,
-          // Name comes from alumni_profiles, empty if no profile
-          firstName: "",
-          lastName: "",
+          // Use institute record data if available
+          firstName: instituteData.firstName,
+          lastName: instituteData.lastName,
+          degree: instituteData.degree,
+          branch: instituteData.branch,
+          graduationYear: instituteData.graduationYear,
+          rollNumber: instituteData.rollNumber,
           profilePicture: user.profile_picture_url || "",
           alumniProfile: null,
         },

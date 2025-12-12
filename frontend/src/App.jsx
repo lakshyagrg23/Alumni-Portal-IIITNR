@@ -29,6 +29,8 @@ import Events from '@pages/Events'
 import Connect from '@pages/Connect'
 import Messages from '@pages/Messages'
 import Profile from '@pages/ProfileNew'
+import OnboardingNew from '@pages/OnboardingNew'
+import OnboardingOptional from '@pages/OnboardingOptional'
 import AdminPanel from '@pages/admin/AdminPanel'
 import NotFound from '@pages/NotFound'
 
@@ -142,12 +144,30 @@ function App() {
           {/* LinkedIn OAuth Callback */}
           <Route path="/linkedin" element={<LinkedInCallback />} />
           
-          {/* Profile Completion - Protected but allows incomplete profiles */}
+          {/* New Onboarding Flow */}
+          <Route 
+            path="/onboarding" 
+            element={
+              <ProtectedRoute>
+                <OnboardingNew />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/onboarding/optional" 
+            element={
+              <ProtectedRoute>
+                <OnboardingOptional />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Profile Completion - Redirects to new onboarding */}
           <Route 
             path="/complete-profile" 
             element={
               <ProtectedRoute>
-                <ProfileCompletion />
+                <OnboardingNew />
               </ProtectedRoute>
             } 
           />
