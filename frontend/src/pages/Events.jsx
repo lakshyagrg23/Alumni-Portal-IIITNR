@@ -14,6 +14,8 @@ const Events = () => {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState(null);
+  const [activeTab, setActiveTab] = useState('upcoming'); // 'upcoming' or 'recent'
+  const [categoryFilter, setCategoryFilter] = useState('all');
 
   const closeDetails = () => {
     setSelectedEvent(null);
@@ -51,6 +53,18 @@ const Events = () => {
     setNotification(null);
   };
 
+  const SkeletonEventCard = () => (
+    <div className={styles.skeletonCard}>
+      <div className={styles.skeletonImage}></div>
+      <div className={styles.skeletonContent}>
+        <div className={styles.skeletonBadge}></div>
+        <div className={styles.skeletonTitle}></div>
+        <div className={styles.skeletonText}></div>
+        <div className={styles.skeletonFooter}></div>
+      </div>
+    </div>
+  );
+
   return (
     <>
       <Helmet>
@@ -59,22 +73,23 @@ const Events = () => {
       </Helmet>
       
       <div className={styles.eventsPage}>
-        {/* Page Header */}
-        <div className={styles.pageHeader}>
-          <div className={styles.headerContent}>
-            <h1 className={styles.pageTitle}>Events & Activities</h1>
-            <p className={styles.pageDescription}>
-              Stay connected with your alma mater through workshops, webinars, volunteer opportunities, and networking events.
-            </p>
-            
+        {/* Hero Section */}
+        <section className={styles.heroSection}>
+          <div className={styles.heroContent}>
+            <div className={styles.heroText}>
+              <h1 className={styles.heroTitle}>Events & Activities</h1>
+              <p className={styles.heroSubtitle}>
+                Connect, learn, and grow with IIIT Naya Raipur's vibrant community through engaging events and workshops.
+              </p>
+            </div>
             <button
-              className={styles.volunteerBtn}
+              className={styles.ctaButton}
               onClick={() => setShowVolunteerModal(true)}
             >
-              🙋‍♂️ Volunteer to Conduct an Event
+              Propose Your Event
             </button>
           </div>
-        </div>
+        </section>
 
         {/* Notification */}
         {notification && (
@@ -91,47 +106,52 @@ const Events = () => {
           </div>
         )}
 
-        {/* Events Content */}
-        <div className={styles.eventsContent}>
-          {/* Upcoming Events Section */}
-          <section className={styles.eventsSection}>
-            <UpcomingEvents
-              onEventClick={handleEventClick}
-            />
-          </section>
-
-          {/* Recent Events Section */}
-          <section className={styles.eventsSection}>
-            <RecentEvents
-              onEventClick={handleEventClick}
-            />
-          </section>
-        </div>
-
-        {/* Quick Stats */}
-        <div className={styles.quickStats}>
-          <div className={styles.statsContainer}>
-            <div className={styles.statCard}>
-              <div className={styles.statIcon}>📅</div>
-              <div className={styles.statValue}>50+</div>
-              <div className={styles.statLabel}>Events Conducted</div>
+        {/* Filters and Tabs */}
+        <div className={styles.controlsSection}>
+          <div className={styles.controlsContainer}>
+            <div className={styles.tabsRow}>
+              <button
+                className={`${styles.tab} ${activeTab === 'upcoming' ? styles.activeTab : ''}`}
+                onClick={() => setActiveTab('upcoming')}
+              >
+                Upcoming Events
+              </button>
+              <button
+                className={`${styles.tab} ${activeTab === 'recent' ? styles.activeTab : ''}`}
+                onClick={() => setActiveTab('recent')}
+              >
+                Past Events
+              </button>
             </div>
-            <div className={styles.statCard}>
-              <div className={styles.statIcon}>👥</div>
-              <div className={styles.statValue}>2000+</div>
-              <div className={styles.statLabel}>Participants</div>
-            </div>
-            <div className={styles.statCard}>
-              <div className={styles.statIcon}>🎯</div>
-              <div className={styles.statValue}>95%</div>
-              <div className={styles.statLabel}>Satisfaction Rate</div>
-            </div>
-            <div className={styles.statCard}>
-              <div className={styles.statIcon}>🤝</div>
-              <div className={styles.statValue}>100+</div>
-              <div className={styles.statLabel}>Volunteer Speakers</div>
+            
+            <div className={styles.filterRow}>
+              <label className={styles.filterLabel}>Category:</label>
+              <select
+                className={styles.filterSelect}
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+              >
+                <option value="all">All Events</option>
+                <option value="workshop">Workshops</option>
+                <option value="webinar">Webinars</option>
+                <option value="networking">Networking</option>
+                <option value="seminar">Seminars</option>
+              </select>
             </div>
           </div>
+        </div>
+
+        {/* Events Content */}
+        <div className={styles.eventsContent}>
+          {activeTab === 'upcoming' ? (
+            <section className={styles.eventsSection}>
+              <UpcomingEvents onEventClick={handleEventClick} />
+            </section>
+          ) : (
+            <section className={styles.eventsSection}>
+              <RecentEvents onEventClick={handleEventClick} />
+            </section>
+          )}
         </div>
 
         {/* Volunteer Modal */}
@@ -173,36 +193,36 @@ const Events = () => {
 
                   <div className={styles.metaGrid}>
                     <div className={styles.metaItem}>
-                      <span>📅 Date</span>
+                      <span> Date</span>
                       <strong>{new Date(selectedEvent.start_datetime || selectedEvent.startDateTime).toLocaleString()}</strong>
                     </div>
                     {selectedEvent.end_datetime && (
                       <div className={styles.metaItem}>
-                        <span>🕒 Ends</span>
+                        <span> Ends</span>
                         <strong>{new Date(selectedEvent.end_datetime).toLocaleString()}</strong>
                       </div>
                     )}
                     {selectedEvent.mode && (
                       <div className={styles.metaItem}>
-                        <span>🎯 Mode</span>
+                        <span> Mode</span>
                         <strong>{selectedEvent.mode}</strong>
                       </div>
                     )}
                     {selectedEvent.location && (
                       <div className={styles.metaItem}>
-                        <span>📍 Location</span>
+                        <span> Location</span>
                         <strong>{selectedEvent.location}</strong>
                       </div>
                     )}
                     {selectedEvent.experience_level && (
                       <div className={styles.metaItem}>
-                        <span>🎓 Audience</span>
+                        <span> Audience</span>
                         <strong>{selectedEvent.experience_level}</strong>
                       </div>
                     )}
                     {selectedEvent.status && (
                       <div className={styles.metaItem}>
-                        <span>⚡ Status</span>
+                        <span> Status</span>
                         <strong>{selectedEvent.status}</strong>
                       </div>
                     )}
