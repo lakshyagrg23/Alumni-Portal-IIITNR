@@ -8,6 +8,22 @@ import { DayPicker } from 'react-day-picker'
 import 'react-day-picker/dist/style.css'
 import { Tooltip } from 'react-tooltip';
 import 'react-tooltip/dist/react-tooltip.css';
+import { 
+  BiUser, 
+  BiNews, 
+  BiCalendar, 
+  BiTrendingUp,
+  BiGroup,
+  BiBriefcase,
+  BiBuilding,
+  BiMapPin,
+  BiStar,
+  BiRocket,
+  BiArrowRight,
+  BiInfoCircle,
+  BiCheck,
+  BiX
+} from 'react-icons/bi'
 
 
 const Dashboard = () => {
@@ -31,9 +47,17 @@ const Dashboard = () => {
     })
   }, [upcomingEvents])
   const [recommendations, setRecommendations] = useState({
+    sameIndustry: [],
+    sharedInterests: [],
+    similarCareerPath: [],
     sameCompany: [],
-    sameCity: [],
     sameBatch: []
+  })
+  const [stats, setStats] = useState({
+    totalNews: 0,
+    totalEvents: 0,
+    totalConnections: 0,
+    profileCompletion: 0
   })
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
@@ -92,89 +116,166 @@ const Dashboard = () => {
       
       // Support both camelCase and snake_case field names
       const currentCompany = profile.currentCompany || profile.current_company
-      const currentCity = profile.currentCity || profile.current_city
+      const industry = profile.industrySector || profile.industry_sector || profile.industry
       const graduationYear = profile.graduationYear || profile.graduation_year
       const branch = profile.branch
       const currentYear = new Date().getFullYear()
+      const professionalInterests = profile.professionalInterests || profile.professional_interests || []
+      const careerGoals = profile.careerGoals || profile.career_goals
+      const skills = profile.skills || []
       
-      console.log('📊 Fetching recommendations for profile:', {
-        currentCompany,
-        currentCity,
-        graduationYear,
-        branch,
+      console.log('📊 Fetching smart recommendations for profile:', {
+        industry,
+        professionalInterests,
+        careerGoals,
+        skills: skills?.length || 0,
         profileId: profile.id
       })
 
       const recommendations = {
+        sameIndustry: [],
+        sharedInterests: [],
+        similarCareerPath: [],
         sameCompany: [],
-        sameCity: [],
         sameBatch: []
       }
 
-      // Fetch alumni from same company
+      // 1. Priority: Alumni in same industry (career-relevant)
+      if (industry) {
+        console.log('🎯 Searching for alumni in industry:', industry)
+        try {
+          const industryResponse = await axios.get(
+            `${API_URL}/alumni?industry=${encodeURIComponent(industry)}&limit=20`
+          )
+          if (industryResponse.data.success) {
+            recommendations.sameIndustry = industryResponse.data.data
+              .filter(alum => alum.id !== profile.id)
+              .slice(0, 4)
+            console.log('✅ Found', recommendations.sameIndustry.length, 'alumni in same industry')
+          }
+        } catch (err) {
+          console.log('⚠️ Industry search failed:', err.message)
+        }
+      }
+
+      // 2. Alumni with shared professional interests
+      if (professionalInterests && professionalInterests.length > 0) {
+        console.log('💡 Searching for alumni with shared interests:', professionalInterests)
+        try {
+          // Fetch all alumni and filter by shared interests client-side
+          const allAlumniResponse = await axios.get(`${API_URL}/alumni?limit=50`)
+          if (allAlumniResponse.data.success) {
+            const matchedByInterests = allAlumniResponse.data.data
+              .filter(alum => {
+                if (alum.id === profile.id) return false
+                const alumInterests = alum.professionalInterests || alum.professional_interests || []
+                // Check if there's any overlap in interests
+                const sharedInterests = professionalInterests.filter(interest => 
+                  alumInterests.some(ai => ai.toLowerCase() === interest.toLowerCase())
+                )
+                return sharedInterests.length > 0
+              })
+              .map(alum => ({
+                ...alum,
+                _matchScore: professionalInterests.filter(interest => 
+                  (alum.professionalInterests || alum.professional_interests || []).some(ai => 
+                    ai.toLowerCase() === interest.toLowerCase()
+                  )
+                ).length
+              }))
+              .sort((a, b) => b._matchScore - a._matchScore)
+              .slice(0, 4)
+            
+            recommendations.sharedInterests = matchedByInterests
+            console.log('✅ Found', matchedByInterests.length, 'alumni with shared interests')
+          }
+        } catch (err) {
+          console.log('⚠️ Interests search failed:', err.message)
+        }
+      }
+
+      // 3. Alumni with similar career trajectory/goals
+      if (careerGoals) {
+        console.log('🚀 Searching for alumni with similar career aspirations')
+        try {
+          const allAlumniResponse = await axios.get(`${API_URL}/alumni?limit=50`)
+          if (allAlumniResponse.data.success) {
+            const matchedByCareer = allAlumniResponse.data.data
+              .filter(alum => {
+                if (alum.id === profile.id) return false
+                const alumCareerGoals = alum.careerGoals || alum.career_goals || ''
+                const alumIndustry = alum.industrySector || alum.industry_sector || alum.industry || ''
+                
+                // Match based on career goals keywords or industry
+                const goalKeywords = careerGoals.toLowerCase().split(/\s+/).filter(w => w.length > 3)
+                const alumGoalKeywords = alumCareerGoals.toLowerCase().split(/\s+/).filter(w => w.length > 3)
+                
+                const hasGoalMatch = goalKeywords.some(keyword => 
+                  alumCareerGoals.toLowerCase().includes(keyword)
+                )
+                const hasIndustryMatch = industry && alumIndustry.toLowerCase() === industry.toLowerCase()
+                
+                return hasGoalMatch || hasIndustryMatch
+              })
+              .slice(0, 4)
+            
+            recommendations.similarCareerPath = matchedByCareer
+            console.log('✅ Found', matchedByCareer.length, 'alumni with similar career paths')
+          }
+        } catch (err) {
+          console.log('⚠️ Career path search failed:', err.message)
+        }
+      }
+
+      // 4. Alumni from same company (networking)
       if (currentCompany) {
-        console.log('🔍 Searching for alumni at:', currentCompany)
-        const companyResponse = await axios.get(
-          `${API_URL}/alumni?company=${encodeURIComponent(currentCompany)}&limit=3`
-        )
-        if (companyResponse.data.success) {
-          recommendations.sameCompany = companyResponse.data.data.filter(
-            alum => alum.id !== profile.id
-          ).slice(0, 3)
-          console.log('✅ Found', recommendations.sameCompany.length, 'alumni at same company')
+        console.log('🏢 Searching for alumni at:', currentCompany)
+        try {
+          const companyResponse = await axios.get(
+            `${API_URL}/alumni?company=${encodeURIComponent(currentCompany)}&limit=4`
+          )
+          if (companyResponse.data.success) {
+            recommendations.sameCompany = companyResponse.data.data
+              .filter(alum => alum.id !== profile.id)
+              .slice(0, 3)
+            console.log('✅ Found', recommendations.sameCompany.length, 'alumni at same company')
+          }
+        } catch (err) {
+          console.log('⚠️ Company search failed:', err.message)
         }
-      } else {
-        console.log('⚠️ No company information in profile')
       }
 
-      // Fetch alumni from same city
-      if (currentCity) {
-        console.log('🔍 Searching for alumni in:', currentCity)
-        const cityResponse = await axios.get(
-          `${API_URL}/alumni?location=${encodeURIComponent(currentCity)}&limit=3`
-        )
-        if (cityResponse.data.success) {
-          recommendations.sameCity = cityResponse.data.data.filter(
-            alum => alum.id !== profile.id
-          ).slice(0, 3)
-          console.log('✅ Found', recommendations.sameCity.length, 'alumni in same city')
-        }
-      } else {
-        console.log('⚠️ No city information in profile')
-      }
-
-      // Fetch alumni from same batch (branch optional)
+      // 5. Batchmates (always useful)
       if (graduationYear) {
         const params = new URLSearchParams()
         params.set('batch', graduationYear)
         params.set('limit', 4)
 
-        // If this is a current student (future graduation year), include current students too
         if (graduationYear > currentYear) {
           params.set('studentType', 'current')
         }
 
-        console.log('🔍 Searching for batchmates:', {
-          graduationYear,
-          studentType: params.get('studentType') || 'alumni',
-        })
-
-        const batchResponse = await axios.get(
-          `${API_URL}/alumni?${params.toString()}`
-        )
-        if (batchResponse.data.success) {
-          recommendations.sameBatch = batchResponse.data.data.filter(
-            alum => alum.id !== profile.id
-          ).slice(0, 3)
-          console.log('✅ Found', recommendations.sameBatch.length, 'batchmates')
+        console.log('🎓 Searching for batchmates:', graduationYear)
+        try {
+          const batchResponse = await axios.get(
+            `${API_URL}/alumni?${params.toString()}`
+          )
+          if (batchResponse.data.success) {
+            recommendations.sameBatch = batchResponse.data.data
+              .filter(alum => alum.id !== profile.id)
+              .slice(0, 3)
+            console.log('✅ Found', recommendations.sameBatch.length, 'batchmates')
+          }
+        } catch (err) {
+          console.log('⚠️ Batch search failed:', err.message)
         }
-      } else {
-        console.log('⚠️ No graduation year in profile')
       }
 
-      console.log('📋 Total recommendations:', {
+      console.log('📋 Total smart recommendations:', {
+        sameIndustry: recommendations.sameIndustry.length,
+        sharedInterests: recommendations.sharedInterests.length,
+        similarCareerPath: recommendations.similarCareerPath.length,
         sameCompany: recommendations.sameCompany.length,
-        sameCity: recommendations.sameCity.length,
         sameBatch: recommendations.sameBatch.length
       })
 
@@ -201,6 +302,38 @@ const Dashboard = () => {
     return `${sStr} - ${eStr}`
   }
 
+  const calculateProfileCompletion = () => {
+    if (!user?.alumniProfile) return 0
+    const profile = user.alumniProfile
+    let completed = 0
+    const total = 10
+    
+    if (profile.firstName && profile.lastName) completed++
+    if (profile.currentCompany || profile.current_company) completed++
+    if (profile.currentPosition || profile.current_position) completed++
+    if (profile.currentCity || profile.current_city) completed++
+    if (profile.graduationYear || profile.graduation_year) completed++
+    if (profile.branch) completed++
+    if (profile.industrySector || profile.industry_sector || profile.industry) completed++
+    if (profile.professionalInterests?.length || profile.professional_interests?.length) completed++
+    if (profile.careerGoals || profile.career_goals) completed++
+    if (profile.profilePicture || profile.profilePictureUrl || profile.profile_picture_url) completed++
+    
+    return Math.round((completed / total) * 100)
+  }
+
+  useEffect(() => {
+    if (user) {
+      const totalRecs = Object.values(recommendations).reduce((sum, arr) => sum + arr.length, 0)
+      setStats({
+        totalNews: latestNews.length,
+        totalEvents: upcomingEvents.length,
+        totalConnections: totalRecs,
+        profileCompletion: calculateProfileCompletion()
+      })
+    }
+  }, [user, recommendations, latestNews, upcomingEvents])
+
   if (!isAuthenticated || !user) {
     return (
       <div className={styles.container}>
@@ -216,43 +349,92 @@ const Dashboard = () => {
       </Helmet>
 
       <div className={styles.dashboard}>
-        {/* Welcome Header */}
-        <div className={styles.welcomeHeader}>
-          <h1 className={styles.welcomeTitle}>
-            Welcome back, {user.firstName || 'Alumni'}! 👋
-          </h1>
-          <div className={styles.headerActions}>
-            <Link to={`/alumni/${user.alumniProfile?.id}`} className={styles.headerButtonSecondary}>
-              View Public Profile
-            </Link>
+        {/* Hero Section with Welcome and Stats */}
+        <div className={styles.heroSection}>
+          <div className={styles.heroContent}>
+            <div className={styles.welcomeBlock}>
+              <h1 className={styles.heroTitle}>
+                Welcome back, {user.firstName || 'Alumni'}!
+              </h1>
+              <p className={styles.heroSubtitle}>
+                Here's what's happening in the IIIT Naya Raipur alumni network today
+              </p>
+            </div>
+            
+            {/* Quick Stats Cards */}
+            <div className={styles.statsGrid}>
+              <div className={styles.statCard}>
+                <div className={styles.statIcon} style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #1e3a8a 100%)' }}>
+                  <BiUser size={24} />
+                </div>
+                <div className={styles.statContent}>
+                  <div className={styles.statValue}>{stats.profileCompletion}%</div>
+                  <div className={styles.statLabel}>Profile Complete</div>
+                  <div className={styles.statProgress}>
+                    <div className={styles.statProgressBar} style={{ width: `${stats.profileCompletion}%` }}></div>
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.statCard}>
+                <div className={styles.statIcon} style={{ background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)' }}>
+                  <BiNews size={24} />
+                </div>
+                <div className={styles.statContent}>
+                  <div className={styles.statValue}>{latestNews.length}</div>
+                  <div className={styles.statLabel}>Latest News</div>
+                </div>
+              </div>
+
+              <div className={styles.statCard}>
+                <div className={styles.statIcon} style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}>
+                  <BiCalendar size={24} />
+                </div>
+                <div className={styles.statContent}>
+                  <div className={styles.statValue}>{upcomingEvents.length}</div>
+                  <div className={styles.statLabel}>Upcoming Events</div>
+                </div>
+              </div>
+
+              <div className={styles.statCard}>
+                <div className={styles.statIcon} style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' }}>
+                  <BiGroup size={24} />
+                </div>
+                <div className={styles.statContent}>
+                  <div className={styles.statValue}>{stats.totalConnections}</div>
+                  <div className={styles.statLabel}>Recommendations</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Profile Update Reminder */}
-        {showProfileReminder && (
-          <div className={styles.profileBanner}>
-            <div className={styles.bannerContent}>
-              <div className={styles.bannerLeft}>
-                <span className={styles.bannerIcon}>ℹ️</span>
-                <span className={styles.bannerText}>
-                  Keep your profile up to date to help fellow alumni connect with you
-                </span>
-              </div>
-              <div className={styles.bannerActions}>
-                <Link to="/profile" className={styles.bannerButton}>
-                  Update Profile
-                </Link>
-                <button
-                  type="button"
-                  className={styles.bannerDismiss}
-                  onClick={() => {
-                    setShowProfileReminder(false)
-                    localStorage.setItem('hideProfileReminder', 'true')
-                  }}
-                >
-                  Dismiss
-                </button>
-              </div>
+        {/* Profile Completion Alert */}
+        {showProfileReminder && stats.profileCompletion < 100 && (
+          <div className={styles.alertBanner}>
+            <div className={styles.alertIcon}>
+              <BiInfoCircle size={24} />
+            </div>
+            <div className={styles.alertContent}>
+              <h3 className={styles.alertTitle}>Complete Your Profile</h3>
+              <p className={styles.alertText}>
+                Your profile is {stats.profileCompletion}% complete. Add more details to unlock better recommendations!
+              </p>
+            </div>
+            <div className={styles.alertActions}>
+              <Link to="/profile" className={styles.alertButton}>
+                <BiCheck size={18} />
+                Complete Now
+              </Link>
+              <button
+                className={styles.alertDismiss}
+                onClick={() => {
+                  setShowProfileReminder(false)
+                  localStorage.setItem('hideProfileReminder', 'true')
+                }}
+              >
+                <BiX size={20} />
+              </button>
             </div>
           </div>
         )}
@@ -264,250 +446,518 @@ const Dashboard = () => {
           </div>
         ) : (
           <>
-            {/* News and Events Section */}
-            <div className={styles.contentGrid}>
-              {/* Latest News */}
-              <section className={styles.section}>
-                <div className={styles.sectionHeader}>
-                  <h2 className={styles.sectionTitle}>📰 Latest News</h2>
-                  <Link to="/news" className={styles.viewAllLink}>
-                    View All →
+            {/* Main Content Grid */}
+            <div className={styles.mainGrid}>
+              {/* Latest News Section */}
+              <section className={styles.contentSection}>
+                <div className={styles.sectionHeaderModern}>
+                  <div className={styles.sectionTitleGroup}>
+                    <div className={styles.sectionIconWrapper}>
+                      <BiNews size={28} />
+                    </div>
+                    <div>
+                      <h2 className={styles.sectionTitleModern}>Latest News</h2>
+                      <p className={styles.sectionSubtitle}>Stay updated with recent announcements</p>
+                    </div>
+                  </div>
+                  <Link to="/news" className={styles.viewAllButton}>
+                    <span>View All</span>
+                    <BiArrowRight size={18} />
                   </Link>
                 </div>
                 
                 {latestNews.length > 0 ? (
-                  <div className={styles.newsGrid}>
-                    {latestNews.map(news => (
+                  <div className={styles.newsGridModern}>
+                    {latestNews.map((news, index) => (
                       <Link 
                         to={`/news/${news.id}`} 
                         key={news.id}
-                        className={styles.newsCard}
+                        className={styles.newsCardModern}
+                        style={{ animationDelay: `${index * 0.1}s` }}
                       >
                         {news.imageUrl && (
-                          <div className={styles.newsImage}>
+                          <div className={styles.newsImageModern}>
                             <img src={news.imageUrl} alt={news.title} />
+                            <div className={styles.newsOverlay}></div>
                           </div>
                         )}
-                        <div className={styles.newsContent}>
+                        <div className={styles.newsContentModern}>
                           {news.category && (
-                            <span className={styles.newsCategory}>{news.category}</span>
+                            <span className={styles.newsCategoryTag}>{news.category}</span>
                           )}
-                          <h3 className={styles.newsTitle}>{news.title}</h3>
-                          <p className={styles.newsExcerpt}>
+                          <h3 className={styles.newsTitleModern}>{news.title}</h3>
+                          <p className={styles.newsExcerptModern}>
                             {news.excerpt || news.content?.substring(0, 100) + '...'}
                           </p>
-                          <span className={styles.newsDate}>
-                            {formatDate(news.publishedAt)}
-                          </span>
+                          <div className={styles.newsFooter}>
+                            <span className={styles.newsDateModern}>
+                              <BiCalendar size={16} />
+                              {formatDate(news.publishedAt)}
+                            </span>
+                            <span className={styles.newsReadMore}>
+                              Read More <BiArrowRight size={16} />
+                            </span>
+                          </div>
                         </div>
                       </Link>
                     ))}
                   </div>
                 ) : (
-                  <p className={styles.emptyState}>No recent news available.</p>
+                  <div className={styles.emptyStateModern}>
+                    <BiNews size={48} />
+                    <p>No recent news available</p>
+                  </div>
                 )}
               </section>
 
-              {/* Upcoming Events - Calendar View */}
-              <section className={styles.section}>
-                <div className={styles.sectionHeader}>
-                  <h2 className={styles.sectionTitle}>📅 Upcoming Events</h2>
-                  <Link to="/events" className={styles.viewAllLink}>
-                    View All →
+              {/* Upcoming Events Section */}
+              <section className={styles.contentSection}>
+                <div className={styles.sectionHeaderModern}>
+                  <div className={styles.sectionTitleGroup}>
+                    <div className={styles.sectionIconWrapper}>
+                      <BiCalendar size={28} />
+                    </div>
+                    <div>
+                      <h2 className={styles.sectionTitleModern}>Upcoming Events</h2>
+                      <p className={styles.sectionSubtitle}>Mark your calendar</p>
+                    </div>
+                  </div>
+                  <Link to="/events" className={styles.viewAllButton}>
+                    <span>View All</span>
+                    <BiArrowRight size={18} />
                   </Link>
                 </div>
 
-                <div className={styles.calendarSection}>
-                  <div className={styles.calendarWrapper}>
-                      <DayPicker
-                        mode="single"
-                        selected={calendarDate}
-                        onSelect={(date) => setCalendarDate(date || new Date())}
-                        onDayClick={(date) => setCalendarDate(date)}
-                        modifiers={{
-                          hasEvent: (date) => normalizedEvents.some(e => date >= e._startDate && date <= e._endDate),
-                          rangeStart: (date) => normalizedEvents.some(e => +date === +e._startDate),
-                          rangeEnd: (date) => normalizedEvents.some(e => +date === +e._endDate),
-                        }}
-                        modifiersClassNames={{
-                          hasEvent: styles.calendarEventDay,
-                          rangeStart: styles.calendarRangeStart,
-                          rangeEnd: styles.calendarRangeEnd,
-                        }}
-                      />
-                  </div>
+                {upcomingEvents.length > 0 ? (
+                  <div className={styles.eventsContainer}>
+                    <div className={styles.calendarGrid}>
+                      <div className={styles.calendarWrapperModern}>
+                        <DayPicker
+                          mode="single"
+                          selected={calendarDate}
+                          onSelect={(date) => setCalendarDate(date || new Date())}
+                          onDayClick={(date) => setCalendarDate(date)}
+                          modifiers={{
+                            hasEvent: (date) => normalizedEvents.some(e => date >= e._startDate && date <= e._endDate),
+                            rangeStart: (date) => normalizedEvents.some(e => +date === +e._startDate),
+                            rangeEnd: (date) => normalizedEvents.some(e => +date === +e._endDate),
+                          }}
+                          modifiersClassNames={{
+                            hasEvent: styles.calendarEventDay,
+                            rangeStart: styles.calendarRangeStart,
+                            rangeEnd: styles.calendarRangeEnd,
+                          }}
+                        />
+                      </div>
 
-                  <div className={styles.calendarSidebar}>
-                    <h3 className={styles.calendarSidebarTitle}>{calendarDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</h3>
-                    {(() => {
-                      const dayEvents = normalizedEvents.filter(e => calendarDate >= e._startDate && calendarDate <= e._endDate)
-                      if (!dayEvents.length) {
-                        return <p className={styles.emptyState}>No events on this date.</p>
-                      }
-                      return (
-                        <ul className={styles.dayEventsList}>
-                          {dayEvents.map(e => (
-                            <li key={e.id} className={styles.dayEventItem}>
-                              <div className={styles.dayEventTitle}>{e.title}</div>
-                              <div className={styles.dayEventMeta}>
-                                <span>{e.eventType}</span>
-                                <span>•</span>
-                                <span>{e.mode}</span>
-                                {e.startDatetime && (
-                                  <>
-                                    <span>•</span>
-                                    <span>{formatTimeRange(e.startDatetime, e.endDatetime)}</span>
-                                  </>
-                                )}
+                      <div className={styles.eventsSidebarModern}>
+                        <div className={styles.selectedDateHeader}>
+                          <BiCalendar size={20} />
+                          <h3>{calendarDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</h3>
+                        </div>
+                        {(() => {
+                          const dayEvents = normalizedEvents.filter(e => calendarDate >= e._startDate && calendarDate <= e._endDate)
+                          if (!dayEvents.length) {
+                            return (
+                              <div className={styles.noEventsDay}>
+                                <BiCalendar size={32} />
+                                <p>No events scheduled</p>
                               </div>
-                              <Link to="/events" className={styles.eventButton}>View Details</Link>
-                            </li>
-                          ))}
-                        </ul>
-                      )
-                    })()}
+                            )
+                          }
+                          return (
+                            <div className={styles.eventsListModern}>
+                              {dayEvents.map((e, index) => (
+                                <div key={e.id} className={styles.eventItemModern} style={{ animationDelay: `${index * 0.1}s` }}>
+                                  <div className={styles.eventIconBadge}>
+                                    <BiCalendar size={16} />
+                                  </div>
+                                  <div className={styles.eventDetails}>
+                                    <h4 className={styles.eventTitleModern}>{e.title}</h4>
+                                    <div className={styles.eventMetaModern}>
+                                      <span className={styles.eventTypeTag}>{e.eventType}</span>
+                                      <span className={styles.eventMode}>{e.mode}</span>
+                                    </div>
+                                    {e.startDatetime && (
+                                      <div className={styles.eventTime}>
+                                        {formatTimeRange(e.startDatetime, e.endDatetime)}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <Link to="/events" className={styles.eventActionButton}>
+                                    <BiArrowRight size={20} />
+                                  </Link>
+                                </div>
+                              ))}
+                            </div>
+                          )
+                        })()}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className={styles.emptyStateModern}>
+                    <BiCalendar size={48} />
+                    <p>No upcoming events</p>
+                  </div>
+                )}
               </section>
             </div>
 
             {/* Recommendations Section - Always show if user has alumni profile */}
             {user.alumniProfile && (
-              <section className={styles.recommendationsSection}>
-                <h2 className={styles.sectionTitle}>💼 Recommended Connections</h2>
+              <section className={styles.recommendationsModern}>
+                <div className={styles.sectionHeaderModern}>
+                  <div className={styles.sectionTitleGroup}>
+                    <div className={styles.sectionIconWrapper}>
+                      <BiTrendingUp size={28} />
+                    </div>
+                    <div>
+                      <h2 className={styles.sectionTitleModern}>Smart Recommendations</h2>
+                      <p className={styles.sectionSubtitle}>Connect with alumni based on your profile and interests</p>
+                    </div>
+                  </div>
+                </div>
                 
                 {/* Check if we have ANY recommendations */}
-                {(recommendations.sameCompany.length === 0 && 
-                  recommendations.sameCity.length === 0 && 
+                {(recommendations.sameIndustry.length === 0 && 
+                  recommendations.sharedInterests.length === 0 && 
+                  recommendations.similarCareerPath.length === 0 &&
+                  recommendations.sameCompany.length === 0 && 
                   recommendations.sameBatch.length === 0) ? (
-                  <div className={styles.emptyRecommendations}>
+                  <div className={styles.emptyRecommendationsModern}>
                     <p className={styles.emptyRecommendationsText}>
                       Complete your profile to get personalized alumni recommendations!
                     </p>
                     <p className={styles.emptyRecommendationsHint}>
-                      Add your current company, location, graduation year, and branch to see alumni with similar backgrounds.
+                      Add your industry, professional interests, career goals, and skills to discover alumni who can help advance your career.
                     </p>
                     <Link to="/profile" className={styles.completeProfileButton}>
                       Complete Your Profile
                     </Link>
                   </div>
                 ) : (
-                  <>
+                  <div className={styles.recommendationsCarousel}>
+                    {/* Same Industry - Priority 1 */}
+                    {recommendations.sameIndustry.length > 0 && (
+                      <div className={styles.recGroupModern}>
+                        <div className={styles.recHeader}>
+                          <div className={styles.recIconBadge} style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #1e3a8a 100%)' }}>
+                            <BiBriefcase size={20} />
+                          </div>
+                          <div>
+                            <h3 className={styles.recTitle}>
+                              Alumni in {user.alumniProfile?.industrySector || user.alumniProfile?.industry_sector || user.alumniProfile?.industry}
+                            </h3>
+                            <p className={styles.recSubtitle}>Career insights from your industry</p>
+                          </div>
+                        </div>
+                        <div className={styles.alumniGridModern}>
+                          {recommendations.sameIndustry.map((alum, index) => (
+                            <Link 
+                              to={`/alumni/${alum.id}`}
+                              key={alum.id} 
+                              className={styles.alumniCardModern}
+                              style={{ animationDelay: `${index * 0.1}s` }}
+                            >
+                              <div className={styles.alumniCardHeader}>
+                                <img 
+                                  src={resolveAvatar(
+                                    alum.profilePicture ||
+                                    alum.profilePictureUrl ||
+                                    alum.profile_picture_url
+                                  )} 
+                                  alt={`${alum.firstName} ${alum.lastName}`}
+                                  className={styles.alumniAvatarModern}
+                                  onError={(e) => { e.currentTarget.src = '/default-avatar.svg' }}
+                                />
+                                <div className={styles.alumniStatusBadge}>
+                                  <BiBriefcase size={12} />
+                                </div>
+                              </div>
+                              <div className={styles.alumniCardBody}>
+                                <h4 className={styles.alumniNameModern}>
+                                  {alum.firstName} {alum.lastName}
+                                </h4>
+                                <p className={styles.alumniPositionModern}>
+                                  {alum.currentPosition || 'Professional'}
+                                </p>
+                                {alum.currentCompany && (
+                                  <div className={styles.alumniCompanyTag}>
+                                    <BiBuilding size={14} />
+                                    <span>{alum.currentCompany}</span>
+                                  </div>
+                                )}
+                                <div className={styles.alumniBatchModern}>
+                                  {alum.branch} • Class of {alum.graduationYear}
+                                </div>
+                              </div>
+                              <div className={styles.alumniCardFooter}>
+                                <span>View Profile</span>
+                                <BiArrowRight size={16} />
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Shared Professional Interests - Priority 2 */}
+                    {recommendations.sharedInterests.length > 0 && (
+                      <div className={styles.recGroupModern}>
+                        <div className={styles.recHeader}>
+                          <div className={styles.recIconBadge} style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' }}>
+                            <BiStar size={20} />
+                          </div>
+                          <div>
+                            <h3 className={styles.recTitle}>Alumni with Shared Interests</h3>
+                            <p className={styles.recSubtitle}>Connect over common professional interests</p>
+                          </div>
+                        </div>
+                        <div className={styles.alumniGridModern}>
+                          {recommendations.sharedInterests.map((alum, index) => {
+                            const alumInterests = alum.professionalInterests || alum.professional_interests || []
+                            const userInterests = user.alumniProfile?.professionalInterests || user.alumniProfile?.professional_interests || []
+                            const sharedInterests = userInterests.filter(interest => 
+                              alumInterests.some(ai => ai.toLowerCase() === interest.toLowerCase())
+                            )
+                            
+                            return (
+                              <Link 
+                                to={`/alumni/${alum.id}`}
+                                key={alum.id} 
+                                className={styles.alumniCardModern}
+                                style={{ animationDelay: `${index * 0.1}s` }}
+                              >
+                                <div className={styles.alumniCardHeader}>
+                                  <img 
+                                    src={resolveAvatar(
+                                      alum.profilePicture ||
+                                      alum.profilePictureUrl ||
+                                      alum.profile_picture_url
+                                    )} 
+                                    alt={`${alum.firstName} ${alum.lastName}`}
+                                    className={styles.alumniAvatarModern}
+                                    onError={(e) => { e.currentTarget.src = '/default-avatar.svg' }}
+                                  />
+                                  <div className={styles.alumniStatusBadge}>
+                                    <BiStar size={12} />
+                                  </div>
+                                </div>
+                                <div className={styles.alumniCardBody}>
+                                  <h4 className={styles.alumniNameModern}>
+                                    {alum.firstName} {alum.lastName}
+                                  </h4>
+                                  <p className={styles.alumniPositionModern}>
+                                    {alum.currentPosition || 'Professional'}
+                                  </p>
+                                  {alum.currentCompany && (
+                                    <div className={styles.alumniCompanyTag}>
+                                      <BiBuilding size={14} />
+                                      <span>{alum.currentCompany}</span>
+                                    </div>
+                                  )}
+                                  {sharedInterests.length > 0 && (
+                                    <p className={styles.alumniPositionModern} style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                                      Shared: {sharedInterests.slice(0, 2).join(', ')}
+                                    </p>
+                                  )}
+                                  <div className={styles.alumniBatchModern}>
+                                    {alum.branch} • Class of {alum.graduationYear}
+                                  </div>
+                                </div>
+                                <div className={styles.alumniCardFooter}>
+                                  <span>View Profile</span>
+                                  <BiArrowRight size={16} />
+                                </div>
+                              </Link>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Similar Career Path - Priority 3 */}
+                    {recommendations.similarCareerPath.length > 0 && (
+                      <div className={styles.recGroupModern}>
+                        <div className={styles.recHeader}>
+                          <div className={styles.recIconBadge} style={{ background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)' }}>
+                            <BiRocket size={20} />
+                          </div>
+                          <div>
+                            <h3 className={styles.recTitle}>Alumni with Similar Career Aspirations</h3>
+                            <p className={styles.recSubtitle}>Learn from alumni who've walked a similar career path</p>
+                          </div>
+                        </div>
+                        <div className={styles.alumniGridModern}>
+                          {recommendations.similarCareerPath.map((alum, index) => (
+                            <Link 
+                              to={`/alumni/${alum.id}`}
+                              key={alum.id} 
+                              className={styles.alumniCardModern}
+                              style={{ animationDelay: `${index * 0.1}s` }}
+                            >
+                              <div className={styles.alumniCardHeader}>
+                                <img 
+                                  src={resolveAvatar(
+                                    alum.profilePicture ||
+                                    alum.profilePictureUrl ||
+                                    alum.profile_picture_url
+                                  )} 
+                                  alt={`${alum.firstName} ${alum.lastName}`}
+                                  className={styles.alumniAvatarModern}
+                                  onError={(e) => { e.currentTarget.src = '/default-avatar.svg' }}
+                                />
+                                <div className={styles.alumniStatusBadge}>
+                                  <BiRocket size={12} />
+                                </div>
+                              </div>
+                              <div className={styles.alumniCardBody}>
+                                <h4 className={styles.alumniNameModern}>
+                                  {alum.firstName} {alum.lastName}
+                                </h4>
+                                <p className={styles.alumniPositionModern}>
+                                  {alum.currentPosition || 'Professional'}
+                                </p>
+                                {alum.currentCompany && (
+                                  <div className={styles.alumniCompanyTag}>
+                                    <BiBuilding size={14} />
+                                    <span>{alum.currentCompany}</span>
+                                  </div>
+                                )}
+                                <div className={styles.alumniBatchModern}>
+                                  {alum.branch} • Class of {alum.graduationYear}
+                                </div>
+                              </div>
+                              <div className={styles.alumniCardFooter}>
+                                <span>View Profile</span>
+                                <BiArrowRight size={16} />
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Same Company */}
                     {recommendations.sameCompany.length > 0 && (
-                      <div className={styles.recommendationGroup}>
-                        <h3 className={styles.recommendationTitle}>
-                          Alumni at {user.alumniProfile?.currentCompany || user.alumniProfile?.current_company}
-                        </h3>
-                        <div className={styles.alumniGrid}>
-                          {recommendations.sameCompany.map(alum => (
-                            <div key={alum.id} className={styles.alumniCard}>
-                              <img 
-                                src={resolveAvatar(
-                                  alum.profilePicture ||
-                                  alum.profilePictureUrl ||
-                                  alum.profile_picture_url
-                                )} 
-                                alt={`${alum.firstName} ${alum.lastName}`}
-                                className={styles.alumniAvatar}
-                                onError={(e) => { e.currentTarget.src = '/default-avatar.svg' }}
-                              />
-                              <h4 className={styles.alumniName}>
-                                {alum.firstName} {alum.lastName}
-                              </h4>
-                              <p className={styles.alumniPosition}>
-                                {alum.currentPosition}
-                              </p>
-                              <p className={styles.alumniBatch}>
-                                {alum.branch} • {alum.graduationYear}
-                              </p>
-                              <Link 
-                                to={`/alumni/${alum.id}`}
-                                className={styles.alumniButton}
-                              >
-                                View Profile
-                              </Link>
-                            </div>
+                      <div className={styles.recGroupModern}>
+                        <div className={styles.recHeader}>
+                          <div className={styles.recIconBadge} style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}>
+                            <BiBuilding size={20} />
+                          </div>
+                          <div>
+                            <h3 className={styles.recTitle}>Alumni at {user.alumniProfile?.currentCompany || user.alumniProfile?.current_company}</h3>
+                            <p className={styles.recSubtitle}>Connect with colleagues from your company</p>
+                          </div>
+                        </div>
+                        <div className={styles.alumniGridModern}>
+                          {recommendations.sameCompany.map((alum, index) => (
+                            <Link 
+                              to={`/alumni/${alum.id}`}
+                              key={alum.id} 
+                              className={styles.alumniCardModern}
+                              style={{ animationDelay: `${index * 0.1}s` }}
+                            >
+                              <div className={styles.alumniCardHeader}>
+                                <img 
+                                  src={resolveAvatar(
+                                    alum.profilePicture ||
+                                    alum.profilePictureUrl ||
+                                    alum.profile_picture_url
+                                  )} 
+                                  alt={`${alum.firstName} ${alum.lastName}`}
+                                  className={styles.alumniAvatarModern}
+                                  onError={(e) => { e.currentTarget.src = '/default-avatar.svg' }}
+                                />
+                                <div className={styles.alumniStatusBadge}>
+                                  <BiBuilding size={12} />
+                                </div>
+                              </div>
+                              <div className={styles.alumniCardBody}>
+                                <h4 className={styles.alumniNameModern}>
+                                  {alum.firstName} {alum.lastName}
+                                </h4>
+                                <p className={styles.alumniPositionModern}>
+                                  {alum.currentPosition || 'Professional'}
+                                </p>
+                                <div className={styles.alumniBatchModern}>
+                                  {alum.branch} • Class of {alum.graduationYear}
+                                </div>
+                              </div>
+                              <div className={styles.alumniCardFooter}>
+                                <span>View Profile</span>
+                                <BiArrowRight size={16} />
+                              </div>
+                            </Link>
                           ))}
                         </div>
                       </div>
                     )}
 
-                    {/* Same City */}
-                    {recommendations.sameCity.length > 0 && (
-                      <div className={styles.recommendationGroup}>
-                        <h3 className={styles.recommendationTitle}>
-                          Alumni in {user.alumniProfile?.currentCity || user.alumniProfile?.current_city}
-                        </h3>
-                        <div className={styles.alumniGrid}>
-                          {recommendations.sameCity.map(alum => (
-                            <div key={alum.id} className={styles.alumniCard}>
-                              <img 
-                                src={resolveAvatar(
-                                  alum.profilePicture ||
-                                  alum.profilePictureUrl ||
-                                  alum.profile_picture_url
-                                )} 
-                                alt={`${alum.firstName} ${alum.lastName}`}
-                                className={styles.alumniAvatar}
-                                onError={(e) => { e.currentTarget.src = '/default-avatar.svg' }}
-                              />
-                              <h4 className={styles.alumniName}>
-                                {alum.firstName} {alum.lastName}
-                              </h4>
-                              <p className={styles.alumniPosition}>
-                                {alum.currentPosition || alum.currentCompany}
-                              </p>
-                              <p className={styles.alumniBatch}>
-                                {alum.branch} • {alum.graduationYear}
-                              </p>
-                              <Link 
-                                to={`/alumni/${alum.id}`}
-                                className={styles.alumniButton}
-                              >
-                                View Profile
-                              </Link>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Same Batch */}
+                    {/* Same Batch - Priority 5 */}
                     {recommendations.sameBatch.length > 0 && (
-                      <div className={styles.recommendationGroup}>
-                        <h3 className={styles.recommendationTitle}>
-                          Your Batchmates (Graduation Year: {user.alumniProfile?.graduationYear || user.alumniProfile?.graduation_year})
-                        </h3>
-                        <div className={styles.alumniGrid}>
-                          {recommendations.sameBatch.map(alum => (
-                            <div key={alum.id} className={styles.alumniCard}>
-                              <img 
-                                src={resolveAvatar(
-                                  alum.profilePicture ||
-                                  alum.profilePictureUrl ||
-                                  alum.profile_picture_url || '/default-avatar.svg'
-                                )} 
-                                alt={`${alum.firstName} ${alum.lastName}`}
-                                className={styles.alumniAvatar}
-                                onError={(e) => { e.currentTarget.src = '/default-avatar.svg' }}
-                              />
-                              <h4 className={styles.alumniName}>
-                                {alum.firstName} {alum.lastName}
-                              </h4>
-                              <p className={styles.alumniPosition}>
-                                {alum.currentPosition || alum.currentCompany}
-                              </p>
-                              <p className={styles.alumniLocation}>
-                                {alum.currentCity}, {alum.currentState}
-                              </p>
-                              <Link 
-                                to={`/alumni/${alum.id}`}
-                                className={styles.alumniButton}
-                              >
-                                View Profile
-                              </Link>
-                            </div>
+                      <div className={styles.recGroupModern}>
+                        <div className={styles.recHeader}>
+                          <div className={styles.recIconBadge} style={{ background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' }}>
+                            <BiGroup size={20} />
+                          </div>
+                          <div>
+                            <h3 className={styles.recTitle}>Your Batchmates (Class of {user.alumniProfile?.graduationYear || user.alumniProfile?.graduation_year})</h3>
+                            <p className={styles.recSubtitle}>Reconnect with your batch peers</p>
+                          </div>
+                        </div>
+                        <div className={styles.alumniGridModern}>
+                          {recommendations.sameBatch.map((alum, index) => (
+                            <Link 
+                              to={`/alumni/${alum.id}`}
+                              key={alum.id} 
+                              className={styles.alumniCardModern}
+                              style={{ animationDelay: `${index * 0.1}s` }}
+                            >
+                              <div className={styles.alumniCardHeader}>
+                                <img 
+                                  src={resolveAvatar(
+                                    alum.profilePicture ||
+                                    alum.profilePictureUrl ||
+                                    alum.profile_picture_url
+                                  )} 
+                                  alt={`${alum.firstName} ${alum.lastName}`}
+                                  className={styles.alumniAvatarModern}
+                                  onError={(e) => { e.currentTarget.src = '/default-avatar.svg' }}
+                                />
+                                <div className={styles.alumniStatusBadge}>
+                                  <BiGroup size={12} />
+                                </div>
+                              </div>
+                              <div className={styles.alumniCardBody}>
+                                <h4 className={styles.alumniNameModern}>
+                                  {alum.firstName} {alum.lastName}
+                                </h4>
+                                <p className={styles.alumniPositionModern}>
+                                  {alum.currentPosition || 'Professional'}
+                                </p>
+                                {alum.currentCompany && (
+                                  <div className={styles.alumniCompanyTag}>
+                                    <BiBuilding size={14} />
+                                    <span>{alum.currentCompany}</span>
+                                  </div>
+                                )}
+                                {alum.currentCity && (
+                                  <p className={styles.alumniPositionModern} style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                                    <BiMapPin size={14} style={{ display: 'inline', marginRight: '0.25rem' }} />
+                                    {alum.currentCity}{alum.currentState && `, ${alum.currentState}`}
+                                  </p>
+                                )}
+                                <div className={styles.alumniBatchModern}>
+                                  {alum.branch} • Class of {alum.graduationYear}
+                                </div>
+                              </div>
+                              <div className={styles.alumniCardFooter}>
+                                <span>View Profile</span>
+                                <BiArrowRight size={16} />
+                              </div>
+                            </Link>
                           ))}
                         </div>
                       </div>
