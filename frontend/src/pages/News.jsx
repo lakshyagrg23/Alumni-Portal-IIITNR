@@ -6,7 +6,7 @@ import styles from './News.module.css';
 // API Base URL
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-const NewsCard = ({ article }) => {
+const NewsCard = ({ article, index = 0 }) => {
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -27,7 +27,7 @@ const NewsCard = ({ article }) => {
   };
 
   return (
-    <article className={styles.newsCard}>
+    <article className={styles.newsCard} style={{ animationDelay: `${index * 60}ms` }}>
       {article.featuredImageUrl && (
         <div className={styles.imageContainer}>
           <img 
@@ -174,6 +174,18 @@ const News = () => {
     }
   };
 
+  const SkeletonCard = () => (
+    <div className={styles.skeletonCard}>
+      <div className={styles.skeletonImage}></div>
+      <div className={styles.skeletonContent}>
+        <div className={styles.skeletonLine} style={{ width: '60%' }}></div>
+        <div className={styles.skeletonLine} style={{ width: '85%' }}></div>
+        <div className={styles.skeletonLine} style={{ width: '75%' }}></div>
+        <div className={styles.skeletonTags}></div>
+      </div>
+    </div>
+  );
+
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
     setPagination(prev => ({ ...prev, page: 1 })); // Reset to first page
@@ -305,10 +317,13 @@ const News = () => {
         {/* Articles Grid */}
         <section className={styles.articlesSection}>
           {loading ? (
-            <div className={styles.loadingState}>
-              <div className={styles.spinner}></div>
-              <p>Loading news articles...</p>
-            </div>
+            <>
+              <div className={styles.articlesGrid}>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <SkeletonCard key={i} />
+                ))}
+              </div>
+            </>
           ) : articles.length === 0 ? (
             <div className={styles.emptyState}>
               <h3>No Articles Found</h3>
@@ -317,8 +332,8 @@ const News = () => {
           ) : (
             <>
               <div className={styles.articlesGrid}>
-                {articles.map(article => (
-                  <NewsCard key={article.id} article={article} />
+                {articles.map((article, idx) => (
+                  <NewsCard key={article.id} article={article} index={idx} />
                 ))}
               </div>
               

@@ -269,6 +269,7 @@ router.get("/news", async (req, res) => {
       const has = await query('SELECT 1 FROM admin_permissions WHERE user_id=$1 AND permission=$2 LIMIT 1', [req.user.id, 'manage_news']);
       if (!has.rowCount) return res.status(403).json({ success:false, message:'Missing permission: manage_news' });
     }
+    const { query } = await import("../config/database.js");
     
     const result = await query(`
       SELECT id, title, content, excerpt, featured_image_url, category, tags, 
@@ -298,6 +299,7 @@ router.get("/news", async (req, res) => {
  */
 router.post("/news", requirePermission('manage_news'), async (req, res) => {
   try {
+    const { query } = await import("../config/database.js");
     const { title, content, excerpt, category = 'news', tags = [], isPublished = true } = req.body;
 
     if (!title || !content) {
@@ -343,6 +345,7 @@ router.post("/news", requirePermission('manage_news'), async (req, res) => {
  */
 router.put("/news/:id", requirePermission('manage_news'), async (req, res) => {
   try {
+    const { query } = await import("../config/database.js");
     const { id } = req.params;
     const { title, content, excerpt, category, tags, isPublished } = req.body;
 
@@ -391,6 +394,7 @@ router.put("/news/:id", requirePermission('manage_news'), async (req, res) => {
  */
 router.delete("/news/:id", requirePermission('manage_news'), async (req, res) => {
   try {
+    const { query } = await import("../config/database.js");
     const { id } = req.params;
 
     const result = await query("DELETE FROM news WHERE id = $1 RETURNING *", [id]);
@@ -576,6 +580,7 @@ router.get("/events", async (req, res) => {
       const has = await query('SELECT 1 FROM admin_permissions WHERE user_id=$1 AND permission=$2 LIMIT 1', [req.user.id, 'manage_events']);
       if (!has.rowCount) return res.status(403).json({ success:false, message:'Missing permission: manage_events' });
     }
+    const { query } = await import("../config/database.js");
     
     const result = await query(`
       SELECT id, title, description, event_type, mode, location, 
@@ -607,6 +612,7 @@ router.get("/events", async (req, res) => {
  */
 router.post("/events", requirePermission('manage_events'), async (req, res) => {
   try {
+    const { query } = await import("../config/database.js");
     const { 
       title, 
       description, 
@@ -669,6 +675,7 @@ router.post("/events", requirePermission('manage_events'), async (req, res) => {
  */
 router.put("/events/:id", requirePermission('manage_events'), async (req, res) => {
   try {
+    const { query } = await import("../config/database.js");
     const { id } = req.params;
     const { 
       title, 
@@ -734,6 +741,7 @@ router.put("/events/:id", requirePermission('manage_events'), async (req, res) =
  */
 router.delete("/events/:id", requirePermission('manage_events'), async (req, res) => {
   try {
+    const { query } = await import("../config/database.js");
     const { id } = req.params;
 
     const result = await query("DELETE FROM events WHERE id = $1 RETURNING *", [id]);
