@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Helmet } from 'react-helmet-async'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@hooks/useAuth'
 import { authService } from '../services/authService'
 import axios from 'axios'
@@ -75,10 +76,18 @@ const INDUSTRY_OPTIONS = [
 
 const Profile = () => {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState('interests') // Default to interests for both
   const [message, setMessage] = useState({ type: '', text: '' })
+
+  // Redirect admins - they shouldn't have profiles
+  useEffect(() => {
+    if (user?.role === 'admin' || user?.role === 'superadmin') {
+      navigate('/admin', { replace: true })
+    }
+  }, [user, navigate])
 
   // Institute data (read-only)
   const [instituteData, setInstituteData] = useState({

@@ -37,7 +37,10 @@ const authReducer = (state, action) => {
         user: action.payload.user,
         token: action.payload.token,
         isAuthenticated: true,
-        onboardingCompleted: action.payload.user?.onboardingCompleted || false,
+        // Only set onboarding for non-admin users
+        onboardingCompleted: (action.payload.user?.role === 'admin' || action.payload.user?.role === 'superadmin') 
+          ? true 
+          : (action.payload.user?.onboardingCompleted || false),
         initializing: false,
         authLoading: false,
       }
@@ -65,7 +68,10 @@ const authReducer = (state, action) => {
         ...state,
         user: action.payload,
         isAuthenticated: true,
-        onboardingCompleted: action.payload?.onboardingCompleted || false,
+        // Only set onboarding for non-admin users
+        onboardingCompleted: (action.payload?.role === 'admin' || action.payload?.role === 'superadmin')
+          ? true
+          : (action.payload?.onboardingCompleted || false),
         initializing: false,
       }
     case authActions.UPDATE_PROFILE:
@@ -280,6 +286,12 @@ export const AuthProvider = ({ children }) => {
   // Complete onboarding function
   const completeOnboarding = async () => {
     try {
+      // Prevent admins from completing onboarding
+      if (state.user?.role === 'admin' || state.user?.role === 'superadmin') {
+        console.warn('Admin users do not require onboarding')
+        return { success: true }
+      }
+
       const response = await authService.completeOnboarding()
       
       if (response.success) {

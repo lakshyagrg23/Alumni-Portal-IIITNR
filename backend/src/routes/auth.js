@@ -542,31 +542,40 @@ router.post("/login", async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
     );
 
-    // Determine if alumni profile exists
+    // Determine if alumni profile exists (only for non-admin users)
     let hasAlumniProfile = false;
-    try {
-      const result = await query(
-        "SELECT 1 FROM alumni_profiles WHERE user_id = $1 LIMIT 1",
-        [user.id]
-      );
-      hasAlumniProfile = result.rows.length > 0;
-    } catch (e) {
-      hasAlumniProfile = false;
+    if (user.role !== 'admin' && user.role !== 'superadmin') {
+      try {
+        const result = await query(
+          "SELECT 1 FROM alumni_profiles WHERE user_id = $1 LIMIT 1",
+          [user.id]
+        );
+        hasAlumniProfile = result.rows.length > 0;
+      } catch (e) {
+        hasAlumniProfile = false;
+      }
+    }
+
+    // Build user response object based on role
+    const userResponse = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      isApproved: user.is_approved,
+      isActive: user.is_active,
+    };
+
+    // Only include onboarding/profile data for alumni
+    if (user.role !== 'admin' && user.role !== 'superadmin') {
+      userResponse.onboardingCompleted = user.onboarding_completed || false;
+      userResponse.hasAlumniProfile = hasAlumniProfile;
     }
 
     res.json({
       success: true,
       message: "Login successful",
       token,
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        isApproved: user.is_approved,
-        isActive: user.is_active,
-        onboardingCompleted: user.onboarding_completed || false,
-        hasAlumniProfile,
-      },
+      user: userResponse,
     });
   } catch (error) {
     console.error("Login error:", error);
@@ -900,22 +909,29 @@ router.post("/google", async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
     );
 
+    // Build user response based on role
+    const userResponse = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      isApproved: user.is_approved,
+      isActive: user.is_active,
+      provider: user.provider,
+    };
+
+    // Only include profile/onboarding data for alumni
+    if (user.role !== 'admin' && user.role !== 'superadmin') {
+      userResponse.hasAlumniProfile = hasAlumniProfile;
+      userResponse.needsProfileSetup = !hasAlumniProfile;
+      userResponse.onboardingCompleted = user.onboarding_completed || false;
+    }
+
     res.json({
       success: true,
       message: "Google login successful",
       token,
       isNewUser,
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        isApproved: user.is_approved,
-        isActive: user.is_active,
-        provider: user.provider,
-        hasAlumniProfile,
-        needsProfileSetup: !hasAlumniProfile,
-        onboardingCompleted: user.onboarding_completed || false,
-      },
+      user: userResponse,
     });
   } catch (error) {
     console.error("Google login error:", error);
@@ -1023,21 +1039,28 @@ router.post("/linkedin", async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
     );
 
+    // Build user response based on role
+    const userResponse = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      isApproved: user.is_approved,
+      isActive: user.is_active,
+      provider: user.provider,
+    };
+
+    // Only include profile/onboarding data for alumni
+    if (user.role !== 'admin' && user.role !== 'superadmin') {
+      userResponse.hasAlumniProfile = hasAlumniProfile;
+      userResponse.needsProfileSetup = !hasAlumniProfile;
+    }
+
     res.json({
       success: true,
       message: "LinkedIn login successful",
       token,
       isNewUser,
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        isApproved: user.is_approved,
-        isActive: user.is_active,
-        provider: user.provider,
-        hasAlumniProfile,
-        needsProfileSetup: !hasAlumniProfile,
-      },
+      user: userResponse,
     });
   } catch (error) {
     console.error("LinkedIn login error:", error);
@@ -1146,32 +1169,38 @@ router.get("/me", authenticate, async (req, res) => {
   try {
     const user = req.user;
 
-    // Determine if alumni profile exists
-    let hasAlumniProfile = false;
-    try {
-      const result = await query(
-        "SELECT 1 FROM alumni_profiles WHERE user_id = $1 LIMIT 1",
-        [user.id]
-      );
-      hasAlumniProfile = result.rows.length > 0;
-    } catch (e) {
-      hasAlumniProfile = false;
+    // Build base user data
+    const userData = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      isApproved: user.is_approved,
+      isActive: user.is_active,
+      provider: user.provider,
+      createdAt: user.created_at,
+    };
+
+    // Only include profile/onboarding data for alumni
+    if (user.role !== 'admin' && user.role !== 'superadmin') {
+      let hasAlumniProfile = false;
+      try {
+        const result = await query(
+          "SELECT 1 FROM alumni_profiles WHERE user_id = $1 LIMIT 1",
+          [user.id]
+        );
+        hasAlumniProfile = result.rows.length > 0;
+      } catch (e) {
+        hasAlumniProfile = false;
+      }
+
+      userData.onboardingCompleted = user.onboarding_completed || false;
+      userData.hasAlumniProfile = hasAlumniProfile;
+      userData.needsProfileSetup = !hasAlumniProfile;
     }
 
     res.json({
       success: true,
-      data: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        isApproved: user.is_approved,
-        isActive: user.is_active,
-        provider: user.provider,
-        createdAt: user.created_at,
-        onboardingCompleted: user.onboarding_completed || false,
-        hasAlumniProfile,
-        needsProfileSetup: !hasAlumniProfile,
-      },
+      data: userData,
     });
   } catch (error) {
     console.error("Get user error:", error);
@@ -1185,10 +1214,18 @@ router.get("/me", authenticate, async (req, res) => {
 /**
  * @route   GET /api/auth/profile
  * @desc    Get current user profile with alumni data
- * @access  Private
+ * @access  Private (Alumni only)
  */
 router.get("/profile", authenticate, async (req, res) => {
   try {
+    // Admin users should not access alumni profile endpoint
+    if (req.user.role === 'admin' || req.user.role === 'superadmin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin accounts do not have alumni profiles',
+      });
+    }
+
     // Get the actual authenticated user's ID from the auth middleware
     const userId = req.user.id;
 
@@ -1381,10 +1418,18 @@ router.get("/profile", authenticate, async (req, res) => {
 /**
  * @route   GET /api/auth/onboarding-data
  * @desc    Get pre-fill data for onboarding form based on registration path
- * @access  Private
+ * @access  Private (Alumni only)
  */
 router.get("/onboarding-data", authenticate, async (req, res) => {
   try {
+    // Admin users do not need onboarding
+    if (req.user.role === 'admin' || req.user.role === 'superadmin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin accounts do not require onboarding',
+      });
+    }
+
     const userId = req.user.id;
 
     console.log("🔍 Onboarding data requested for user:", userId);
@@ -1816,10 +1861,18 @@ router.put("/profile", authenticate, async (req, res) => {
 /**
  * @route   POST /api/auth/complete-onboarding
  * @desc    Mark user onboarding as completed after profile submission
- * @access  Private
+ * @access  Private (Alumni only)
  */
 router.post("/complete-onboarding", authenticate, async (req, res) => {
   try {
+    // Admin users do not have onboarding
+    if (req.user.role === 'admin' || req.user.role === 'superadmin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin accounts do not require onboarding',
+      });
+    }
+
     const userId = req.user.id;
 
     // Verify user has an alumni profile with required fields
