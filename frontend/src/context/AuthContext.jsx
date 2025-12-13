@@ -235,11 +235,15 @@ export const AuthProvider = ({ children }) => {
           const publicKey = await crypto.exportPublicKey(keyPair.publicKey)
           const privateKey = await crypto.exportPrivateKey(keyPair.privateKey)
           
-          // Store keys in localStorage
+          // Store keys in localStorage (for this device)
           localStorage.setItem('e2e_pub_raw', publicKey)
           localStorage.setItem('e2e_priv_jwk', privateKey)
           
-          // Upload public key to server
+          // Encrypt private key with user's password for cross-device support
+          const encryptedPrivKey = await crypto.encryptPrivateKeyWithPassword(privateKey, userData.password)
+          const encryptedPrivKeyStr = JSON.stringify(encryptedPrivKey)
+          
+          // Upload public key AND encrypted private key to server
           const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
           await fetch(`${API}/messages/public-key`, {
             method: 'POST',
@@ -247,7 +251,10 @@ export const AuthProvider = ({ children }) => {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${response.token}`
             },
-            body: JSON.stringify({ publicKey })
+            body: JSON.stringify({ 
+              publicKey, 
+              encryptedPrivateKey: encryptedPrivKeyStr 
+            })
           })
           
           console.log('✅ Encryption keys generated and uploaded during registration')
