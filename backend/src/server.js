@@ -34,6 +34,8 @@ const app = express();
 // Allow overriding the port via environment. Default to 5000 (original project expectation).
 // Set PORT in .env if you need a different value.
 const PORT = process.env.PORT || 5001;
+// Respect X-Forwarded-* headers when behind a proxy/load balancer
+app.set("trust proxy", 1);
 
 // Create HTTP server (for socket.io attachment)
 const server = createServer(app);
@@ -43,10 +45,20 @@ let io;
 app.use(helmet());
 app.use(compression());
 
+// Rate limit configuration (env-overridable)
+const RATE_LIMIT_WINDOW_MS =
+  Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000; // 15 minutes
+const RATE_LIMIT_GENERAL_MAX =
+  Number(process.env.RATE_LIMIT_GENERAL_MAX ?? process.env.RATE_LIMIT_MAX_REQUESTS) ||
+  (process.env.NODE_ENV === "production" ? 200 : 1000);
+const RATE_LIMIT_AUTH_MAX =
+  Number(process.env.RATE_LIMIT_AUTH_MAX) ||
+  (process.env.NODE_ENV === "production" ? 20 : 100);
+
 // Rate limiting - Adjusted for development
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === "production" ? 200 : 1000, // More lenient for development
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  max: RATE_LIMIT_GENERAL_MAX, // More lenient for development
   message: "Too many requests from this IP, please try again later.",
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
@@ -57,8 +69,8 @@ app.use("/api/", limiter);
 
 // More restrictive rate limiting for authentication endpoints
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === "production" ? 20 : 100, // More restrictive for auth
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  max: RATE_LIMIT_AUTH_MAX, // More restrictive for auth
   message: "Too many authentication attempts, please try again later.",
   standardHeaders: true,
   legacyHeaders: false,

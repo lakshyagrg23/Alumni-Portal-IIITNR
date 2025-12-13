@@ -5,6 +5,14 @@ import axios from 'axios';
 import { fileURLToPath } from 'url';
 
 const API_BASE = process.env.API_URL || 'http://localhost:5001/api';
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const RATE_LIMIT_WINDOW_MS =
+  Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000;
+const RATE_LIMIT_GENERAL_MAX =
+  Number(process.env.RATE_LIMIT_GENERAL_MAX ?? process.env.RATE_LIMIT_MAX_REQUESTS) ||
+  (NODE_ENV === 'production' ? 500 : 1000);
+const RATE_LIMIT_AUTH_MAX =
+  Number(process.env.RATE_LIMIT_AUTH_MAX) || (NODE_ENV === 'production' ? 40 : 100);
 
 export async function testRateLimit() {
   console.log('🔍 Testing Rate Limit Configuration...\n');
@@ -61,13 +69,13 @@ export function showConfiguration() {
   console.log('⚙️  Current Rate Limit Configuration:\n');
   console.log('General API Endpoints:');
   console.log(
-    `- Limit: ${process.env.NODE_ENV === 'production' ? '200' : '1000'} requests per 15 minutes`
+    `- Limit: ${RATE_LIMIT_GENERAL_MAX} requests per ${RATE_LIMIT_WINDOW_MS / 60000} minutes`
   );
-  console.log(`- Environment: ${process.env.NODE_ENV || 'development'}\n`);
+  console.log(`- Environment: ${NODE_ENV}\n`);
 
   console.log('Authentication Endpoints:');
   console.log(
-    `- Limit: ${process.env.NODE_ENV === 'production' ? '20' : '100'} requests per 15 minutes`
+    `- Limit: ${RATE_LIMIT_AUTH_MAX} requests per ${RATE_LIMIT_WINDOW_MS / 60000} minutes`
   );
   console.log('- Applies to: /login, /register, /forgot-password\n');
 }
