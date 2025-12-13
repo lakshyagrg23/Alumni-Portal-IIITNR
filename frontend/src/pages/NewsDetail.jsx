@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { BiChevronLeft, BiTime, BiCalendar, BiUser, BiShare, BiLink, BiBookmark, BiTrendingUp } from 'react-icons/bi';
+import { BiChevronLeft, BiTime, BiCalendar, BiShare, BiLink, BiBookmark, BiTrendingUp } from 'react-icons/bi';
 import styles from './NewsDetail.module.css';
 
 // API Base URL
@@ -288,11 +288,6 @@ const NewsDetail = () => {
                 )}
                 
                 <div className={styles.metaInfo}>
-                  <div className={styles.metaItem}>
-                    <BiUser size={18} />
-                    <span>{article.authorName || 'Unknown Author'}</span>
-                  </div>
-                  
                   {article.publishedAt && (
                     <div className={styles.metaItem}>
                       <BiCalendar size={18} />
@@ -367,10 +362,6 @@ const NewsDetail = () => {
               <div className={styles.infoCard}>
                 <h3 className={styles.sidebarTitle}>Article Info</h3>
                 <div className={styles.infoList}>
-                  <div className={styles.infoItem}>
-                    <span className={styles.infoLabel}>Author</span>
-                    <span className={styles.infoValue}>{article.authorName || 'Unknown'}</span>
-                  </div>
                   {article.publishedAt && (
                     <div className={styles.infoItem}>
                       <span className={styles.infoLabel}>Published</span>

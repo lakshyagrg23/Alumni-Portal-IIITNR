@@ -712,16 +712,9 @@
 
 .cardFooter {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  justify-content: flex-end;
   padding-top: 1.25rem;
   border-top: 2px solid var(--news-border);
-}
-
-.authorInfo {
-  font-size: 0.875rem;
-  color: var(--news-text-muted);
-  font-weight: 600;
 }
 
 .readMoreBtn {
@@ -1256,10 +1249,6 @@
   
   .cardFooter {
     padding-top: 1rem;
-  }
-  
-  .authorInfo {
-    font-size: 0.8125rem;
   }
   
   .readMoreBtn {

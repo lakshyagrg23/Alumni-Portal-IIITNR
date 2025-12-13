@@ -79,9 +79,6 @@ const NewsCard = ({ article, index = 0 }) => {
         )}
         
         <div className={styles.cardFooter}>
-          <span className={styles.authorInfo}>
-            By {article.authorName || 'Unknown Author'}
-          </span>
           <Link to={`/news/${article.slug || article.id}`} className={styles.readMoreBtn}>
             Read More →
           </Link>
@@ -234,39 +231,17 @@ const News = () => {
       </Helmet>
       
       <div className={styles.container}>
-        {/* Hero Section with Featured Articles */}
-        {featuredArticles.length > 0 && (
-          <section className={styles.heroSection}>
-            {/* Hero Header with Icons */}
-            <div className={styles.heroHeader}>
-              <div className={styles.heroIconsGrid}>
-                <div className={styles.heroIconItem}>
-                  <BiNews size={32} className={styles.heroIcon} />
-                  <span className={styles.heroIconLabel}>Latest Updates</span>
-                </div>
-                <div className={styles.heroIconItem}>
-                  <BiTrendingUp size={32} className={styles.heroIcon} />
-                  <span className={styles.heroIconLabel}>Trending Stories</span>
-                </div>
-                <div className={styles.heroIconItem}>
-                  <BiAward size={32} className={styles.heroIcon} />
-                  <span className={styles.heroIconLabel}>Achievements</span>
-                </div>
-                <div className={styles.heroIconItem}>
-                  <BiCalendar size={32} className={styles.heroIcon} />
-                  <span className={styles.heroIconLabel}>Events</span>
-                </div>
-              </div>
-            </div>
-            
-            <h1 className={styles.pageTitle}>
-              <BiGlobe size={48} className={styles.pageTitleIcon} />
-              Latest News & Updates
-            </h1>
-            <p className={styles.pageSubtitle}>
-              Stay connected with the latest happenings, achievements, and announcements from IIIT Naya Raipur Alumni Community
-            </p>
-            
+        {/* Hero Section with heading always visible */}
+        <section className={styles.heroSection}>
+          <h1 className={styles.pageTitle}>
+            <BiGlobe size={48} className={styles.pageTitleIcon} />
+            Latest News & Updates
+          </h1>
+          <p className={styles.pageSubtitle}>
+            Stay connected with the latest happenings, achievements, and announcements from IIIT Naya Raipur Alumni Community
+          </p>
+          
+          {featuredArticles.length > 0 && (
             <div className={styles.featuredGrid}>
               {featuredArticles.map((article, index) => (
                 <div 
@@ -292,8 +267,8 @@ const News = () => {
                 </div>
               ))}
             </div>
-          </section>
-        )}
+          )}
+        </section>
 
         {/* Filters Section */}
         <section className={styles.filtersSection}>
