@@ -1925,13 +1925,13 @@ const getResetTokenExpiry = (userRow) =>
   userRow?.password_reset_token_expires || userRow?.password_reset_expires;
 
 /**
- * @route   GET /api/auth/verify-reset-token/:token
+ * @route   GET /api/auth/verify-reset-token/:token?
  * @desc    Verify if password reset token is valid
  * @access  Public
  */
-router.get("/verify-reset-token/:token", async (req, res) => {
+router.get("/verify-reset-token/:token?", async (req, res) => {
   try {
-    const { token } = req.params;
+    const token = req.params.token || req.query.token;
 
     if (!token) {
       return res.status(400).json({

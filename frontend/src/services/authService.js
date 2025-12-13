@@ -125,7 +125,9 @@ export const authService = {
 
   // Verify password reset token
   verifyResetToken: async (token) => {
-    const response = await API.get(`/auth/verify-reset-token/${token}`);
+    const response = await API.get(`/auth/verify-reset-token`, {
+      params: { token },
+    });
     return response;
   },
 
