@@ -7,7 +7,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import styles from './Register.module.css';
 import GoogleLogin from '../../services/google_login';
-import LinkedInLogin from '../../services/linked_in';
 import { useAuth } from '../../context/AuthContext';
 
 const schema = yup.object().shape({
@@ -173,7 +172,6 @@ const Login = () => {
             <div className={styles.socialLoginTitle}>Or sign in with</div>
             <div className={styles.socialLoginButtons}>
               <GoogleLogin />
-              <LinkedInLogin />
             </div>
           </div>
         </div>

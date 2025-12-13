@@ -726,93 +726,6 @@ router.post("/resend-verification", async (req, res) => {
  * @desc    Request password reset link
  * @access  Public
  */
-router.post("/forgot-password", async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Email is required" });
-    }
-    const user = await User.findByEmail(email);
-    // Always respond success to avoid account discovery
-    if (!user) {
-      return res.json({
-        success: true,
-        message: "If an account exists, a reset link has been sent.",
-      });
-    }
-
-    const token = await User.generatePasswordResetToken(user.id, 1);
-    if (!token) {
-      return res
-        .status(500)
-        .json({ success: false, message: "Unable to generate reset token" });
-    }
-    try {
-      await emailService.sendPasswordResetEmail(
-        user.email,
-        token,
-        user.email.split("@")[0]
-      );
-    } catch (e) {
-      console.error("Password reset email send error:", e);
-      return res
-        .status(500)
-        .json({ success: false, message: "Failed to send reset email" });
-    }
-    return res.json({
-      success: true,
-      message: "Reset link sent. Please check your email.",
-    });
-  } catch (error) {
-    console.error("Forgot password error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error while requesting password reset",
-    });
-  }
-});
-
-/**
- * @route   POST /api/auth/reset-password
- * @desc    Reset password using token
- * @access  Public
- */
-router.post("/reset-password", async (req, res) => {
-  try {
-    const { token, password } = req.body;
-    if (!token || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Token and new password are required",
-      });
-    }
-    if (String(password).length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: "Password must be at least 6 characters",
-      });
-    }
-    const result = await User.resetPasswordByToken(token, password);
-    if (!result.success) {
-      return res.status(400).json({
-        success: false,
-        message: result.message || "Unable to reset password",
-      });
-    }
-    return res.json({
-      success: true,
-      message: "Password reset successful. You can now log in.",
-    });
-  } catch (error) {
-    console.error("Reset password error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Server error during password reset" });
-  }
-});
-
 /**
  * @route   POST /api/auth/google
  * @desc    Google OAuth login/registration (supports both institute and personal email paths)
@@ -1935,17 +1848,31 @@ router.post("/forgot-password", async (req, res) => {
     await query(
       `UPDATE users 
        SET password_reset_token = $1, 
-           password_reset_token_expires = $2 
+           password_reset_token_expires = $2,
+           password_reset_expires = $2
        WHERE id = $3`,
       [resetToken, expiresAt, user.id]
     );
 
     // Send password reset email
     try {
+      const envBaseUrl = process.env.FRONTEND_URL;
+      const origin = req.get("origin");
+      const isLocalUrl = (url = "") =>
+        /^https?:\/\/(localhost|127\.0\.0\.1)/i.test(url);
+      const fallbackHost = `${req.protocol}://${req.get("host")}`;
+      const frontendBaseUrl = (() => {
+        if (envBaseUrl && !isLocalUrl(envBaseUrl)) return envBaseUrl;
+        if (origin && !isLocalUrl(origin)) return origin;
+        if (origin) return origin;
+        return fallbackHost;
+      })();
+
       await emailService.sendPasswordResetEmail(
         user.email,
         resetToken,
-        user.first_name || user.email.split("@")[0]
+        user.first_name || user.email.split("@")[0],
+        frontendBaseUrl
       );
 
       console.log(`✅ Password reset email sent to: ${user.email}`);
@@ -1971,6 +1898,32 @@ router.post("/forgot-password", async (req, res) => {
   }
 });
 
+// Helper: resolve user by reset token (supports both JWT-backed and legacy tokens)
+const findUserByResetToken = async (token, decodedUserId = null) => {
+  // Prefer lookup by decoded user id if available
+  if (decodedUserId) {
+    const byId = await query(
+      `SELECT id, email, first_name, password_reset_token, password_reset_token_expires, password_reset_expires 
+       FROM users 
+       WHERE id = $1 AND password_reset_token = $2`,
+      [decodedUserId, token]
+    );
+    if (byId.rows.length > 0) return byId.rows[0];
+  }
+
+  // Fallback: legacy tokens that weren't JWT-based
+  const fallback = await query(
+    `SELECT id, email, first_name, password_reset_token, password_reset_token_expires, password_reset_expires 
+     FROM users 
+     WHERE password_reset_token = $1`,
+    [token]
+  );
+  return fallback.rows[0] || null;
+};
+
+const getResetTokenExpiry = (userRow) =>
+  userRow?.password_reset_token_expires || userRow?.password_reset_expires;
+
 /**
  * @route   GET /api/auth/verify-reset-token/:token
  * @desc    Verify if password reset token is valid
@@ -1992,33 +1945,20 @@ router.get("/verify-reset-token/:token", async (req, res) => {
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
     } catch (jwtError) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid or expired reset token",
-      });
     }
 
-    // Check if token exists in database and hasn't expired
-    const result = await query(
-      `SELECT id, email, first_name, 
-              password_reset_token, 
-              password_reset_token_expires 
-       FROM users 
-       WHERE id = $1 AND password_reset_token = $2`,
-      [decoded.userId, token]
-    );
-
-    if (result.rows.length === 0) {
+    // Check if token exists in database (supports legacy non-JWT tokens too)
+    const user = await findUserByResetToken(token, decoded?.userId);
+    if (!user) {
       return res.status(400).json({
         success: false,
         message: "Invalid reset token",
       });
     }
 
-    const user = result.rows[0];
-
     // Check if token has expired
-    if (new Date() > new Date(user.password_reset_token_expires)) {
+    const expiresAt = getResetTokenExpiry(user);
+    if (!expiresAt || new Date() > new Date(expiresAt)) {
       return res.status(400).json({
         success: false,
         message: "Reset token has expired. Please request a new one.",
@@ -2069,31 +2009,20 @@ router.post("/reset-password", async (req, res) => {
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
     } catch (jwtError) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid or expired reset token",
-      });
     }
 
-    // Check if token exists in database and hasn't expired
-    const result = await query(
-      `SELECT id, email, password_reset_token, password_reset_token_expires 
-       FROM users 
-       WHERE id = $1 AND password_reset_token = $2`,
-      [decoded.userId, token]
-    );
-
-    if (result.rows.length === 0) {
+    // Check if token exists in database (supports legacy non-JWT tokens too)
+    const user = await findUserByResetToken(token, decoded?.userId);
+    if (!user) {
       return res.status(400).json({
         success: false,
         message: "Invalid reset token",
       });
     }
 
-    const user = result.rows[0];
-
     // Check if token has expired
-    if (new Date() > new Date(user.password_reset_token_expires)) {
+    const expiresAt = getResetTokenExpiry(user);
+    if (!expiresAt || new Date() > new Date(expiresAt)) {
       return res.status(400).json({
         success: false,
         message: "Reset token has expired. Please request a new one.",
@@ -2109,7 +2038,8 @@ router.post("/reset-password", async (req, res) => {
       `UPDATE users 
        SET password_hash = $1, 
            password_reset_token = NULL, 
-           password_reset_token_expires = NULL 
+           password_reset_token_expires = NULL,
+           password_reset_expires = NULL
        WHERE id = $2`,
       [hashedPassword, user.id]
     );

@@ -1,8 +1,5 @@
--- Migration: Fix employment_status constraint to match ProfileNew.jsx values
 -- Date: December 13, 2025
 -- Description: Update the check constraint to allow all employment status values used in the frontend
-
-BEGIN;
 
     -- Drop the existing constraint
     ALTER TABLE alumni_profiles
@@ -45,8 +42,6 @@ WHERE employment_status = 'Entrepreneur' OR employment_status = 'Self-employed';
     UPDATE alumni_profiles
 SET employment_status = 'Pursuing Higher Education'
 WHERE employment_status = 'Higher Studies';
-
-    COMMIT;
 
     -- Verify the constraint
     SELECT conname, pg_get_constraintdef(oid)

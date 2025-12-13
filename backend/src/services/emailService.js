@@ -208,9 +208,23 @@ class EmailService {
    * @param {string} email - Recipient email
    * @param {string} resetToken - Unique password reset token
    * @param {string} firstName - User's first name
+   * @param {string} frontendBaseUrl - Base URL to build reset link (falls back to env)
    */
-  async sendPasswordResetEmail(email, resetToken, firstName = "there") {
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+  async sendPasswordResetEmail(
+    email,
+    resetToken,
+    firstName = "there",
+    frontendBaseUrl
+  ) {
+    const baseFromEnv = process.env.FRONTEND_URL?.trim();
+    const baseUrl =
+      (frontendBaseUrl && frontendBaseUrl.trim()) ||
+      (baseFromEnv && baseFromEnv.trim()) ||
+      "http://localhost:3000";
+    const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
+    const resetUrl = `${normalizedBaseUrl}/reset-password?token=${encodeURIComponent(
+      resetToken
+    )}`;
 
     const mailOptions = {
       from: process.env.EMAIL_FROM || "IIIT Naya Raipur Alumni Portal",

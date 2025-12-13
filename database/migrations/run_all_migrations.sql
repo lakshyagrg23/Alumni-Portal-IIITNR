@@ -35,6 +35,18 @@ BEGIN;
 \echo 'Running migration 007: Extend alumni_profiles with onboarding fields...'
 \i 007_extend_alumni_profiles.sql
 
+\echo 'Running migration 008: Accreditation dashboard functions...'
+\i 008_accreditation_v2_functions.sql
+
+\echo 'Running migration 008b: Superadmin role and permissions...'
+\i 008_add_superadmin_and_permissions.sql
+
+\echo 'Running migration 009: Add encrypted private key column for messaging...'
+\i 009_add_encrypted_private_key.sql
+
+\echo 'Running migration 009b: Fix employment_status constraint...'
+\i 009_fix_employment_status_constraint.sql
+
 -- Create migration tracking table
 CREATE TABLE IF NOT EXISTS schema_migrations (
     id SERIAL PRIMARY KEY,
@@ -51,7 +63,11 @@ INSERT INTO schema_migrations (migration_name) VALUES
     ('004_enhance_event_registrations'),
     ('005_create_placement_data'),
     ('006_create_higher_education_data'),
-    ('007_extend_alumni_profiles')
+    ('007_extend_alumni_profiles'),
+    ('008_accreditation_v2_functions'),
+    ('008_add_superadmin_and_permissions'),
+    ('009_add_encrypted_private_key'),
+    ('009_fix_employment_status_constraint')
 ON CONFLICT (migration_name) DO NOTHING;
 
 -- Commit transaction
