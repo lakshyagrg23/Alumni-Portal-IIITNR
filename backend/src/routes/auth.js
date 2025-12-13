@@ -820,7 +820,8 @@ router.post("/reset-password", async (req, res) => {
  */
 router.post("/google", async (req, res) => {
   try {
-    const { email, googleId, name, verificationToken } = req.body;
+    const { email, googleId, name, verificationToken, registrationPath } =
+      req.body;
     if (!email || !googleId) {
       return res.status(400).json({
         success: false,
@@ -828,67 +829,32 @@ router.post("/google", async (req, res) => {
       });
     }
 
-    let user = await User.findByEmail(email);
-    let isNewUser = false;
-
-    if (!user) {
-      // Determine registration path based on email domain or verification token
+    // If registrationPath is 'institute_email', validate that the email is an institute email
+    if (registrationPath === "institute_email") {
       const emailLower = email.toLowerCase();
       const isInstituteEmail =
         emailLower.endsWith("@iiitnr.edu.in") ||
         emailLower.endsWith("@iiitnr.ac.in");
 
-      let registrationPath = "oauth";
-      let instituteRecordId = null;
-
-      // If verification token provided, this is personal email path
-      if (verificationToken) {
-        try {
-          const tokenData = jwt.verify(
-            verificationToken,
-            process.env.JWT_SECRET
-          );
-          if (tokenData.type === "identity_verification") {
-            registrationPath = "personal_email";
-            instituteRecordId = tokenData.instituteRecordId;
-
-            // Check if someone already registered with this institute record
-            const existingRecord = await query(
-              "SELECT id FROM users WHERE institute_record_id = $1",
-              [instituteRecordId]
-            );
-
-            if (existingRecord.rows.length > 0) {
-              return res.status(400).json({
-                success: false,
-                message:
-                  "An account has already been registered with this roll number.",
-              });
-            }
-          }
-        } catch (err) {
-          return res.status(400).json({
-            success: false,
-            message: "Invalid or expired verification token.",
-          });
-        }
-      } else if (isInstituteEmail) {
-        registrationPath = "institute_email";
+      if (!isInstituteEmail) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Please use your institute email address (@iiitnr.edu.in or @iiitnr.ac.in)",
+        });
       }
+    }
 
-      // Register new user with Google provider
-      const userData = {
-        email: emailLower,
-        provider: "google",
-        providerId: googleId,
-        role: "alumni",
-        isApproved: true, // OAuth users are auto-approved
-        email_verified: true, // OAuth emails are pre-verified by Google
-        registration_path: registrationPath,
-        institute_record_id: instituteRecordId,
-      };
-      user = await User.create(userData);
-      isNewUser = true;
+    let user = await User.findByEmail(email);
+    let isNewUser = false;
+
+    // OAuth should only work for existing users, not for registration
+    if (!user) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "No account found with this email. Please register first using the registration form.",
+      });
     }
 
     // Check if alumni profile exists; do NOT auto-create one
@@ -950,7 +916,8 @@ router.post("/google", async (req, res) => {
  */
 router.post("/linkedin", async (req, res) => {
   try {
-    const { email, linkedinId, name, verificationToken } = req.body;
+    const { email, linkedinId, name, verificationToken, registrationPath } =
+      req.body;
     if (!email || !linkedinId) {
       return res.status(400).json({
         success: false,
@@ -958,67 +925,32 @@ router.post("/linkedin", async (req, res) => {
       });
     }
 
-    let user = await User.findByEmail(email);
-    let isNewUser = false;
-
-    if (!user) {
-      // Determine registration path based on email domain or verification token
+    // If registrationPath is 'institute_email', validate that the email is an institute email
+    if (registrationPath === "institute_email") {
       const emailLower = email.toLowerCase();
       const isInstituteEmail =
         emailLower.endsWith("@iiitnr.edu.in") ||
         emailLower.endsWith("@iiitnr.ac.in");
 
-      let registrationPath = "oauth";
-      let instituteRecordId = null;
-
-      // If verification token provided, this is personal email path
-      if (verificationToken) {
-        try {
-          const tokenData = jwt.verify(
-            verificationToken,
-            process.env.JWT_SECRET
-          );
-          if (tokenData.type === "identity_verification") {
-            registrationPath = "personal_email";
-            instituteRecordId = tokenData.instituteRecordId;
-
-            // Check if someone already registered with this institute record
-            const existingRecord = await query(
-              "SELECT id FROM users WHERE institute_record_id = $1",
-              [instituteRecordId]
-            );
-
-            if (existingRecord.rows.length > 0) {
-              return res.status(400).json({
-                success: false,
-                message:
-                  "An account has already been registered with this roll number.",
-              });
-            }
-          }
-        } catch (err) {
-          return res.status(400).json({
-            success: false,
-            message: "Invalid or expired verification token.",
-          });
-        }
-      } else if (isInstituteEmail) {
-        registrationPath = "institute_email";
+      if (!isInstituteEmail) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Please use your institute email address (@iiitnr.edu.in or @iiitnr.ac.in)",
+        });
       }
+    }
 
-      // Register new user with LinkedIn provider
-      const userData = {
-        email: emailLower,
-        provider: "linkedin",
-        providerId: linkedinId,
-        role: "alumni",
-        isApproved: true, // OAuth users are auto-approved
-        email_verified: true, // OAuth emails are pre-verified by LinkedIn
-        registration_path: registrationPath,
-        institute_record_id: instituteRecordId,
-      };
-      user = await User.create(userData);
-      isNewUser = true;
+    let user = await User.findByEmail(email);
+    let isNewUser = false;
+
+    // OAuth should only work for existing users, not for registration
+    if (!user) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "No account found with this email. Please register first using the registration form.",
+      });
     }
 
     // Check if alumni profile exists; do NOT auto-create one

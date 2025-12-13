@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import React from 'react';
 
-export default function GoogleLoginButton({ verificationToken = null, onSuccess, buttonText = "Continue with Google" }) {
+export default function GoogleLoginButton({ verificationToken = null, registrationPath = null, onSuccess, buttonText = "Continue with Google" }) {
   const { loginWithGoogle } = useAuth();
   const navigate = useNavigate();
 
@@ -24,6 +24,11 @@ export default function GoogleLoginButton({ verificationToken = null, onSuccess,
       // Add verification token if provided (for personal email registration path)
       if (verificationToken) {
         payload.verificationToken = verificationToken;
+      }
+
+      // Add registration path if provided (for institute email registration)
+      if (registrationPath) {
+        payload.registrationPath = registrationPath;
       }
 
       const response = await loginWithGoogle(payload);
@@ -53,7 +58,9 @@ export default function GoogleLoginButton({ verificationToken = null, onSuccess,
         navigate('/dashboard');
       }
     } catch (err) {
-      toast.error('Google login failed.');
+      console.error('Google login error:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Google login failed.';
+      toast.error(errorMessage);
     }
   };
 

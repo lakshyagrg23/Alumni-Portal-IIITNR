@@ -123,8 +123,8 @@ const LinkedInCallback = () => {
         console.error('LinkedIn callback error:', err);
         const errorMessage = err.response?.data?.message || err.message || 'Failed to complete LinkedIn login';
         setError(errorMessage);
-        toast.error(errorMessage);
-        setTimeout(() => navigate('/login'), 3000);
+        toast.error(errorMessage, { duration: 5000 });
+        setTimeout(() => navigate('/login'), 4000);
       } finally {
         setProcessing(false);
       }

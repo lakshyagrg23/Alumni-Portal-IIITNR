@@ -119,6 +119,7 @@ const RegisterInstituteEmail = () => {
         email: decoded.email,
         googleId: decoded.sub,
         name: decoded.name,
+        registrationPath: 'institute_email', // Indicate this is from institute email registration
       });
 
       // Admin users go to admin panel
@@ -278,6 +279,7 @@ const RegisterInstituteEmail = () => {
 
             <div className={styles.oauthButtons}>
               <GoogleLogin 
+                registrationPath="institute_email"
                 onSuccess={handleGoogleSuccess}
                 buttonText="Sign up with Institute Google Account"
               />
