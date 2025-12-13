@@ -93,7 +93,7 @@ const ResetPassword = () => {
       <div className={styles.authPage}>
         <div className={styles.authCard}>
           <div className={styles.header}>
-            <h2>Verifying Reset Link...</h2>
+            <h2>Verifying reset link</h2>
             <p className={styles.subtitle}>Please wait</p>
           </div>
           <div className={styles.loadingSpinner}>
@@ -109,7 +109,7 @@ const ResetPassword = () => {
       <div className={styles.authPage}>
         <div className={styles.authCard}>
           <div className={styles.header}>
-            <h2>Invalid Reset Link ❌</h2>
+            <h2>Invalid reset link</h2>
             <p className={styles.subtitle}>
               This password reset link is invalid or has expired.
             </p>
@@ -137,10 +137,19 @@ const ResetPassword = () => {
     <div className={styles.authPage}>
       <div className={styles.authCard}>
         <div className={styles.header}>
-          <h2>Reset Your Password 🔐</h2>
+          <h2>Create a new password</h2>
           <p className={styles.subtitle}>
             Enter a new password for {userEmail}
           </p>
+        </div>
+
+        <div className={styles.passwordTips}>
+          <h4>Set a secure password</h4>
+          <ul>
+            <li>Minimum 6 characters</li>
+            <li>Mix letters, numbers, and symbols</li>
+            <li>Avoid reusing old passwords</li>
+          </ul>
         </div>
 
         <form onSubmit={handleSubmit} className={styles.form}>
