@@ -24,6 +24,7 @@ import messageRoutes from "./routes/messages.js";
 import adminRoutes from "./routes/admin.js";
 import reportsRoutes from "./routes/reports.js";
 import exportRoutes from "./routes/export.js";
+import moderationRoutes from "./routes/moderation.js";
 
 // Import middleware
 import errorHandler from "./models/middleware/errorHandler.js";
@@ -152,6 +153,7 @@ app.use("/api/messages", messageRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/admin/reports", reportsRoutes);
 app.use("/api/admin/reports/export", exportRoutes);
+app.use("/api/moderation", moderationRoutes);
 
 // Welcome route
 app.get("/", (req, res) => {

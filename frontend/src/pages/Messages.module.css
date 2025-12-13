@@ -766,22 +766,22 @@
 
 
 
-/* Floating Action Button - Enhanced */
-.fab {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  width: 64px;
-  height: 64px;
+/* Floating Action Button - Inside Sidebar */
+.fabInSidebar {
+  position: absolute;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   background: var(--msg-gradient-primary);
   border: none;
   color: white;
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   cursor: pointer;
-  box-shadow: var(--msg-shadow-xl);
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 999;
+  box-shadow: var(--msg-shadow-lg);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -789,7 +789,7 @@
   overflow: hidden;
 }
 
-.fab::before {
+.fabInSidebar::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -798,23 +798,93 @@
   transition: opacity 0.3s ease;
 }
 
-.fab:hover::before {
+.fabInSidebar:hover::before {
   opacity: 1;
 }
 
-.fab:hover {
-  transform: translateY(-4px) scale(1.08);
-  box-shadow: 0 16px 40px rgba(30, 58, 138, 0.4);
+.fabInSidebar:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 12px 32px rgba(30, 58, 138, 0.35);
 }
 
-.fab:active {
-  transform: translateY(-2px) scale(1.02);
+.fabInSidebar:active {
+  transform: translateY(-1px) scale(1.02);
 }
 
 .fabIcon {
   line-height: 1;
   position: relative;
   z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Actions Menu - Block/Report */
+.actionsMenuContainer {
+  position: relative;
+}
+
+.actionsMenuBtn {
+  background: transparent;
+  border: none;
+  color: var(--msg-text-light);
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.actionsMenuBtn:hover {
+  background: var(--msg-hover);
+  color: var(--msg-primary);
+}
+
+.actionsDropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  background: var(--msg-card);
+  border: 1px solid var(--msg-border);
+  border-radius: var(--msg-radius-md);
+  box-shadow: var(--msg-shadow-lg);
+  min-width: 180px;
+  padding: 0.5rem;
+  z-index: 100;
+  animation: slideInDown 0.2s ease;
+}
+
+.actionItem {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--msg-radius-sm);
+  font-size: 0.9375rem;
+  color: var(--msg-text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.actionItem:hover {
+  background: var(--msg-hover);
+  color: var(--msg-primary);
+}
+
+.actionItem:first-child {
+  color: #ef4444;
+}
+
+.actionItem:first-child:hover {
+  background: #fef2f2;
+  color: #dc2626;
 }
 
 /* New Chat Modal - Premium Design */
@@ -1300,15 +1370,29 @@
   }
 }
 
+/* Mobile View - Two Page System */
+.mobileView {
+  height: 100%;
+}
+
+.mobileView .sidebarShell {
+  height: 100%;
+  width: 100%;
+}
+
+.mobileView .chatShell {
+  height: 100%;
+  width: 100%;
+}
+
 @media (max-width: 820px) {
   .container {
-    height: auto;
-    min-height: calc(100vh - 80px);
+    height: calc(100vh - 80px);
   }
   
   .layout {
     grid-template-columns: 1fr;
-    height: auto;
+    height: 100%;
     box-shadow: none;
   }
   
@@ -1317,30 +1401,28 @@
   }
   
   .sidebarShell {
-    display: flex !important;
     border-right: none;
-    border-top: 1px solid var(--msg-border);
-    max-height: 400px;
+    border-bottom: 1px solid var(--msg-border);
+    height: 100%;
   }
   
   .chatShell {
-    min-height: 65vh;
+    height: 100%;
   }
   
   .toggleSidebarBtn {
-    display: none;
+    display: flex;
   }
   
   .showSidebarBtn {
-    display: none;
+    display: flex;
   }
   
-  .fab {
-    bottom: 1.5rem;
-    right: 1.5rem;
-    width: 56px;
-    height: 56px;
-    font-size: 1.5rem;
+  .fabInSidebar {
+    bottom: 1.25rem;
+    right: 1.25rem;
+    width: 52px;
+    height: 52px;
   }
 }
 
@@ -1467,11 +1549,11 @@
     flex: 1;
   }
   
-  .fab {
+  .fabInSidebar {
     bottom: 1rem;
     right: 1rem;
-    width: 56px;
-    height: 56px;
+    width: 52px;
+    height: 52px;
   }
   
   .fabIcon {

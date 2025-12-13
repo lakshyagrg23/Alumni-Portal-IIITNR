@@ -6,7 +6,7 @@ import { getSocket, closeSocket, getLastSocketUrl } from '../utils/socketClient'
 import * as crypto from '../utils/crypto'
 import axios from 'axios'
 import { useLocation } from 'react-router-dom'
-import { BiMessageRounded, BiSearch, BiX, BiGroup, BiPaperclip, BiImage, BiFile,  BiSend } from 'react-icons/bi'
+import { BiMessageRounded, BiSearch, BiX, BiGroup, BiPaperclip, BiImage, BiFile,  BiSend, BiDotsVerticalRounded, BiBlock, BiFlag } from 'react-icons/bi'
 import styles from './Messages.module.css'
 
 function useQuery() {
@@ -43,8 +43,26 @@ const Messages = () => {
   const [alumniList, setAlumniList] = useState([])
   const [searchAlumni, setSearchAlumni] = useState('')
   const [loadingAlumni, setLoadingAlumni] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  const [showActionsMenu, setShowActionsMenu] = useState(false)
+  const [showBlockModal, setShowBlockModal] = useState(false)
+  const [showReportModal, setShowReportModal] = useState(false)
+  const [reportType, setReportType] = useState('harassment')
+  const [reportDescription, setReportDescription] = useState('')
+  const [blockReason, setBlockReason] = useState('')
+  const [isBlocked, setIsBlocked] = useState(false)
   // Use global messaging context for unread counts
   const { conversationUnreadMap, clearConversationUnread, setActiveConversationUserId } = useMessaging()
+
+  // Detect mobile viewport
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   useEffect(() => {
     if (!user || !token) {
@@ -495,6 +513,82 @@ const Messages = () => {
     setActiveConversationUserId(id)
     clearConversationUnread(id)
     if (localKeysRef.current) await loadConversation(id, localKeysRef.current)
+    // Check if user is blocked
+    checkIfBlocked(id)
+    // On mobile, hide sidebar when conversation selected
+    if (isMobile) {
+      setShowSidebar(false)
+    }
+  }
+
+  const checkIfBlocked = async (userId) => {
+    try {
+      const res = await axios.get(`${API}/moderation/check-blocked/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setIsBlocked(res.data?.isBlocked || false)
+    } catch (err) {
+      console.error('Failed to check block status:', err)
+    }
+  }
+
+  const handleBlockUser = async () => {
+    try {
+      await axios.post(`${API}/moderation/block`, {
+        blockedUserId: toUserId,
+        reason: blockReason
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setIsBlocked(true)
+      setShowBlockModal(false)
+      setBlockReason('')
+      setErrorMsg('')
+      alert('User blocked successfully')
+    } catch (err) {
+      console.error('Failed to block user:', err)
+      setErrorMsg(err.response?.data?.message || 'Failed to block user')
+    }
+  }
+
+  const handleUnblockUser = async () => {
+    try {
+      await axios.delete(`${API}/moderation/unblock/${toUserId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setIsBlocked(false)
+      setErrorMsg('')
+      alert('User unblocked successfully')
+    } catch (err) {
+      console.error('Failed to unblock user:', err)
+      setErrorMsg(err.response?.data?.message || 'Failed to unblock user')
+    }
+  }
+
+  const handleReportUser = async () => {
+    if (!reportDescription.trim()) {
+      setErrorMsg('Please provide a description for the report')
+      return
+    }
+
+    try {
+      await axios.post(`${API}/moderation/report`, {
+        reportedUserId: toUserId,
+        reportType,
+        description: reportDescription,
+        evidenceMessageIds: [] // Could enhance this to select specific messages
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setShowReportModal(false)
+      setReportDescription('')
+      setReportType('harassment')
+      setErrorMsg('')
+      alert('Report submitted successfully. Our team will review it shortly.')
+    } catch (err) {
+      console.error('Failed to report user:', err)
+      setErrorMsg(err.response?.data?.message || 'Failed to submit report')
+    }
   }
 
   const handleSend = async () => {
@@ -659,6 +753,10 @@ const Messages = () => {
     setActiveConversationUserId(userId)
     setShowNewChatModal(false)
     if (localKeysRef.current) await loadConversation(userId, localKeysRef.current)
+    // On mobile, hide sidebar when new chat starts
+    if (isMobile) {
+      setShowSidebar(false)
+    }
   }
 
   const filteredAlumni = useMemo(() => {
@@ -674,14 +772,14 @@ const Messages = () => {
     <>
       <Helmet><title>Messages - IIIT Naya Raipur Alumni Portal</title></Helmet>
       <div className={styles.container}>
-        <div className={`${styles.layout} ${showSidebar ? '' : styles.collapsed}`}> 
+        <div className={`${styles.layout} ${showSidebar ? '' : styles.collapsed} ${isMobile ? styles.mobileView : ''}`}> 
           {/* Sidebar */}
-          {showSidebar && (
+          {(showSidebar || !isMobile) && (
           <aside className={styles.sidebarShell} aria-label="Conversations list">
             <div className={styles.sidebarHeader}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <h2 className={styles.sidebarTitle}>Conversations</h2>
-                <button onClick={() => setShowSidebar(s => !s)} className={styles.toggleSidebarBtn} title="Hide sidebar">✕</button>
+                {isMobile && <button onClick={() => setShowSidebar(s => !s)} className={styles.toggleSidebarBtn} title="Hide sidebar">✕</button>}
               </div>
               <div className={styles.searchBox}>
                 <span className={styles.searchIcon}><BiSearch size={18} /></span>
@@ -721,10 +819,24 @@ const Messages = () => {
                 )
               })}
             </div>
+            
+            {/* Floating Action Button - Inside Sidebar */}
+            <button
+              className={styles.fabInSidebar}
+              onClick={() => {
+                setShowNewChatModal(true)
+                loadAlumniList()
+              }}
+              aria-label="Start new chat"
+              title="Start new chat"
+            >
+              <span className={styles.fabIcon}><BiMessageRounded size={24} /></span>
+            </button>
           </aside>
           )}
 
           {/* Chat */}
+          {(!isMobile || !showSidebar) && (
           <section className={styles.chatShell} aria-label="Chat conversation">
             <header className={styles.chatHeader}>
               {!showSidebar && (
@@ -732,14 +844,44 @@ const Messages = () => {
                   <BiMessageRounded size={24} />
                 </button>
               )}  
-              <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:14, flex:1 }}>
                 <div className={styles.avatar}>{(conversations.find(c => c.partnerUserId === toUserId)?.partnerName || 'Chat').slice(0,2).toUpperCase()}</div>
-                <div>
+                <div style={{ flex:1 }}>
                   <div className={styles.chatTitle}>{conversations.find(c => c.partnerUserId === toUserId)?.partnerName || 'Messages'}</div>
                   <div className={styles.chatSubtitle}>{toUserId ? 'End-to-end encrypted' : 'Choose a conversation to start messaging'}</div>
                 </div>
               </div>
-              {/* Presence indicator removed per request to hide socket status */}
+              {/* Actions menu for block/report */}
+              {toUserId && (
+                <div className={styles.actionsMenuContainer}>
+                  <button 
+                    className={styles.actionsMenuBtn}
+                    onClick={() => setShowActionsMenu(!showActionsMenu)}
+                    aria-label="User actions"
+                  >
+                    <BiDotsVerticalRounded size={24} />
+                  </button>
+                  {showActionsMenu && (
+                    <div className={styles.actionsDropdown}>
+                      {isBlocked ? (
+                        <button onClick={() => { handleUnblockUser(); setShowActionsMenu(false); }} className={styles.actionItem}>
+                          <BiBlock size={18} />
+                          <span>Unblock User</span>
+                        </button>
+                      ) : (
+                        <button onClick={() => { setShowBlockModal(true); setShowActionsMenu(false); }} className={styles.actionItem}>
+                          <BiBlock size={18} />
+                          <span>Block User</span>
+                        </button>
+                      )}
+                      <button onClick={() => { setShowReportModal(true); setShowActionsMenu(false); }} className={styles.actionItem}>
+                        <BiFlag size={18} />
+                        <span>Report User</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </header>
 
             <div className={styles.messagesViewport} ref={messagesListRef}>
@@ -841,20 +983,118 @@ const Messages = () => {
               )}
             </div>
           </section>
+          )}
         </div>
 
-        {/* Floating Action Button */}
-        <button
-          className={styles.fab}
-          onClick={() => {
-            setShowNewChatModal(true)
-            loadAlumniList()
-          }}
-          aria-label="Start new chat"
-          title="Start new chat"
-        >
-          <span className={styles.fabIcon}><BiMessageRounded size={28} /></span>
-        </button>
+        {/* Block User Modal */}
+        {showBlockModal && (
+          <div className={styles.modalOverlay} onClick={() => setShowBlockModal(false)}>
+            <div className={styles.modalCard} style={{ maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.modalHeader}>
+                <h3 className={styles.modalTitle}>Block User</h3>
+                <button className={styles.modalClose} onClick={() => setShowBlockModal(false)}>
+                  <BiX size={24} />
+                </button>
+              </div>
+              <div className={styles.modalContent} style={{ padding: '1.5rem' }}>
+                <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+                  Are you sure you want to block this user? They will no longer be able to send you messages.
+                </p>
+                <textarea
+                  className={styles.composerTextarea}
+                  rows={3}
+                  placeholder="Reason for blocking (optional)"
+                  value={blockReason}
+                  onChange={(e) => setBlockReason(e.target.value)}
+                  style={{ marginBottom: '1rem' }}
+                />
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                  <button 
+                    onClick={() => setShowBlockModal(false)} 
+                    className={styles.attachButton}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleBlockUser}
+                    className={styles.sendButton}
+                    style={{ background: '#ef4444' }}
+                  >
+                    <BiBlock size={16} />
+                    Block User
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Report User Modal */}
+        {showReportModal && (
+          <div className={styles.modalOverlay} onClick={() => setShowReportModal(false)}>
+            <div className={styles.modalCard} style={{ maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.modalHeader}>
+                <h3 className={styles.modalTitle}>Report User</h3>
+                <button className={styles.modalClose} onClick={() => setShowReportModal(false)}>
+                  <BiX size={24} />
+                </button>
+              </div>
+              <div className={styles.modalContent} style={{ padding: '1.5rem' }}>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, color: '#374151' }}>
+                    Report Type
+                  </label>
+                  <select
+                    value={reportType}
+                    onChange={(e) => setReportType(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '0.9375rem'
+                    }}
+                  >
+                    <option value="harassment">Harassment</option>
+                    <option value="spam">Spam</option>
+                    <option value="inappropriate_content">Inappropriate Content</option>
+                    <option value="impersonation">Impersonation</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, color: '#374151' }}>
+                    Description *
+                  </label>
+                  <textarea
+                    className={styles.composerTextarea}
+                    rows={4}
+                    placeholder="Please describe the issue..."
+                    value={reportDescription}
+                    onChange={(e) => setReportDescription(e.target.value)}
+                    required
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                  <button 
+                    onClick={() => setShowReportModal(false)} 
+                    className={styles.attachButton}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleReportUser}
+                    className={styles.sendButton}
+                    disabled={!reportDescription.trim()}
+                  >
+                    <BiFlag size={16} />
+                    Submit Report
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* New Chat Modal */}
         {showNewChatModal && (
