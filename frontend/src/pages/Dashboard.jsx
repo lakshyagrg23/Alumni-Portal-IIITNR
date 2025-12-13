@@ -19,7 +19,6 @@ import {
   BiMapPin,
   BiStar,
   BiRocket,
-  BiArrowRight,
   BiInfoCircle,
   BiCheck,
   BiX
@@ -462,7 +461,7 @@ const Dashboard = () => {
                   </div>
                   <Link to="/news" className={styles.viewAllButton}>
                     <span>View All</span>
-                    <BiArrowRight size={18} />
+                    {/* <BiArrowRight size={18} /> */}
                   </Link>
                 </div>
                 
@@ -495,7 +494,7 @@ const Dashboard = () => {
                               {formatDate(news.publishedAt)}
                             </span>
                             <span className={styles.newsReadMore}>
-                              Read More <BiArrowRight size={16} />
+                              Read More 
                             </span>
                           </div>
                         </div>
@@ -524,7 +523,7 @@ const Dashboard = () => {
                   </div>
                   <Link to="/events" className={styles.viewAllButton}>
                     <span>View All</span>
-                    <BiArrowRight size={18} />
+                    {/* <BiArrowRight size={18} /> */}
                   </Link>
                 </div>
 
@@ -585,7 +584,7 @@ const Dashboard = () => {
                                     )}
                                   </div>
                                   <Link to="/events" className={styles.eventActionButton}>
-                                    <BiArrowRight size={20} />
+                                    {/* <BiArrowRight size={20} /> */}
                                   </Link>
                                 </div>
                               ))}
@@ -694,7 +693,7 @@ const Dashboard = () => {
                               </div>
                               <div className={styles.alumniCardFooter}>
                                 <span>View Profile</span>
-                                <BiArrowRight size={16} />
+                                {/* <BiArrowRight size={16} /> */}
                               </div>
                             </Link>
                           ))}
@@ -768,7 +767,7 @@ const Dashboard = () => {
                                 </div>
                                 <div className={styles.alumniCardFooter}>
                                   <span>View Profile</span>
-                                  <BiArrowRight size={16} />
+                                  {/* <BiArrowRight size={16} /> */}
                                 </div>
                               </Link>
                             )
@@ -831,7 +830,7 @@ const Dashboard = () => {
                               </div>
                               <div className={styles.alumniCardFooter}>
                                 <span>View Profile</span>
-                                <BiArrowRight size={16} />
+                                {/* <BiArrowRight size={16} /> */}
                               </div>
                             </Link>
                           ))}
@@ -887,7 +886,7 @@ const Dashboard = () => {
                               </div>
                               <div className={styles.alumniCardFooter}>
                                 <span>View Profile</span>
-                                <BiArrowRight size={16} />
+                                {/* <BiArrowRight size={16} /> */}
                               </div>
                             </Link>
                           ))}
@@ -955,14 +954,14 @@ const Dashboard = () => {
                               </div>
                               <div className={styles.alumniCardFooter}>
                                 <span>View Profile</span>
-                                <BiArrowRight size={16} />
+                                {/* <BiArrowRight size={16} /> */}
                               </div>
                             </Link>
                           ))}
                         </div>
                       </div>
                     )}
-                  </>
+                  </div>
                 )}
               </section>
             )}
