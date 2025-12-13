@@ -508,6 +508,13 @@ const Messages = () => {
       setText('')
       setAttachmentMeta(null)
       console.log('✅ Message sent!')
+      
+      // Auto-scroll to bottom after sending message
+      setTimeout(() => {
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+        }
+      }, 100)
     } catch (err) {
       console.error('❌ send failed', err?.message || err)
       setErrorMsg(`Send error: ${err.message || 'Failed to send message'}`)
