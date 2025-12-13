@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
@@ -29,15 +29,19 @@ const AlumniDirectory = () => {
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
   // Fetch alumni data
-  const fetchAlumni = async (page = 1) => {
+  const fetchAlumni = useCallback(async (page = 1) => {
     try {
       setLoading(true)
       const params = new URLSearchParams({
         page: page.toString(),
-        limit: '12',
-        sortBy,
-        sortOrder
+        limit: '12'
       })
+
+      // Add sortBy and sortOrder without 'ap.' prefix
+      if (sortBy && sortOrder) {
+        params.append('sortBy', sortBy)
+        params.append('sortOrder', sortOrder)
+      }
 
       if (searchTerm) params.append('search', searchTerm)
       if (selectedBatch) params.append('batch', selectedBatch)
@@ -61,7 +65,7 @@ const AlumniDirectory = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [searchTerm, selectedBatch, selectedBranch, sortBy, sortOrder, studentType])
 
   // Extract unique batches and branches for filters
   useEffect(() => {
@@ -71,10 +75,10 @@ const AlumniDirectory = () => {
     setBranches(uniqueBranches)
   }, [alumni])
 
-  // Initial fetch
+  // Initial fetch and refetch on filter changes
   useEffect(() => {
     fetchAlumni(1)
-  }, [searchTerm, selectedBatch, selectedBranch, sortBy, sortOrder, studentType])
+  }, [fetchAlumni])
 
   // Handle page change
   const handlePageChange = (page) => {
@@ -195,7 +199,7 @@ const AlumniDirectory = () => {
                   className={styles.filterSelect}
                 >
                   <option value="">All Batches</option>
-                  {[2018, 2019, 2020, 2021, 2022, 2023].map(year => (
+                  {(batches.length ? batches : [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]).map(year => (
                     <option key={year} value={year}>{year}</option>
                   ))}
                 </select>
@@ -209,9 +213,16 @@ const AlumniDirectory = () => {
                   className={styles.filterSelect}
                 >
                   <option value="">All Branches</option>
-                  <option value="Computer Science Engineering">CSE</option>
-                  <option value="Electronics and Communication Engineering">ECE</option>
-                  <option value="Data Science and Artificial Intelligence">DSAI</option>
+                  {(branches.length
+                    ? branches
+                    : [
+                        'Computer Science & Engineering',
+                        'Electronics & Communication Engineering',
+                        'Data Science & Artificial Intelligence'
+                      ]
+                  ).map(branch => (
+                    <option key={branch} value={branch}>{branch}</option>
+                  ))}
                 </select>
               </label>
 

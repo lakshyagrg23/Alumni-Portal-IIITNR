@@ -4,13 +4,7 @@ import styles from '../AdminPanel.module.css'
 import EventProposals from './EventProposals'
 
 const EventsManagement = () => {
-  const [events, setEvents] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [showForm, setShowForm] = useState(false)
-  const [showProposals, setShowProposals] = useState(false)
-  const [editingEvent, setEditingEvent] = useState(null)
-  const [formData, setFormData] = useState({
+  const initialFormState = {
     title: '',
     description: '',
     eventDate: '',
@@ -23,7 +17,16 @@ const EventsManagement = () => {
     registrationRequired: false,
     registrationDeadline: '',
     isPublished: true,
-  })
+  }
+
+  const [events, setEvents] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [showForm, setShowForm] = useState(false)
+  const [showProposals, setShowProposals] = useState(false)
+  const [editingEvent, setEditingEvent] = useState(null)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [formData, setFormData] = useState(initialFormState)
 
   // Load all events
   const loadEvents = async () => {
@@ -74,20 +77,10 @@ const EventsManagement = () => {
       }
       
       // Reset form and reload events
-      setFormData({
-        title: '',
-        description: '',
-        eventDate: '',
-        eventTime: '',
-        location: '',
-        eventType: 'seminar',
-        capacity: '',
-        registrationRequired: false,
-        registrationDeadline: '',
-        isPublished: true,
-      })
+      setFormData(initialFormState)
       setEditingEvent(null)
       setShowForm(false)
+      setShowEditModal(false)
       await loadEvents()
       
     } catch (err) {
@@ -118,7 +111,8 @@ const EventsManagement = () => {
       registrationDeadline: event.registration_deadline ? new Date(event.registration_deadline).toISOString().split('T')[0] : '',
       isPublished: event.is_published,
     })
-    setShowForm(true)
+    setShowForm(false)
+    setShowEditModal(true)
   }
 
   // Handle delete
@@ -138,22 +132,10 @@ const EventsManagement = () => {
 
   // Cancel editing
   const handleCancel = () => {
-    setFormData({
-      title: '',
-      description: '',
-      eventDate: '',
-      eventTime: '',
-      endDate: '',
-      endTime: '',
-      location: '',
-      eventType: 'seminar',
-      capacity: '',
-      registrationRequired: false,
-      registrationDeadline: '',
-      isPublished: true,
-    })
+    setFormData(initialFormState)
     setEditingEvent(null)
     setShowForm(false)
+    setShowEditModal(false)
     setError(null)
   }
 
@@ -202,6 +184,184 @@ const EventsManagement = () => {
     loadEvents()
   }, [])
 
+  const renderEventForm = (submitLabel) => (
+    <form onSubmit={handleSubmit} className={styles.eventForm}>
+      <div className={styles.formRow}>
+        <div className={styles.formGroup}>
+          <label htmlFor="title">Event Title *</label>
+          <input
+            type="text"
+            id="title"
+            value={formData.title}
+            onChange={(e) => setFormData({...formData, title: e.target.value})}
+            className={styles.formInput}
+            required
+          />
+        </div>
+
+        <div className={styles.formGroup}>
+          <label htmlFor="eventType">Event Type</label>
+          <select
+            id="eventType"
+            value={formData.eventType}
+            onChange={(e) => setFormData({...formData, eventType: e.target.value})}
+            className={styles.formSelect}
+          >
+            <option value="seminar">Seminar</option>
+            <option value="workshop">Workshop</option>
+            <option value="conference">Conference</option>
+            <option value="networking">Networking</option>
+            <option value="reunion">Reunion</option>
+            <option value="webinar">Webinar</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <div className={styles.formGroup}>
+        <label htmlFor="description">Description *</label>
+        <textarea
+          id="description"
+          value={formData.description}
+          onChange={(e) => setFormData({...formData, description: e.target.value})}
+          className={styles.formTextarea}
+          rows="4"
+          required
+        />
+      </div>
+
+      <div className={styles.formRow}>
+        <div className={styles.formGroup}>
+          <label htmlFor="eventDate">Start Date *</label>
+          <input
+            type="date"
+            id="eventDate"
+            value={formData.eventDate}
+            onChange={(e) => setFormData({...formData, eventDate: e.target.value})}
+            className={styles.formInput}
+            required
+          />
+        </div>
+
+        <div className={styles.formGroup}>
+          <label htmlFor="eventTime">Start Time</label>
+          <input
+            type="time"
+            id="eventTime"
+            value={formData.eventTime}
+            onChange={(e) => setFormData({...formData, eventTime: e.target.value})}
+            className={styles.formInput}
+          />
+        </div>
+      </div>
+
+      <div className={styles.formRow}>
+        <div className={styles.formGroup}>
+          <label htmlFor="endDate">End Date *</label>
+          <input
+            type="date"
+            id="endDate"
+            value={formData.endDate}
+            onChange={(e) => setFormData({...formData, endDate: e.target.value})}
+            className={styles.formInput}
+            required
+          />
+        </div>
+
+        <div className={styles.formGroup}>
+          <label htmlFor="endTime">End Time</label>
+          <input
+            type="time"
+            id="endTime"
+            value={formData.endTime}
+            onChange={(e) => setFormData({...formData, endTime: e.target.value})}
+            className={styles.formInput}
+          />
+        </div>
+      </div>
+
+      <div className={styles.formRow}>
+        <div className={styles.formGroup}>
+          <label htmlFor="location">Location</label>
+          <input
+            type="text"
+            id="location"
+            value={formData.location}
+            onChange={(e) => setFormData({...formData, location: e.target.value})}
+            className={styles.formInput}
+            placeholder="Venue or online link"
+          />
+        </div>
+
+        <div className={styles.formGroup}>
+          <label htmlFor="capacity">Capacity</label>
+          <input
+            type="number"
+            id="capacity"
+            value={formData.capacity}
+            onChange={(e) => setFormData({...formData, capacity: e.target.value})}
+            className={styles.formInput}
+            placeholder="Max attendees"
+            min="1"
+          />
+        </div>
+      </div>
+
+      <div className={styles.formRow}>
+        <div className={styles.formGroup}>
+          <label className={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              checked={formData.registrationRequired}
+              onChange={(e) => setFormData({...formData, registrationRequired: e.target.checked})}
+            />
+            Registration Required
+          </label>
+        </div>
+
+        {formData.registrationRequired && (
+          <div className={styles.formGroup}>
+            <label htmlFor="registrationDeadline">Registration Deadline</label>
+            <input
+              type="date"
+              id="registrationDeadline"
+              value={formData.registrationDeadline}
+              onChange={(e) => setFormData({...formData, registrationDeadline: e.target.value})}
+              className={styles.formInput}
+            />
+          </div>
+        )}
+      </div>
+
+      <div className={styles.formGroup}>
+        <label className={styles.checkboxLabel}>
+          <input
+            type="checkbox"
+            checked={formData.isPublished}
+            onChange={(e) => setFormData({...formData, isPublished: e.target.checked})}
+          />
+            Publish immediately
+        </label>
+      </div>
+
+      <div className={styles.formGroup}>
+        <label>Event Image</label>
+        <button type="button" className={styles.placeholderButton} disabled>
+          Upload Image (Coming Soon)
+        </button>
+      </div>
+
+      <div className={styles.formActions}>
+        <button type="submit" className={styles.submitButton}>
+          {submitLabel}
+        </button>
+        <button type="button" onClick={handleCancel} className={styles.cancelButton}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  )
+
   return (
     <div className={styles.contentManagement}>
       <div className={styles.pageHeader}>
@@ -209,7 +369,13 @@ const EventsManagement = () => {
         <div className={styles.headerActions}>
           <button
             className={styles.primaryButton}
-            onClick={() => { setShowForm(!showForm); setShowProposals(false); }}
+            onClick={() => {
+              setEditingEvent(null)
+              setFormData(initialFormState)
+              setShowEditModal(false)
+              setShowForm(!showForm)
+              setShowProposals(false)
+            }}
           >
             {showForm ? 'Cancel' : 'Add Event'}
           </button>
@@ -234,181 +400,7 @@ const EventsManagement = () => {
       {showForm && (
         <div className={styles.formContainer}>
           <h3>{editingEvent ? 'Edit Event' : 'Create Event'}</h3>
-          <form onSubmit={handleSubmit} className={styles.eventForm}>
-            <div className={styles.formRow}>
-              <div className={styles.formGroup}>
-                <label htmlFor="title">Event Title *</label>
-                <input
-                  type="text"
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  className={styles.formInput}
-                  required
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label htmlFor="eventType">Event Type</label>
-                <select
-                  id="eventType"
-                  value={formData.eventType}
-                  onChange={(e) => setFormData({...formData, eventType: e.target.value})}
-                  className={styles.formSelect}
-                >
-                  <option value="seminar">Seminar</option>
-                  <option value="workshop">Workshop</option>
-                  <option value="conference">Conference</option>
-                  <option value="networking">Networking</option>
-                  <option value="reunion">Reunion</option>
-                  <option value="webinar">Webinar</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-            </div>
-
-            <div className={styles.formGroup}>
-              <label htmlFor="description">Description *</label>
-              <textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                className={styles.formTextarea}
-                rows="4"
-                required
-              />
-            </div>
-
-            <div className={styles.formRow}>
-              <div className={styles.formGroup}>
-                <label htmlFor="eventDate">Start Date *</label>
-                <input
-                  type="date"
-                  id="eventDate"
-                  value={formData.eventDate}
-                  onChange={(e) => setFormData({...formData, eventDate: e.target.value})}
-                  className={styles.formInput}
-                  required
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label htmlFor="eventTime">Start Time</label>
-                <input
-                  type="time"
-                  id="eventTime"
-                  value={formData.eventTime}
-                  onChange={(e) => setFormData({...formData, eventTime: e.target.value})}
-                  className={styles.formInput}
-                />
-              </div>
-            </div>
-
-            <div className={styles.formRow}>
-              <div className={styles.formGroup}>
-                <label htmlFor="endDate">End Date *</label>
-                <input
-                  type="date"
-                  id="endDate"
-                  value={formData.endDate}
-                  onChange={(e) => setFormData({...formData, endDate: e.target.value})}
-                  className={styles.formInput}
-                  required
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label htmlFor="endTime">End Time</label>
-                <input
-                  type="time"
-                  id="endTime"
-                  value={formData.endTime}
-                  onChange={(e) => setFormData({...formData, endTime: e.target.value})}
-                  className={styles.formInput}
-                />
-              </div>
-            </div>
-
-            <div className={styles.formRow}>
-              <div className={styles.formGroup}>
-                <label htmlFor="location">Location</label>
-                <input
-                  type="text"
-                  id="location"
-                  value={formData.location}
-                  onChange={(e) => setFormData({...formData, location: e.target.value})}
-                  className={styles.formInput}
-                  placeholder="Venue or online link"
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label htmlFor="capacity">Capacity</label>
-                <input
-                  type="number"
-                  id="capacity"
-                  value={formData.capacity}
-                  onChange={(e) => setFormData({...formData, capacity: e.target.value})}
-                  className={styles.formInput}
-                  placeholder="Max attendees"
-                  min="1"
-                />
-              </div>
-            </div>
-
-            <div className={styles.formRow}>
-              <div className={styles.formGroup}>
-                <label className={styles.checkboxLabel}>
-                  <input
-                    type="checkbox"
-                    checked={formData.registrationRequired}
-                    onChange={(e) => setFormData({...formData, registrationRequired: e.target.checked})}
-                  />
-                  Registration Required
-                </label>
-              </div>
-
-              {formData.registrationRequired && (
-                <div className={styles.formGroup}>
-                  <label htmlFor="registrationDeadline">Registration Deadline</label>
-                  <input
-                    type="date"
-                    id="registrationDeadline"
-                    value={formData.registrationDeadline}
-                    onChange={(e) => setFormData({...formData, registrationDeadline: e.target.value})}
-                    className={styles.formInput}
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className={styles.formGroup}>
-              <label className={styles.checkboxLabel}>
-                <input
-                  type="checkbox"
-                  checked={formData.isPublished}
-                  onChange={(e) => setFormData({...formData, isPublished: e.target.checked})}
-                />
-                Publish immediately
-              </label>
-            </div>
-
-            <div className={styles.formGroup}>
-              <label>Event Image</label>
-              <button type="button" className={styles.placeholderButton} disabled>
-                Upload Image (Coming Soon)
-              </button>
-            </div>
-
-            <div className={styles.formActions}>
-              <button type="submit" className={styles.submitButton}>
-                {editingEvent ? 'Update Event' : 'Create Event'}
-              </button>
-              <button type="button" onClick={handleCancel} className={styles.cancelButton}>
-                Cancel
-              </button>
-            </div>
-          </form>
+          {renderEventForm(editingEvent ? 'Update Event' : 'Create Event')}
         </div>
       )}
 
@@ -543,6 +535,31 @@ const EventsManagement = () => {
                 </table>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div className={styles.modalBackdrop} onClick={handleCancel}>
+          <div
+            className={styles.modalContent}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={styles.modalHeader}>
+              <div>
+                <p className={styles.eyebrow}>Edit</p>
+                <h3>Edit Event</h3>
+              </div>
+              <button
+                type="button"
+                className={styles.modalCloseButton}
+                onClick={handleCancel}
+              >
+                ×
+              </button>
+            </div>
+            {renderEventForm('Update Event')}
           </div>
         </div>
       )}
