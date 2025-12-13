@@ -484,14 +484,28 @@ router.post("/conversation/:userId/start", authenticate, async (req, res) => {
  */
 router.post('/public-key', authenticate, async (req, res) => {
   try {
-    const { publicKey } = req.body;
+    const { publicKey, encryptedPrivateKey } = req.body;
     if (!publicKey) {
       return res.status(400).json({ success: false, message: 'publicKey required' });
     }
-    const record = await PublicKey.upsert(req.user.id, publicKey);
+    const record = await PublicKey.upsert(req.user.id, publicKey, encryptedPrivateKey);
     res.json({ success: true, data: record });
   } catch (err) {
     console.error('public-key save error', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Get current user's own keys (includes encrypted private key)
+router.get('/public-key', authenticate, async (req, res) => {
+  try {
+    const record = await PublicKey.findByUserId(req.user.id);
+    if (!record) {
+      return res.status(404).json({ success: false, message: 'Public key not found. Please generate keys first.' });
+    }
+    res.json({ success: true, data: record });
+  } catch (err) {
+    console.error('public-key fetch error', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

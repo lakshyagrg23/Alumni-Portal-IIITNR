@@ -68,23 +68,72 @@ const Messages = () => {
       let publicKeyBase64 = null
       
       try {
-        const storedPriv = localStorage.getItem('e2e_priv_jwk')
-        const storedPub = localStorage.getItem('e2e_pub_raw')
+        // Priority 1: Check sessionStorage (current session, works across devices if password entered)
+        let storedPriv = sessionStorage.getItem('e2e_priv_jwk')
+        let storedPub = sessionStorage.getItem('e2e_pub_raw')
+        
+        // Priority 2: Check localStorage (persistent, device-specific)
+        if (!storedPriv || !storedPub) {
+          storedPriv = localStorage.getItem('e2e_priv_jwk')
+          storedPub = localStorage.getItem('e2e_pub_raw')
+          
+          // If found in localStorage, also store in sessionStorage for faster access
+          if (storedPriv && storedPub) {
+            sessionStorage.setItem('e2e_priv_jwk', storedPriv)
+            sessionStorage.setItem('e2e_pub_raw', storedPub)
+          }
+        }
+        
+        // Priority 3: Try to fetch encrypted private key from server
+        if (!storedPriv || !storedPub) {
+          try {
+            console.log('[Messages] Keys not found locally, fetching from server...')
+            const resp = await axios.get(`${API}/messages/public-key`, { 
+              headers: { Authorization: `Bearer ${token}` }
+            })
+            
+            if (resp.data?.data?.encrypted_private_key) {
+              // Prompt user for password to decrypt
+              const password = prompt('Enter your password to decrypt your messages:')
+              if (!password) {
+                throw new Error('Password required to access encrypted messages')
+              }
+              
+              const encryptedData = JSON.parse(resp.data.data.encrypted_private_key)
+              storedPriv = await crypto.decryptPrivateKeyWithPassword(encryptedData, password)
+              storedPub = resp.data.data.public_key
+              
+              // Store in both sessionStorage (temporary) and localStorage (backup)
+              sessionStorage.setItem('e2e_priv_jwk', storedPriv)
+              sessionStorage.setItem('e2e_pub_raw', storedPub)
+              localStorage.setItem('e2e_priv_jwk', storedPriv)
+              localStorage.setItem('e2e_pub_raw', storedPub)
+              
+              console.log('✅ Keys decrypted and loaded from server')
+            }
+          } catch (fetchErr) {
+            console.warn('Failed to fetch keys from server:', fetchErr?.message || fetchErr)
+          }
+        }
+        
         if (storedPriv && storedPub) {
           const privateKey = await crypto.importPrivateKey(storedPriv)
           const publicKey = await crypto.importPublicKey(storedPub)
           kp = { privateKey, publicKey }
           publicKeyBase64 = storedPub // Use stored public key for upload
         } else {
+          // Generate new keys as last resort
           kp = await crypto.generateKeyPair()
           const pub = await crypto.exportPublicKey(kp.publicKey)
           const priv = await crypto.exportPrivateKey(kp.privateKey)
           publicKeyBase64 = pub
           try {
+            sessionStorage.setItem('e2e_pub_raw', pub)
+            sessionStorage.setItem('e2e_priv_jwk', priv)
             localStorage.setItem('e2e_pub_raw', pub)
             localStorage.setItem('e2e_priv_jwk', priv)
           } catch (e) {
-            console.warn('Failed to persist keys in localStorage', e)
+            console.warn('Failed to persist keys in storage', e)
           }
         }
         
