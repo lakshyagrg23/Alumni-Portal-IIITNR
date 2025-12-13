@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@hooks/useAuth'
 import { authService } from '../services/authService'
 import axios from 'axios'
+import AutocompleteInput from '../components/common/AutocompleteInput'
 import styles from './ProfileNew.module.css'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'
@@ -280,6 +281,26 @@ const Profile = () => {
       careerGoals: prev.careerGoals.includes(goal)
         ? prev.careerGoals.filter(g => g !== goal)
         : [...prev.careerGoals, goal]
+    }))
+  }
+
+  // When a city suggestion is chosen, split "City, State, Country" into the right fields.
+  const handleLocationSelect = (locationString) => {
+    const parts = locationString.split(',').map(part => part.trim()).filter(Boolean)
+
+    setProfileData(prev => ({
+      ...prev,
+      currentCity: parts[0] || '',
+      currentState: parts[1] || '',
+      currentCountry: parts[2] || prev.currentCountry || 'India',
+    }))
+
+    // Clear any validation errors once the fields are set from a suggestion.
+    setErrors(prev => ({
+      ...prev,
+      currentCity: '',
+      currentState: '',
+      currentCountry: '',
     }))
   }
 
@@ -581,13 +602,14 @@ const Profile = () => {
                       <label htmlFor="currentCity">
                         City <span className={styles.required}>*</span>
                       </label>
-                      <input
-                        type="text"
+                      <AutocompleteInput
                         id="currentCity"
                         name="currentCity"
                         value={profileData.currentCity}
                         onChange={handleInputChange}
-                        placeholder="e.g., Bangalore"
+                        onSelect={handleLocationSelect}
+                        apiEndpoint="cities"
+                        placeholder="Start typing city... (e.g., Bangalore, Karnataka, India)"
                         className={errors.currentCity ? styles.inputError : ''}
                       />
                       {errors.currentCity && (
@@ -663,13 +685,13 @@ const Profile = () => {
                           <label htmlFor="currentCompany">
                             Company Name <span className={styles.required}>*</span>
                           </label>
-                          <input
-                            type="text"
+                          <AutocompleteInput
                             id="currentCompany"
                             name="currentCompany"
                             value={profileData.currentCompany}
                             onChange={handleInputChange}
-                            placeholder="e.g., Google, Microsoft"
+                            apiEndpoint="companies"
+                            placeholder="Start typing company... (e.g., Google, Microsoft)"
                             className={errors.currentCompany ? styles.inputError : ''}
                           />
                           {errors.currentCompany && (
@@ -704,13 +726,13 @@ const Profile = () => {
                           <label htmlFor="currentCompany">
                             Company/Venture Name <span className={styles.required}>*</span>
                           </label>
-                          <input
-                            type="text"
+                          <AutocompleteInput
                             id="currentCompany"
                             name="currentCompany"
                             value={profileData.currentCompany}
                             onChange={handleInputChange}
-                            placeholder="e.g., Your Startup Name"
+                            apiEndpoint="companies"
+                            placeholder="Start typing company/venture name..."
                             className={errors.currentCompany ? styles.inputError : ''}
                           />
                           {errors.currentCompany && (

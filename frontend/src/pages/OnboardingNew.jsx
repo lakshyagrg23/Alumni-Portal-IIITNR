@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async'
 import { useAuth } from '@hooks/useAuth'
 import { authService } from '../services/authService'
 import axios from 'axios'
+import AutocompleteInput from '../components/common/AutocompleteInput'
 import styles from './OnboardingNew.module.css'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'
@@ -250,6 +251,25 @@ const OnboardingNew = () => {
       careerGoals: prev.careerGoals.includes(goal)
         ? prev.careerGoals.filter(g => g !== goal)
         : [...prev.careerGoals, goal]
+    }))
+  }
+
+  // Split a selected city suggestion into city/state/country fields.
+  const handleLocationSelect = (locationString) => {
+    const parts = locationString.split(',').map(part => part.trim()).filter(Boolean)
+
+    setFormData(prev => ({
+      ...prev,
+      currentCity: parts[0] || '',
+      currentState: parts[1] || '',
+      currentCountry: parts[2] || prev.currentCountry || 'India',
+    }))
+
+    setErrors(prev => ({
+      ...prev,
+      currentCity: '',
+      currentState: '',
+      currentCountry: '',
     }))
   }
 
@@ -505,12 +525,13 @@ const OnboardingNew = () => {
                   
                   <div className={styles.inputGrid}>
                     <div>
-                      <input
-                        type="text"
+                      <AutocompleteInput
                         name="currentCity"
                         value={formData.currentCity}
                         onChange={handleInputChange}
-                        placeholder="City"
+                        onSelect={handleLocationSelect}
+                        apiEndpoint="cities"
+                        placeholder="Start typing city... (e.g., Bangalore, Karnataka, India)"
                         className={errors.currentCity ? styles.inputError : ''}
                       />
                       {errors.currentCity && (
@@ -570,12 +591,16 @@ const OnboardingNew = () => {
                     formData.employmentStatus === 'Self-employed' ||
                     formData.employmentStatus === 'Entrepreneur') && (
                     <div className={styles.conditionalFields}>
-                      <input
-                        type="text"
+                      <AutocompleteInput
                         name="currentCompany"
                         value={formData.currentCompany}
                         onChange={handleInputChange}
-                        placeholder={formData.employmentStatus === 'Self-employed' || formData.employmentStatus === 'Entrepreneur' ? 'Company/Venture Name' : 'Company Name'}
+                        apiEndpoint="companies"
+                        placeholder={
+                          formData.employmentStatus === 'Self-employed' || formData.employmentStatus === 'Entrepreneur'
+                            ? 'Start typing company/venture name...'
+                            : 'Start typing company name...'
+                        }
                         className={errors.currentCompany ? styles.inputError : ''}
                       />
                       {errors.currentCompany && (

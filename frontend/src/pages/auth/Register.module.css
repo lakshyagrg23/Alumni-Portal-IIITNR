@@ -262,6 +262,21 @@
   line-height: 1.6;
 }
 
+/* Info box styling */
+.infoBox {
+  background-color: #e3f2fd;
+  border: 1px solid #90caf9;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  color: #1565c0;
+  line-height: 1.6;
+}
+
+.infoBox p {
+  margin: 0.5rem 0;
+}
+
 .infoText {
   font-size: 0.9rem;
   color: #666;

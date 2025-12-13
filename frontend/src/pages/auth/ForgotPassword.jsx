@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { authService } from '../../services/authService';
 import toast from 'react-hot-toast';
@@ -46,80 +47,87 @@ const ForgotPassword = () => {
 
   if (emailSent) {
     return (
-      <div className={styles.authPage}>
-        <div className={styles.authCard}>
-          <div className={styles.header}>
-            <h2>Check Your Email 📧</h2>
-            <p className={styles.subtitle}>
-              If an account exists with {email}, we've sent a password reset link.
-            </p>
-          </div>
+      <>
+        <Helmet>
+          <title>Check Your Email - IIIT Naya Raipur Alumni Portal</title>
+        </Helmet>
+        <div className={styles.registerContainer}>
+          <div className={styles.registerCard}>
+            <div className={styles.headerSection}>
+              <img src="/iiit-logo.png" alt="IIIT-NR Logo" className={styles.logo} />
+              <h1 className={styles.title}>Check Your Email</h1>
+              <p className={styles.subtitle}>
+                If an account exists with <strong>{email}</strong>, we've sent a password reset link.
+              </p>
+            </div>
 
-          <div className={styles.successMessage}>
-            <p>Please check your email inbox and click on the reset link.</p>
-            <p className={styles.infoText}>
-              The link will expire in 1 hour for security reasons.
-            </p>
-            <p className={styles.infoText}>
-              Don't see the email? Check your spam folder.
-            </p>
-          </div>
+            <div className={styles.infoBox}>
+              <p>Please check your email inbox and click on the reset link.</p>
+              <p className={styles.infoText}>
+                The link will expire in 1 hour for security reasons.
+              </p>
+              <p className={styles.infoText}>
+                Don't see the email? Check your spam folder.
+              </p>
+            </div>
 
-          <div className={styles.formFooter}>
-            <Link to="/login" className={styles.backToLogin}>
-              ← Back to Login
-            </Link>
+            <div className={styles.footerText}>
+              <Link to="/login" className={styles.link}>
+                ← Back to Login
+              </Link>
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className={styles.authPage}>
-      <div className={styles.authCard}>
-        <div className={styles.header}>
-          <h2>Forgot Password? 🔒</h2>
-          <p className={styles.subtitle}>
-            Enter your email address and we'll send you a link to reset your password.
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className={styles.form}>
-          <div className={styles.formGroup}>
-            <label htmlFor="email">Email Address</label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your registered email"
-              required
-              className={styles.input}
-              autoFocus
-            />
+    <>
+      <Helmet>
+        <title>Forgot Password - IIIT Naya Raipur Alumni Portal</title>
+      </Helmet>
+      <div className={styles.registerContainer}>
+        <div className={styles.registerCard}>
+          <div className={styles.headerSection}>
+            <img src="/iiit-logo.png" alt="IIIT-NR Logo" className={styles.logo} />
+            <h1 className={styles.title}>Reset Your Password</h1>
+            <p className={styles.subtitle}>
+              Enter your email address and we'll send you a link to reset your password.
+            </p>
           </div>
 
-          <button
-            type="submit"
-            className={styles.submitButton}
-            disabled={loading}
-          >
-            {loading ? (
-              <span className={styles.loadingText}>Sending...</span>
-            ) : (
-              'Send Reset Link'
-            )}
-          </button>
+          <form onSubmit={handleSubmit} className={styles.form}>
+            <div className={styles.inputGroup}>
+              <label htmlFor="email">Email Address</label>
+              <input
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your registered email"
+                required
+                autoFocus
+              />
+            </div>
 
-          <div className={styles.formFooter}>
-            <Link to="/login" className={styles.backToLogin}>
+            <button
+              type="submit"
+              className={styles.submitButton}
+              disabled={loading}
+            >
+              {loading ? 'Sending...' : 'Send Reset Link'}
+            </button>
+          </form>
+
+          <div className={styles.footerText}>
+            <Link to="/login" className={styles.link}>
               ← Back to Login
             </Link>
           </div>
-        </form>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

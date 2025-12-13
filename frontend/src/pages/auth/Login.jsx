@@ -163,9 +163,6 @@ const Login = () => {
               {isSubmitting ? 'Signing In...' : 'Sign In'}
             </button>
           </form>
-          <div style={{ marginTop: 10, textAlign: 'center', fontSize: 12 }}>
-            <Link to="/forgot-password" className={styles.link}>Forgot your password?</Link>
-          </div>
           <div className={styles.footerText}>
             Don't have an account?{' '}
             <Link to="/register" className={styles.link}>
