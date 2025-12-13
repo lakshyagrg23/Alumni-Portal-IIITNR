@@ -206,10 +206,8 @@ router.post("/", async (req, res) => {
       githubUrl: profileData.github_url,
       interests: profileData.interests || [],
       workExperienceYears: profileData.work_experience_years || 0,
-      isProfilePublic:
-        profileData.is_profile_public !== undefined
-          ? profileData.is_profile_public
-          : true,
+      // Profiles are always public
+      isProfilePublic: true,
       showContactInfo:
         profileData.show_contact_info !== undefined
           ? profileData.show_contact_info

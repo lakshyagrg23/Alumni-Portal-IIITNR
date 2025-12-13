@@ -40,9 +40,6 @@ const ProfileCompletion = () => {
     currently_at: '', // Company or University name
     current_position: '',
     current_city: '',
-    
-    // Privacy (always true; not user editable)
-    is_profile_public: true,
   })
 
   // Fetch onboarding pre-fill data on component mount
@@ -131,11 +128,12 @@ const ProfileCompletion = () => {
   }, [])
 
   const employmentStatusOptions = [
-    { value: 'Employed', label: 'Employed' },
-    { value: 'Higher Studies', label: 'Higher Studies' },
-    { value: 'Entrepreneur', label: 'Entrepreneur' },
+    { value: 'Employed Full-time', label: 'Employed Full-time' },
+    { value: 'Self-Employed / Entrepreneur', label: 'Self-Employed / Entrepreneur' },
+    { value: 'Freelancing / Consulting', label: 'Freelancing / Consulting' },
+    { value: 'Pursuing Higher Education', label: 'Pursuing Higher Education' },
     { value: 'Looking for Opportunities', label: 'Looking for Opportunities' },
-    { value: 'Other', label: 'Other' },
+    { value: 'Career Break', label: 'Career Break' },
   ]
 
   const degreeOptions = ['B.Tech', 'M.Tech', 'PhD', 'Integrated M.Tech']
@@ -153,7 +151,8 @@ const ProfileCompletion = () => {
   const showCurrentOrgField =
     !isFutureGraduation &&
     formData.employment_status &&
-    formData.employment_status !== 'Looking for Opportunities'
+    formData.employment_status !== 'Looking for Opportunities' &&
+    formData.employment_status !== 'Career Break'
 
   // If graduation year is in the future, clear and hide current status fields
   useEffect(() => {
@@ -217,8 +216,8 @@ const ProfileCompletion = () => {
       if (!formData.employment_status) {
         newErrors.employment_status = 'Current status is required'
       }
-      const requiresPosition = formData.employment_status === 'Employed' || formData.employment_status === 'Entrepreneur'
-      const requiresProgram = formData.employment_status === 'Higher Studies'
+      const requiresPosition = formData.employment_status === 'Employed Full-time' || formData.employment_status === 'Self-Employed / Entrepreneur' || formData.employment_status === 'Freelancing / Consulting'
+      const requiresProgram = formData.employment_status === 'Pursuing Higher Education'
       if (requiresPosition && !formData.current_position.trim()) {
         newErrors.current_position = 'Current position is required'
       }
@@ -248,8 +247,8 @@ const ProfileCompletion = () => {
       setLoading(true)
       
       // Prepare profile data based on employment status
-      const isEmployed = formData.employment_status === 'Employed' || formData.employment_status === 'Entrepreneur'
-      const isStudying = formData.employment_status === 'Higher Studies'
+      const isEmployed = formData.employment_status === 'Employed Full-time' || formData.employment_status === 'Self-Employed / Entrepreneur' || formData.employment_status === 'Freelancing / Consulting'
+      const isStudying = formData.employment_status === 'Pursuing Higher Education'
       const currentPosition = formData.current_position?.trim()
       
       const profileData = {
@@ -260,11 +259,10 @@ const ProfileCompletion = () => {
         degree: formData.degree,
         branch: formData.branch,
         graduationYear: parseInt(formData.graduation_year),
-        isProfilePublic: formData.is_profile_public,
+        isProfilePublic: true,
       
         // Set defaults for optional fields
         interests: [],
-        skills: [],
         showContactInfo: false,
         showWorkInfo: true,
         showAcademicInfo: true,
@@ -278,7 +276,9 @@ const ProfileCompletion = () => {
         // Conditionally set company or university based on status
         if (isEmployed) {
           profileData.currentCompany = formData.currently_at
-          profileData.currentPosition = currentPosition || (formData.employment_status === 'Entrepreneur' ? 'Founder' : null)
+          profileData.currentPosition = currentPosition || (formData.employment_status === 'Self-Employed / Entrepreneur' ? 'Founder' : null)
+          // Also map to canonical title field used in newer schema
+          profileData.currentJobTitle = profileData.currentPosition
         } else if (isStudying) {
           profileData.higherStudyInstitution = formData.currently_at
           profileData.higherStudyProgram = currentPosition || null
@@ -544,7 +544,7 @@ const ProfileCompletion = () => {
                 {showCurrentOrgField && (
                   <div className={styles.formGroup}>
                     <label htmlFor="currently_at">
-                      {formData.employment_status === 'Higher Studies' 
+                      {formData.employment_status === 'Pursuing Higher Education' 
                         ? 'University/Institution Name *' 
                         : formData.employment_status === 'Employed' || formData.employment_status === 'Entrepreneur'
                         ? 'Company Name *'

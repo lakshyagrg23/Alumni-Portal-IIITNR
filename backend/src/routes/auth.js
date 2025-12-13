@@ -1678,6 +1678,7 @@ router.put("/profile", authenticate, async (req, res) => {
       "expectedCompletionYear",
       "currentEmployer",
       "currentJobTitle",
+      "currentPosition", // Maps to current_job_title (same as currentJobTitle)
       "industrySector",
       "jobLocation",
       "jobStartYear",
@@ -1702,7 +1703,6 @@ router.put("/profile", authenticate, async (req, res) => {
       "hometownState",
       "bio",
       "interests",
-      "isProfilePublic",
       "showContactInfo",
       "showWorkInfo",
       "showAcademicInfo",
@@ -1806,7 +1806,10 @@ router.put("/profile", authenticate, async (req, res) => {
         const { default: AlumniProfile } = await import(
           "../models/AlumniProfile.js"
         );
-        await AlumniProfile.update(existingProfile.rows[0].id, normalizedAlumniData);
+        await AlumniProfile.update(
+          existingProfile.rows[0].id,
+          normalizedAlumniData
+        );
         console.log("Profile updated successfully");
       } else {
         // Create new profile

@@ -147,7 +147,7 @@ const AlumniDirectory = () => {
             <div className={styles.searchGroup}>
               <input
                 type="text"
-                placeholder="Search by name, company, or skills..."
+                placeholder="Search by name, company, role, industry, or interests..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className={styles.searchInput}

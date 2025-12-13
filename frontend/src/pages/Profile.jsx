@@ -112,7 +112,7 @@ const Profile = () => {
           interests: Array.isArray(alumni?.interests) 
             ? alumni.interests.join(', ') 
             : alumni?.interests || '',
-          isProfilePublic: alumni.isProfilePublic ?? alumni.is_profile_public ?? true,
+          isProfilePublic: true,
         }
         
         console.log('Setting new profile data:', newProfileData)
@@ -243,6 +243,8 @@ const Profile = () => {
           updateData[field] = [];
         }
       });
+      // Profiles are always public
+      updateData.isProfilePublic = true;
       
       console.log('Data being sent to API:', updateData)
       
@@ -367,12 +369,6 @@ const Profile = () => {
               onClick={() => setActiveTab('social')}
             >
               Social & Links
-            </button>
-            <button 
-              className={`${styles.tab} ${activeTab === 'privacy' ? styles.active : ''}`}
-              onClick={() => setActiveTab('privacy')}
-            >
-              Privacy
             </button>
           </div>
 
@@ -637,29 +633,6 @@ const Profile = () => {
                     className={errors.portfolioUrl ? styles.error : ''}
                   />
                   {errors.portfolioUrl && <span className={styles.errorText}>{errors.portfolioUrl}</span>}
-                </div>
-              </div>
-            )}
-
-            {/* Privacy Tab */}
-            {activeTab === 'privacy' && (
-              <div className={styles.tabContent}>
-                <h3>Privacy & Visibility Settings</h3>
-                
-                <div className={styles.checkboxGroup}>
-                  <label className={styles.checkboxLabel}>
-                    <input
-                      type="checkbox"
-                      name="isProfilePublic"
-                      checked={profileData.isProfilePublic}
-                      onChange={handleInputChange}
-                    />
-                    <span className={styles.checkmark}></span>
-                    Make my profile visible in the alumni directory
-                  </label>
-                  <p className={styles.helpText}>
-                    When enabled, other alumni can discover and view your profile in the directory.
-                  </p>
                 </div>
               </div>
             )}

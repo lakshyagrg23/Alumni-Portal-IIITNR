@@ -175,7 +175,6 @@ class AlumniProfile {
       hometown_state: hometownState,
       bio,
       interests,
-      is_profile_public: isProfilePublic,
       show_contact_info: showContactInfo,
       show_work_info: showWorkInfo,
       show_academic_info: showAcademicInfo,
@@ -329,12 +328,17 @@ class AlumniProfile {
       paramIndex++;
     }
 
-    // Search in name, company, or skills
+    // Search in name, company, title, industry, or professional interests
     if (search) {
       whereConditions.push(`(
         LOWER(ap.first_name || ' ' || ap.last_name) LIKE LOWER($${paramIndex}) OR
-        LOWER(ap.current_company) LIKE LOWER($${paramIndex}) OR
-        EXISTS (SELECT 1 FROM unnest(ap.skills) AS skill WHERE LOWER(skill) LIKE LOWER($${paramIndex}))
+        LOWER(COALESCE(ap.current_employer, ap.current_company, '')) LIKE LOWER($${paramIndex}) OR
+        LOWER(COALESCE(ap.current_job_title, ap.current_position, '')) LIKE LOWER($${paramIndex}) OR
+        LOWER(COALESCE(ap.industry_sector, ap.industry, '')) LIKE LOWER($${paramIndex}) OR
+        EXISTS (
+          SELECT 1 FROM unnest(COALESCE(ap.professional_interests, '{}')) AS interest 
+          WHERE LOWER(interest) LIKE LOWER($${paramIndex})
+        )
       )`);
       queryParams.push(`%${search}%`);
       paramIndex++;
@@ -375,14 +379,18 @@ class AlumniProfile {
 
     // Filter by industry
     if (industry) {
-      whereConditions.push(`LOWER(ap.industry) = LOWER($${paramIndex})`);
+      whereConditions.push(
+        `LOWER(COALESCE(ap.industry_sector, ap.industry, '')) = LOWER($${paramIndex})`
+      );
       queryParams.push(industry);
       paramIndex++;
     }
 
     // Filter by company
     if (company) {
-      whereConditions.push(`LOWER(ap.current_company) = LOWER($${paramIndex})`);
+      whereConditions.push(
+        `LOWER(COALESCE(ap.current_employer, ap.current_company, '')) = LOWER($${paramIndex})`
+      );
       queryParams.push(company);
       paramIndex++;
     }
@@ -568,9 +576,9 @@ class AlumniProfile {
    * @param {string} searchQuery - Search query
    * @returns {Promise<Array<string>>}
    */
-  static async getUniqueCompanies(searchQuery = '') {
+  static async getUniqueCompanies(searchQuery = "") {
     const searchPattern = `%${searchQuery.toLowerCase()}%`;
-    
+
     const sql = `
       SELECT DISTINCT 
         INITCAP(TRIM(current_employer)) as company,
@@ -584,9 +592,9 @@ class AlumniProfile {
       ORDER BY usage_count DESC, company ASC
       LIMIT 20
     `;
-    
+
     const result = await query(sql, [searchPattern]);
-    return result.rows.map(row => row.company);
+    return result.rows.map((row) => row.company);
   }
 
   /**
@@ -595,9 +603,9 @@ class AlumniProfile {
    * @param {string} searchQuery - Search query
    * @returns {Promise<Array<string>>}
    */
-  static async getUniqueCities(searchQuery = '') {
+  static async getUniqueCities(searchQuery = "") {
     const searchPattern = `%${searchQuery.toLowerCase()}%`;
-    
+
     const sql = `
       SELECT DISTINCT
         INITCAP(TRIM(current_city)) as city,
@@ -616,14 +624,14 @@ class AlumniProfile {
       ORDER BY alumni_count DESC, city ASC
       LIMIT 20
     `;
-    
+
     const result = await query(sql, [searchPattern]);
-    
-    return result.rows.map(row => {
+
+    return result.rows.map((row) => {
       const parts = [row.city];
       if (row.state) parts.push(row.state);
       if (row.country) parts.push(row.country);
-      return parts.join(', ');
+      return parts.join(", ");
     });
   }
 
@@ -632,9 +640,9 @@ class AlumniProfile {
    * @param {string} searchQuery - Search query
    * @returns {Promise<Array<string>>}
    */
-  static async getUniqueIndustries(searchQuery = '') {
+  static async getUniqueIndustries(searchQuery = "") {
     const searchPattern = `%${searchQuery.toLowerCase()}%`;
-    
+
     const sql = `
       SELECT DISTINCT
         INITCAP(TRIM(industry_sector)) as industry,
@@ -648,9 +656,9 @@ class AlumniProfile {
       ORDER BY usage_count DESC, industry ASC
       LIMIT 20
     `;
-    
+
     const result = await query(sql, [searchPattern]);
-    return result.rows.map(row => row.industry);
+    return result.rows.map((row) => row.industry);
   }
 
   /**
@@ -658,9 +666,9 @@ class AlumniProfile {
    * @param {string} searchQuery - Search query
    * @returns {Promise<Array<string>>}
    */
-  static async getUniqueSkills(searchQuery = '') {
+  static async getUniqueSkills(searchQuery = "") {
     const searchPattern = `%${searchQuery.toLowerCase()}%`;
-    
+
     const sql = `
       SELECT DISTINCT
         INITCAP(TRIM(skill)) as skill,
@@ -676,9 +684,9 @@ class AlumniProfile {
       ORDER BY usage_count DESC, skill ASC
       LIMIT 20
     `;
-    
+
     const result = await query(sql, [searchPattern]);
-    return result.rows.map(row => row.skill);
+    return result.rows.map((row) => row.skill);
   }
 
   /**
@@ -686,9 +694,9 @@ class AlumniProfile {
    * @param {string} searchQuery - Search query
    * @returns {Promise<Array<string>>}
    */
-  static async getUniqueBranches(searchQuery = '') {
+  static async getUniqueBranches(searchQuery = "") {
     const searchPattern = `%${searchQuery.toLowerCase()}%`;
-    
+
     const sql = `
       SELECT DISTINCT
         INITCAP(TRIM(branch)) as branch,
@@ -702,9 +710,9 @@ class AlumniProfile {
       ORDER BY usage_count DESC, branch ASC
       LIMIT 20
     `;
-    
+
     const result = await query(sql, [searchPattern]);
-    return result.rows.map(row => row.branch);
+    return result.rows.map((row) => row.branch);
   }
 
   /**
@@ -724,7 +732,6 @@ class AlumniProfile {
       admissionYear: "admission_year",
       graduationYear: "graduation_year",
       currentCompany: "current_company",
-      currentPosition: "current_position",
       workExperienceYears: "work_experience_years",
       linkedinUrl: "linkedin_url",
       githubUrl: "github_url",
@@ -735,7 +742,6 @@ class AlumniProfile {
       currentCountry: "current_country",
       hometownCity: "hometown_city",
       hometownState: "hometown_state",
-      isProfilePublic: "is_profile_public",
       showContactInfo: "show_contact_info",
       showWorkInfo: "show_work_info",
       showAcademicInfo: "show_academic_info",
@@ -823,7 +829,6 @@ class AlumniProfile {
       admission_year: "admissionYear",
       graduation_year: "graduationYear",
       current_company: "currentCompany",
-      current_position: "currentPosition",
       work_experience_years: "workExperienceYears",
       linkedin_url: "linkedinUrl",
       github_url: "githubUrl",
@@ -834,7 +839,6 @@ class AlumniProfile {
       current_country: "currentCountry",
       hometown_city: "hometownCity",
       hometown_state: "hometownState",
-      is_profile_public: "isProfilePublic",
       show_contact_info: "showContactInfo",
       show_work_info: "showWorkInfo",
       show_academic_info: "showAcademicInfo",
@@ -854,6 +858,7 @@ class AlumniProfile {
       twitter_url: "twitterUrl",
       current_employer: "currentEmployer",
       current_job_title: "currentJobTitle",
+      current_position: "currentJobTitle", // Legacy alias
       industry_sector: "industrySector",
       job_location: "jobLocation",
       job_start_year: "jobStartYear",
@@ -886,6 +891,14 @@ class AlumniProfile {
     if (!apiData.currentCompany && apiData.currentEmployer) {
       apiData.currentCompany = apiData.currentEmployer;
     }
+
+    // Ensure currentPosition is populated from currentJobTitle (for frontend compatibility)
+    if (apiData.currentJobTitle && !apiData.currentPosition) {
+      apiData.currentPosition = apiData.currentJobTitle;
+    }
+
+    // All profiles are public by policy
+    apiData.isProfilePublic = true;
 
     return apiData;
   }
