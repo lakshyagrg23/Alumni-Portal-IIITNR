@@ -113,96 +113,127 @@ const AlumniDirectory = () => {
       </Helmet>
 
       <div className={styles.directoryContainer}>
-        <div className={styles.header}>
-          <h1 className={styles.title}>
-            {studentType === 'alumni' ? 'Alumni Directory' : 'Current Students'}
-          </h1>
-          <p className={styles.subtitle}>
-            {studentType === 'alumni' 
-              ? `Discover and connect with ${totalRecords} IIIT NR alumni worldwide`
-              : `View ${totalRecords} current IIIT NR students`
-            }
-          </p>
-          
-          {/* Toggle between Alumni and Current Students */}
-          <div className={styles.toggleContainer}>
-            <button
-              className={`${styles.toggleButton} ${studentType === 'alumni' ? styles.active : ''}`}
-              onClick={() => setStudentType('alumni')}
-            >
-              Alumni
-            </button>
-            <button
-              className={`${styles.toggleButton} ${studentType === 'current' ? styles.active : ''}`}
-              onClick={() => setStudentType('current')}
-            >
-              Current Students
-            </button>
+        <section className={styles.heroSection}>
+          <div className={styles.heroContent}>
+            <div className={styles.heroText}>
+              <p className={styles.eyebrow}>Connect and grow</p>
+              <h1 className={styles.title}>
+                {studentType === 'alumni' ? 'Alumni Directory' : 'Current Students'}
+              </h1>
+              <p className={styles.subtitle}>
+                {studentType === 'alumni' 
+                  ? `${totalRecords} alumni worldwide`
+                  : `${totalRecords} current students`
+                }
+              </p>
+              <div className={styles.heroStats}>
+                <div className={styles.statPill}>
+                  <span className={styles.statLabel}>Profiles</span>
+                  <span className={styles.statValue}>{totalRecords ?? '—'}</span>
+                </div>
+                <div className={styles.statPill}>
+                  <span className={styles.statLabel}>View mode</span>
+                  <span className={styles.statValue}>
+                    {studentType === 'alumni' ? 'Alumni' : 'Students'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className={styles.heroActions}>
+              <p className={styles.toggleLabel}>Choose a view</p>
+              
+              {/* Toggle between Alumni and Current Students */}
+              <div className={styles.toggleContainer}>
+                <button
+                  className={`${styles.toggleButton} ${studentType === 'alumni' ? styles.active : ''}`}
+                  onClick={() => setStudentType('alumni')}
+                >
+                  Alumni
+                </button>
+                <button
+                  className={`${styles.toggleButton} ${studentType === 'current' ? styles.active : ''}`}
+                  onClick={() => setStudentType('current')}
+                >
+                  Current Students
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
 
         {/* Search and Filters */}
         <div className={styles.filtersSection}>
           <form onSubmit={handleSearch} className={styles.searchForm}>
-            <div className={styles.searchGroup}>
+            <div className={styles.searchRow}>
               <input
                 type="text"
-                placeholder="Search by name, company, role, industry, or interests..."
+                placeholder="Search by name, company, role, industry, or location"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className={styles.searchInput}
               />
-              <button type="submit" className={styles.searchButton}>
-                Search
-              </button>
+              <div className={styles.searchActions}>
+                <button type="submit" className={styles.searchButton}>
+                  Search
+                </button>
+                <button 
+                  type="button"
+                  onClick={resetFilters}
+                  className={styles.resetButton}
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+
+            <div className={styles.filterRow}>
+              <label className={styles.filterControl}>
+                <span className={styles.filterLabel}>Batch</span>
+                <select
+                  value={selectedBatch}
+                  onChange={(e) => setSelectedBatch(e.target.value)}
+                  className={styles.filterSelect}
+                >
+                  <option value="">All Batches</option>
+                  {[2018, 2019, 2020, 2021, 2022, 2023].map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className={styles.filterControl}>
+                <span className={styles.filterLabel}>Branch</span>
+                <select
+                  value={selectedBranch}
+                  onChange={(e) => setSelectedBranch(e.target.value)}
+                  className={styles.filterSelect}
+                >
+                  <option value="">All Branches</option>
+                  <option value="Computer Science Engineering">CSE</option>
+                  <option value="Electronics and Communication Engineering">ECE</option>
+                  <option value="Data Science and Artificial Intelligence">DSAI</option>
+                </select>
+              </label>
+
+              <label className={styles.filterControl}>
+                <span className={styles.filterLabel}>Sort</span>
+                <select
+                  value={`${sortBy}-${sortOrder}`}
+                  onChange={(e) => {
+                    const [newSortBy, newSortOrder] = e.target.value.split('-')
+                    setSortBy(newSortBy)
+                    setSortOrder(newSortOrder)
+                  }}
+                  className={styles.filterSelect}
+                >
+                  <option value="graduation_year-DESC">Latest Batch First</option>
+                  <option value="graduation_year-ASC">Oldest Batch First</option>
+                  <option value="first_name-ASC">Name A-Z</option>
+                  <option value="first_name-DESC">Name Z-A</option>
+                </select>
+              </label>
             </div>
           </form>
-
-          <div className={styles.filters}>
-            <select
-              value={selectedBatch}
-              onChange={(e) => setSelectedBatch(e.target.value)}
-              className={styles.filterSelect}
-            >
-              <option value="">All Batches</option>
-              {[2018, 2019, 2020, 2021, 2022, 2023].map(year => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
-
-            <select
-              value={selectedBranch}
-              onChange={(e) => setSelectedBranch(e.target.value)}
-              className={styles.filterSelect}
-            >
-              <option value="">All Branches</option>
-              <option value="Computer Science Engineering">CSE</option>
-              <option value="Electronics and Communication Engineering">ECE</option>
-              <option value="Data Science and Artificial Intelligence">DSAI</option>
-            </select>
-
-            <select
-              value={`${sortBy}-${sortOrder}`}
-              onChange={(e) => {
-                const [newSortBy, newSortOrder] = e.target.value.split('-')
-                setSortBy(newSortBy)
-                setSortOrder(newSortOrder)
-              }}
-              className={styles.filterSelect}
-            >
-              <option value="graduation_year-DESC">Latest Batch First</option>
-              <option value="graduation_year-ASC">Oldest Batch First</option>
-              <option value="first_name-ASC">Name A-Z</option>
-              <option value="first_name-DESC">Name Z-A</option>
-            </select>
-
-            <button 
-              onClick={resetFilters}
-              className={styles.resetButton}
-            >
-              Reset
-            </button>
-          </div>
         </div>
 
         {/* Loading State */}
