@@ -112,13 +112,13 @@ class EmailService {
       <body>
         <div class="container">
           <div class="header">
-            <h1>🎓 IIIT Naya Raipur Alumni Portal</h1>
+            <h1>IIIT Naya Raipur Alumni Portal</h1>
           </div>
           <div class="content">
-            <h2>Welcome, ${firstName}! 👋</h2>
-            <p>Thank you for registering with the IIIT Naya Raipur Alumni Portal. We're excited to have you join our community!</p>
+            <h2>Welcome, ${firstName}</h2>
+            <p>Thank you for registering with the IIIT Naya Raipur Alumni Portal. Please confirm your email address to activate your account.</p>
             
-            <p>To complete your registration and activate your account, please verify your email address by clicking the button below:</p>
+            <p>To complete your registration and activate your account, verify your email address by clicking the button below:</p>
             
             <center>
               <a href="${verificationUrl}" class="button">Verify Email Address</a>
@@ -130,7 +130,7 @@ class EmailService {
             </p>
             
             <div class="warning">
-              <strong>⏰ Important:</strong> This verification link will expire in 24 hours.
+              <strong>Important:</strong> This verification link will expire in 24 hours.
             </div>
             
             <p>If you didn't create an account with us, please ignore this email.</p>
@@ -152,7 +152,7 @@ class EmailService {
     const mailOptions = {
       from: process.env.EMAIL_FROM,
       to: email,
-      subject: "Welcome to IIIT Naya Raipur Alumni Portal! 🎉",
+      subject: "Welcome to IIIT Naya Raipur Alumni Portal",
       html: `
         <!DOCTYPE html>
         <html>
@@ -168,18 +168,18 @@ class EmailService {
         <body>
           <div class="container">
             <div class="header">
-              <h1>🎉 Welcome to the Family!</h1>
+              <h1>Welcome to the IIIT Naya Raipur Alumni Portal</h1>
             </div>
             <div class="content">
-              <h2>Hello ${firstName}!</h2>
-              <p>Your email has been verified successfully. Welcome to the IIIT Naya Raipur Alumni Portal!</p>
+              <h2>Hello ${firstName},</h2>
+              <p>Your email has been verified successfully. Your alumni account is now active.</p>
               
               <p><strong>Next Steps:</strong></p>
               <ul>
-                <li>Complete your profile with academic and professional details</li>
-                <li>Connect with fellow alumni</li>
-                <li>Explore events and opportunities</li>
-                <li>Share your achievements</li>
+                <li>Complete your profile with academic and professional details.</li>
+                <li>Connect with fellow alumni.</li>
+                <li>Explore events and opportunities.</li>
+                <li>Share your achievements.</li>
               </ul>
               
               <center>
@@ -321,10 +321,10 @@ class EmailService {
       <body>
         <div class="container">
           <div class="header">
-            <h1>🔐 Password Reset Request</h1>
+            <h1>Password Reset Request</h1>
           </div>
           <div class="content">
-            <h2>Hello, ${firstName}!</h2>
+            <h2>Hello ${firstName},</h2>
             <p>We received a request to reset your password for your IIIT Naya Raipur Alumni Portal account.</p>
             
             <p>To reset your password, please click the button below:</p>
@@ -339,11 +339,11 @@ class EmailService {
             </p>
             
             <div class="warning">
-              <strong>⏰ Important:</strong> This password reset link will expire in 1 hour for security reasons.
+              <strong>Important:</strong> This password reset link will expire in 1 hour for security reasons.
             </div>
             
             <div class="security-notice">
-              <strong>🔒 Security Notice:</strong> If you didn't request a password reset, please ignore this email. Your account is safe and your password hasn't been changed.
+              <strong>Security Notice:</strong> If you didn't request a password reset, please ignore this email. Your account is safe and your password hasn't been changed.
             </div>
             
             <p>For your security, never share this link with anyone.</p>
