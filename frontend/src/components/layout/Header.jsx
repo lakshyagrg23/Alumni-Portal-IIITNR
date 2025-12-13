@@ -174,7 +174,18 @@ const Header = () => {
                       My Profile
                     </Link>
                   )}
+                  
+                  {/* Superadmin Dashboard Link */}
+                  {user?.role === 'superadmin' && (
+                    <Link to="/superadmin" className={styles.dropdownItem} onClick={closeAllMenus}>
+                      Moderation Dashboard
+                    </Link>
+                  )}
+                  
                   {!(user?.role === 'admin' || user?.role === 'superadmin') && (
+                    <hr className={styles.divider} />
+                  )}
+                  {(user?.role === 'admin' || user?.role === 'superadmin') && (
                     <hr className={styles.divider} />
                   )}
                   <button className={styles.dropdownItem} onClick={handleLogout}>

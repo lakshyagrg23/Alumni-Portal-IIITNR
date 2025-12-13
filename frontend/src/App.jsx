@@ -32,6 +32,7 @@ import Profile from '@pages/ProfileNew'
 import OnboardingNew from '@pages/OnboardingNew'
 import OnboardingOptional from '@pages/OnboardingOptional'
 import AdminPanel from '@pages/admin/AdminPanel'
+import SuperadminDashboard from '@pages/SuperadminDashboard'
 import NotFound from '@pages/NotFound'
 
 // Protected Route Component
@@ -224,6 +225,18 @@ function App() {
               <AdminRoute>
                 <AdminPanel />
               </AdminRoute>
+            } 
+          />
+          
+          {/* Superadmin Routes - Require Superadmin Role */}
+          <Route 
+            path="/superadmin" 
+            element={
+              <ProtectedRoute>
+                <OnboardingRoute>
+                  <SuperadminDashboard />
+                </OnboardingRoute>
+              </ProtectedRoute>
             } 
           />
           
