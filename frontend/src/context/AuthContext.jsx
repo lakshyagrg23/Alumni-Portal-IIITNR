@@ -228,6 +228,34 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('token', response.token)
         authService.setToken(response.token)
         
+        // Generate encryption keys for messaging immediately after registration
+        try {
+          const crypto = await import('../utils/crypto.js')
+          const keyPair = await crypto.generateKeyPair()
+          const publicKey = await crypto.exportPublicKey(keyPair.publicKey)
+          const privateKey = await crypto.exportPrivateKey(keyPair.privateKey)
+          
+          // Store keys in localStorage
+          localStorage.setItem('e2e_pub_raw', publicKey)
+          localStorage.setItem('e2e_priv_jwk', privateKey)
+          
+          // Upload public key to server
+          const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+          await fetch(`${API}/messages/public-key`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${response.token}`
+            },
+            body: JSON.stringify({ publicKey })
+          })
+          
+          console.log('✅ Encryption keys generated and uploaded during registration')
+        } catch (cryptoError) {
+          console.error('⚠️ Failed to generate encryption keys during registration:', cryptoError)
+          // Don't fail registration if key generation fails
+        }
+        
         dispatch({
           type: authActions.LOGIN_SUCCESS,
           payload: response,
