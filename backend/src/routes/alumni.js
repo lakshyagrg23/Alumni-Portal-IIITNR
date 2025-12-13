@@ -40,6 +40,9 @@ router.get("/", async (req, res) => {
 
     const currentYear = new Date().getFullYear();
 
+    // Construct orderBy in format expected by AlumniProfile.findAll
+    const orderBy = `${sortBy} ${sortOrder}`;
+
     // Use AlumniProfile.findAll to get only alumni (not admin) users
     const result = await AlumniProfile.findAll({
       page: parseInt(page),
@@ -49,7 +52,7 @@ router.get("/", async (req, res) => {
       branch,
       company,
       currentCity: location, // Map location to currentCity
-      orderBy: `ap.${sortBy} ${sortOrder}`,
+      orderBy, // Pass orderBy without 'ap.' prefix
       publicOnly: true, // Only show public profiles for privacy
       studentType, // Filter by alumni or current students
       currentYear, // Pass current year for filtering

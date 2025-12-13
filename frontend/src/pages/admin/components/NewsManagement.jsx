@@ -8,6 +8,7 @@ const NewsManagement = () => {
   const [error, setError] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [editingNews, setEditingNews] = useState(null)
+  const [showEditModal, setShowEditModal] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
     content: '',
@@ -79,7 +80,8 @@ const NewsManagement = () => {
       category: newsItem.category,
       isPublished: newsItem.is_published,
     })
-    setShowForm(true)
+    setShowForm(false)
+    setShowEditModal(true)
   }
 
   // Handle delete
@@ -108,6 +110,7 @@ const NewsManagement = () => {
     })
     setEditingNews(null)
     setShowForm(false)
+    setShowEditModal(false)
     setError(null)
   }
 
@@ -124,6 +127,8 @@ const NewsManagement = () => {
 
   // Get latest 4 news items
   const latestNews = news.slice(0, 4)
+  const publishedCount = news.filter((item) => item.is_published).length
+  const draftCount = news.length - publishedCount
 
   useEffect(() => {
     loadNews()
@@ -268,7 +273,24 @@ const NewsManagement = () => {
 
       {/* All News List */}
       <div className={styles.newsListSection}>
-        <h3>All News Items ({news.length})</h3>
+        <div className={styles.sectionHeaderRow}>
+          <div>
+            <p className={styles.eyebrow}>All posts</p>
+            <h3>All News Items ({news.length})</h3>
+          </div>
+          <div className={styles.helperPillRow}>
+            <span className={styles.helperPill}>Published: {publishedCount}</span>
+            <span className={styles.helperPill}>Draft: {draftCount}</span>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={loadNews}
+              disabled={loading}
+            >
+              {loading ? 'Refreshing...' : 'Refresh'}
+            </button>
+          </div>
+        </div>
         
         {loading ? (
           <div className={styles.loadingSpinner}>
@@ -335,6 +357,102 @@ const NewsManagement = () => {
           </div>
         )}
       </div>
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div className={styles.modalBackdrop} onClick={handleCancel}>
+          <div
+            className={styles.modalContent}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={styles.modalHeader}>
+              <div>
+                <p className={styles.eyebrow}>Edit</p>
+                <h3>Edit News</h3>
+              </div>
+              <button
+                type="button"
+                className={styles.modalCloseButton}
+                onClick={handleCancel}
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleSubmit} className={styles.newsForm}>
+              <div className={styles.formGroup}>
+                <label htmlFor="title">Title *</label>
+                <input
+                  type="text"
+                  id="title"
+                  value={formData.title}
+                  onChange={(e) => setFormData({...formData, title: e.target.value})}
+                  className={styles.formInput}
+                  required
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label htmlFor="category">Category</label>
+                <select
+                  id="category"
+                  value={formData.category}
+                  onChange={(e) => setFormData({...formData, category: e.target.value})}
+                  className={styles.formSelect}
+                >
+                  <option value="news">News</option>
+                  <option value="achievement">Achievement</option>
+                  <option value="announcement">Announcement</option>
+                  <option value="general">General</option>
+                </select>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label htmlFor="excerpt">Excerpt</label>
+                <input
+                  type="text"
+                  id="excerpt"
+                  value={formData.excerpt}
+                  onChange={(e) => setFormData({...formData, excerpt: e.target.value})}
+                  className={styles.formInput}
+                  placeholder="Brief summary (optional)"
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label htmlFor="content">Content *</label>
+                <textarea
+                  id="content"
+                  value={formData.content}
+                  onChange={(e) => setFormData({...formData, content: e.target.value})}
+                  className={styles.formTextarea}
+                  rows="6"
+                  required
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={formData.isPublished}
+                    onChange={(e) => setFormData({...formData, isPublished: e.target.checked})}
+                  />
+                  Publish immediately
+                </label>
+              </div>
+
+              <div className={styles.formActions}>
+                <button type="submit" className={styles.submitButton}>
+                  Update News
+                </button>
+                <button type="button" onClick={handleCancel} className={styles.cancelButton}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

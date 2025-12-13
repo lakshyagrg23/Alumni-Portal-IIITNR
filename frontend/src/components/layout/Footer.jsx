@@ -105,9 +105,8 @@ const Footer = () => {
             <p className={styles.mobileCopyright}>&copy; {currentYear} IIIT Naya Raipur. All rights reserved.</p>
           </div>
           <div className={styles.bottomLinks}>
-            <Link to="/privacy">Privacy</Link>
-            <Link to="/terms">Terms</Link>
-            <Link to="/sitemap" className={styles.desktopOnly}>Sitemap</Link>
+            <a href="https://www.iiitnr.ac.in/content/privacy-policy">Privacy</a>
+            <a href="https://www.iiitnr.ac.in/content/terms-condition">Terms</a>
             <a href="https://www.iiitnr.ac.in/content/rti" target="_blank" rel="noopener noreferrer" className={styles.desktopOnly}>RTI</a>
           </div>
         </div>

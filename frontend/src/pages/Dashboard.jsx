@@ -635,7 +635,7 @@ const Dashboard = () => {
                                   {alum.firstName} {alum.lastName}
                                 </h4>
                                 <p className={styles.alumniPositionModern}>
-                                  {alum.currentPosition || 'Professional'}
+                                  {alum.currentPosition || ''}
                                 </p>
                                 {alum.currentCompany && (
                                   <div className={styles.alumniCompanyTag}>
@@ -704,7 +704,7 @@ const Dashboard = () => {
                                     {alum.firstName} {alum.lastName}
                                   </h4>
                                   <p className={styles.alumniPositionModern}>
-                                    {alum.currentPosition || 'Professional'}
+                                    {alum.currentPosition || ''}
                                   </p>
                                   {alum.currentCompany && (
                                     <div className={styles.alumniCompanyTag}>
@@ -772,7 +772,7 @@ const Dashboard = () => {
                                   {alum.firstName} {alum.lastName}
                                 </h4>
                                 <p className={styles.alumniPositionModern}>
-                                  {alum.currentPosition || 'Professional'}
+                                  {alum.currentPosition || ''}
                                 </p>
                                 {alum.currentCompany && (
                                   <div className={styles.alumniCompanyTag}>
@@ -834,7 +834,7 @@ const Dashboard = () => {
                                   {alum.firstName} {alum.lastName}
                                 </h4>
                                 <p className={styles.alumniPositionModern}>
-                                  {alum.currentPosition || 'Professional'}
+                                  {alum.currentPosition || ''}
                                 </p>
                                 <div className={styles.alumniBatchModern}>
                                   {alum.branch} • Class of {alum.graduationYear}
@@ -890,7 +890,7 @@ const Dashboard = () => {
                                   {alum.firstName} {alum.lastName}
                                 </h4>
                                 <p className={styles.alumniPositionModern}>
-                                  {alum.currentPosition || 'Professional'}
+                                  {alum.currentPosition || ''}
                                 </p>
                                 {alum.currentCompany && (
                                   <div className={styles.alumniCompanyTag}>
