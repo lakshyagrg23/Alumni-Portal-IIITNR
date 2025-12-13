@@ -102,6 +102,50 @@ const AuthContext = createContext()
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState)
 
+  // Fetch full user profile (including alumni profile) and merge with basic auth data
+  const hydrateUserWithProfile = async (baseUser = null) => {
+    let userData = baseUser
+
+    // Always start from /auth/me if we don't already have user data
+    if (!userData) {
+      const response = await authService.getCurrentUser()
+      userData = response?.data || response
+    }
+
+    if (!userData) {
+      return null
+    }
+
+    // Admins/superadmins don't have alumni profiles
+    const isAdmin = userData.role === 'admin' || userData.role === 'superadmin'
+    if (isAdmin) {
+      return userData
+    }
+
+    // Try to enrich with full alumni profile details
+    try {
+      const profileResponse = await authService.getProfile()
+      if (profileResponse?.success && profileResponse?.data) {
+        const profileData = profileResponse.data
+        const alumniProfile = profileData.alumniProfile || profileData.alumni_profile || null
+
+        // Merge basic flags from /auth/me with richer profile data
+        return {
+          ...userData,
+          ...profileData,
+          alumniProfile,
+          hasAlumniProfile: userData.hasAlumniProfile ?? Boolean(alumniProfile),
+          onboardingCompleted: profileData.onboardingCompleted ?? userData.onboardingCompleted,
+        }
+      }
+    } catch (err) {
+      // If profile fetch fails (e.g., 403 for admins), continue with basic user data
+      console.warn('Profile fetch failed, using basic user data', err?.message || err)
+    }
+
+    return userData
+  }
+
   // Load user on app start
   useEffect(() => {
     const loadUser = async () => {
@@ -112,13 +156,18 @@ export const AuthProvider = ({ children }) => {
           // Set token in auth service
           authService.setToken(token)
           
-          // Get user info from /auth/me endpoint (works for all roles)
-          const response = await authService.getCurrentUser()
-          
-          dispatch({
-            type: authActions.LOAD_USER,
-            payload: response.data, // Extract data from response
-          })
+          // Get user info and enrich with alumni profile (if available)
+          const response = await hydrateUserWithProfile()
+
+          if (response) {
+            dispatch({
+              type: authActions.LOAD_USER,
+              payload: response, // Already normalized
+            })
+          } else {
+            localStorage.removeItem('token')
+            dispatch({ type: authActions.LOGIN_FAILURE })
+          }
         } catch (error) {
           console.error('Error loading user:', error)
           // Remove invalid token
@@ -149,11 +198,11 @@ export const AuthProvider = ({ children }) => {
         payload: response,
       })
 
-      // Eagerly load user data using /auth/me (works for all roles)
+      // Eagerly load full user data (including alumni profile for dashboard)
       try {
-        const userData = await authService.getCurrentUser()
-        if (userData?.success && userData?.data) {
-          dispatch({ type: authActions.LOAD_USER, payload: userData.data })
+        const userData = await hydrateUserWithProfile(response.user)
+        if (userData) {
+          dispatch({ type: authActions.LOAD_USER, payload: userData })
         }
       } catch (e) {
         // non-fatal; components can still use basic user info
@@ -234,12 +283,10 @@ export const AuthProvider = ({ children }) => {
         payload: response,
       })
 
-      // Load profile details post-login
+      // Load full profile details post-login
       try {
-        const profile = await authService.getProfile()
-        if (profile?.success && profile?.data) {
-          dispatch({ type: authActions.LOAD_USER, payload: profile.data })
-        }
+        const userData = await hydrateUserWithProfile(response.user)
+        if (userData) dispatch({ type: authActions.LOAD_USER, payload: userData })
       } catch (e) {
         console.warn('Post-Google-login profile fetch failed', e?.message || e)
       }
@@ -268,10 +315,8 @@ export const AuthProvider = ({ children }) => {
 
       // Load profile details post-login
       try {
-        const profile = await authService.getProfile()
-        if (profile?.success && profile?.data) {
-          dispatch({ type: authActions.LOAD_USER, payload: profile.data })
-        }
+        const userData = await hydrateUserWithProfile(response.user)
+        if (userData) dispatch({ type: authActions.LOAD_USER, payload: userData })
       } catch (e) {
         console.warn('Post-LinkedIn-login profile fetch failed', e?.message || e)
       }
