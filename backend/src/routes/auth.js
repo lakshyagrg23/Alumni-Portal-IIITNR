@@ -9,6 +9,7 @@ import { query } from "../config/database.js";
 import emailService from "../services/emailService.js";
 import AlumniProfile from "../models/AlumniProfile.js";
 import { columnExists } from "../utils/sqlHelpers.js";
+import { normalizeProfileData } from "../utils/normalization.js";
 
 /**
  * @route   POST /api/auth/register
@@ -1745,7 +1746,10 @@ router.put("/profile", authenticate, async (req, res) => {
       alumniData.profilePicture = updateData.profile_picture;
     }
 
-    console.log("Final alumniData to be updated:", alumniData);
+    // Normalize profile data to prevent duplicates (e.g., "bangalore" vs "Bangalore")
+    const normalizedAlumniData = normalizeProfileData(alumniData);
+
+    console.log("Final alumniData to be updated:", normalizedAlumniData);
 
     // Update user table if needed
     if (Object.keys(userData).length > 0) {
@@ -1754,8 +1758,8 @@ router.put("/profile", authenticate, async (req, res) => {
     }
 
     // Update or create alumni profile
-    if (Object.keys(alumniData).length > 0) {
-      console.log("Processing alumni data:", alumniData);
+    if (Object.keys(normalizedAlumniData).length > 0) {
+      console.log("Processing alumni data:", normalizedAlumniData);
       // Handle array fields properly
       const arrayFields = [
         "skills",
@@ -1764,25 +1768,25 @@ router.put("/profile", authenticate, async (req, res) => {
         "careerGoals",
       ];
       arrayFields.forEach((field) => {
-        if (alumniData.hasOwnProperty(field)) {
+        if (normalizedAlumniData.hasOwnProperty(field)) {
           if (
-            !alumniData[field] ||
-            alumniData[field] === "" ||
-            alumniData[field] === null
+            !normalizedAlumniData[field] ||
+            normalizedAlumniData[field] === "" ||
+            normalizedAlumniData[field] === null
           ) {
             // Convert empty/null/undefined values to empty arrays
-            alumniData[field] = [];
-          } else if (typeof alumniData[field] === "string") {
-            if (alumniData[field].trim() === "") {
-              alumniData[field] = [];
+            normalizedAlumniData[field] = [];
+          } else if (typeof normalizedAlumniData[field] === "string") {
+            if (normalizedAlumniData[field].trim() === "") {
+              normalizedAlumniData[field] = [];
             } else {
-              alumniData[field] = alumniData[field]
+              normalizedAlumniData[field] = normalizedAlumniData[field]
                 .split(",")
                 .map((item) => item.trim())
                 .filter((item) => item.length > 0);
             }
-          } else if (!Array.isArray(alumniData[field])) {
-            alumniData[field] = [];
+          } else if (!Array.isArray(normalizedAlumniData[field])) {
+            normalizedAlumniData[field] = [];
           }
         }
       });
@@ -1802,7 +1806,7 @@ router.put("/profile", authenticate, async (req, res) => {
         const { default: AlumniProfile } = await import(
           "../models/AlumniProfile.js"
         );
-        await AlumniProfile.update(existingProfile.rows[0].id, alumniData);
+        await AlumniProfile.update(existingProfile.rows[0].id, normalizedAlumniData);
         console.log("Profile updated successfully");
       } else {
         // Create new profile
@@ -1810,8 +1814,8 @@ router.put("/profile", authenticate, async (req, res) => {
         const { default: AlumniProfile } = await import(
           "../models/AlumniProfile.js"
         );
-        alumniData.userId = userId;
-        await AlumniProfile.create(alumniData);
+        normalizedAlumniData.userId = userId;
+        await AlumniProfile.create(normalizedAlumniData);
         console.log("New profile created");
       }
     }

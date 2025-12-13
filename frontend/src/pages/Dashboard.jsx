@@ -19,6 +19,7 @@ import {
   BiMapPin,
   BiStar,
   BiRocket,
+  BiChevronRight,
   BiInfoCircle,
   BiCheck,
   BiX
@@ -360,51 +361,6 @@ const Dashboard = () => {
               </p>
             </div>
             
-            {/* Quick Stats Cards */}
-            <div className={styles.statsGrid}>
-              <div className={styles.statCard}>
-                <div className={styles.statIcon} style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #1e3a8a 100%)' }}>
-                  <BiUser size={24} />
-                </div>
-                <div className={styles.statContent}>
-                  <div className={styles.statValue}>{stats.profileCompletion}%</div>
-                  <div className={styles.statLabel}>Profile Complete</div>
-                  <div className={styles.statProgress}>
-                    <div className={styles.statProgressBar} style={{ width: `${stats.profileCompletion}%` }}></div>
-                  </div>
-                </div>
-              </div>
-
-              <div className={styles.statCard}>
-                <div className={styles.statIcon} style={{ background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)' }}>
-                  <BiNews size={24} />
-                </div>
-                <div className={styles.statContent}>
-                  <div className={styles.statValue}>{latestNews.length}</div>
-                  <div className={styles.statLabel}>Latest News</div>
-                </div>
-              </div>
-
-              <div className={styles.statCard}>
-                <div className={styles.statIcon} style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}>
-                  <BiCalendar size={24} />
-                </div>
-                <div className={styles.statContent}>
-                  <div className={styles.statValue}>{upcomingEvents.length}</div>
-                  <div className={styles.statLabel}>Upcoming Events</div>
-                </div>
-              </div>
-
-              <div className={styles.statCard}>
-                <div className={styles.statIcon} style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' }}>
-                  <BiGroup size={24} />
-                </div>
-                <div className={styles.statContent}>
-                  <div className={styles.statValue}>{stats.totalConnections}</div>
-                  <div className={styles.statLabel}>Recommendations</div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -461,7 +417,7 @@ const Dashboard = () => {
                   </div>
                   <Link to="/news" className={styles.viewAllButton}>
                     <span>View All</span>
-                    {/* <BiArrowRight size={18} /> */}
+                    <BiChevronRight size={18} />
                   </Link>
                 </div>
                 
@@ -494,7 +450,7 @@ const Dashboard = () => {
                               {formatDate(news.publishedAt)}
                             </span>
                             <span className={styles.newsReadMore}>
-                              Read More 
+                              Read More <BiChevronRight size={16} />
                             </span>
                           </div>
                         </div>
@@ -523,7 +479,7 @@ const Dashboard = () => {
                   </div>
                   <Link to="/events" className={styles.viewAllButton}>
                     <span>View All</span>
-                    {/* <BiArrowRight size={18} /> */}
+                    <BiChevronRight size={18} />
                   </Link>
                 </div>
 
@@ -584,7 +540,7 @@ const Dashboard = () => {
                                     )}
                                   </div>
                                   <Link to="/events" className={styles.eventActionButton}>
-                                    {/* <BiArrowRight size={20} /> */}
+                                    <BiChevronRight size={20} />
                                   </Link>
                                 </div>
                               ))}
@@ -693,7 +649,7 @@ const Dashboard = () => {
                               </div>
                               <div className={styles.alumniCardFooter}>
                                 <span>View Profile</span>
-                                {/* <BiArrowRight size={16} /> */}
+                                <BiChevronRight size={16} />
                               </div>
                             </Link>
                           ))}
@@ -767,7 +723,7 @@ const Dashboard = () => {
                                 </div>
                                 <div className={styles.alumniCardFooter}>
                                   <span>View Profile</span>
-                                  {/* <BiArrowRight size={16} /> */}
+                                  <BiChevronRight size={16} />
                                 </div>
                               </Link>
                             )
@@ -830,7 +786,7 @@ const Dashboard = () => {
                               </div>
                               <div className={styles.alumniCardFooter}>
                                 <span>View Profile</span>
-                                {/* <BiArrowRight size={16} /> */}
+                                <BiChevronRight size={16} />
                               </div>
                             </Link>
                           ))}
@@ -886,7 +842,7 @@ const Dashboard = () => {
                               </div>
                               <div className={styles.alumniCardFooter}>
                                 <span>View Profile</span>
-                                {/* <BiArrowRight size={16} /> */}
+                                <BiChevronRight size={16} />
                               </div>
                             </Link>
                           ))}
@@ -954,7 +910,7 @@ const Dashboard = () => {
                               </div>
                               <div className={styles.alumniCardFooter}>
                                 <span>View Profile</span>
-                                {/* <BiArrowRight size={16} /> */}
+                                <BiChevronRight size={16} />
                               </div>
                             </Link>
                           ))}
@@ -973,3 +929,4 @@ const Dashboard = () => {
 }
 
 export default Dashboard
+

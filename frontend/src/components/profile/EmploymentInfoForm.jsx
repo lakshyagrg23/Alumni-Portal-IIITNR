@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import AutocompleteInput from '../common/AutocompleteInput';
 import styles from './EmploymentInfoForm.module.css';
 
 const EmploymentInfoForm = ({ initialData = {}, onSave, onCancel }) => {
@@ -145,13 +146,12 @@ const EmploymentInfoForm = ({ initialData = {}, onSave, onCancel }) => {
                   ? 'Business Name'
                   : 'Company/Organization'}
               </label>
-              <input
-                type="text"
-                id="current_employer"
-                name="current_employer"
+              <AutocompleteInput
                 value={formData.current_employer}
                 onChange={handleChange}
-                placeholder="e.g., Google, Microsoft, Own Business"
+                apiEndpoint="companies"
+                name="current_employer"
+                placeholder="Start typing company... (e.g., Google, Microsoft)"
                 className={errors.current_employer ? styles.error : ''}
               />
               {errors.current_employer && (
@@ -216,13 +216,12 @@ const EmploymentInfoForm = ({ initialData = {}, onSave, onCancel }) => {
           <div className={styles.formRow}>
             <div className={styles.formGroup}>
               <label htmlFor="job_location">Job Location</label>
-              <input
-                type="text"
-                id="job_location"
-                name="job_location"
+              <AutocompleteInput
                 value={formData.job_location}
                 onChange={handleChange}
-                placeholder="e.g., Bangalore, India"
+                apiEndpoint="cities"
+                name="job_location"
+                placeholder="Start typing city... (e.g., Bangalore, Mumbai)"
               />
             </div>
 

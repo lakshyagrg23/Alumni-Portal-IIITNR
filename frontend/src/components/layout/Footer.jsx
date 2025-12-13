@@ -13,7 +13,7 @@ const Footer = () => {
         {/* Main Footer Content */}
         <div className={styles.footerContent}>
           {/* Institute Information */}
-          <div className={styles.section}>
+          <div className={`${styles.section} ${styles.desktopOnly}`}>
             <h3 className={styles.sectionTitle}>IIIT Naya Raipur</h3>
             <p className={styles.description}>
               Dr. Shyama Prasad Mukherjee International Institute of Information Technology
@@ -43,11 +43,11 @@ const Footer = () => {
             <h3 className={styles.sectionTitle}>Alumni Services</h3>
             <ul className={styles.linkList}>
               <li><Link to="/directory">Alumni Directory</Link></li>
-              <li><Link to="/messages">Messages</Link></li>
-              <li><Link to="/events">Volunteer Opportunities</Link></li>
+              <li className={styles.desktopOnly}><Link to="/messages">Messages</Link></li>
+              <li className={styles.desktopOnly}><Link to="/events">Volunteer Opportunities</Link></li>
               <li>
                 <Link to={isAuthenticated ? '/dashboard' : '/login'}>
-                  {isAuthenticated ? 'Dashboard' : 'Join Alumni Network'}
+                  {isAuthenticated ? 'Dashboard' : 'Join Network'}
                 </Link>
               </li>
             </ul>
@@ -55,7 +55,7 @@ const Footer = () => {
 
           {/* Social Links */}
           <div className={styles.section}>
-            <h3 className={styles.sectionTitle}>Follow IIIT NR</h3>
+            <h3 className={styles.sectionTitle}>Connect</h3>
             <div className={styles.socialLinks}>
               <a 
                 href="https://www.facebook.com/IIITNROfficial" 
@@ -93,7 +93,7 @@ const Footer = () => {
             </div>
             <div className={styles.helpdesk}>
               <p><strong>Helpline:</strong> 0771-2474182</p>
-              <p><small>Available on working days between 9:30 AM - 6:00 PM</small></p>
+              <p className={styles.desktopOnly}><small>Available on working days between 9:30 AM - 6:00 PM</small></p>
             </div>
           </div>
         </div>
@@ -101,13 +101,14 @@ const Footer = () => {
         {/* Footer Bottom */}
         <div className={styles.footerBottom}>
           <div className={styles.copyright}>
-            <p>&copy; {currentYear} Dr. Shyama Prasad Mukherjee International Institute of Information Technology, Naya Raipur. All rights reserved.</p>
+            <p className={styles.desktopCopyright}>&copy; {currentYear} Dr. Shyama Prasad Mukherjee International Institute of Information Technology, Naya Raipur. All rights reserved.</p>
+            <p className={styles.mobileCopyright}>&copy; {currentYear} IIIT Naya Raipur. All rights reserved.</p>
           </div>
           <div className={styles.bottomLinks}>
-            <Link to="/privacy">Privacy Policy</Link>
-            <Link to="/terms">Terms & Conditions</Link>
-            <Link to="/sitemap">Sitemap</Link>
-            <a href="https://www.iiitnr.ac.in/content/rti" target="_blank" rel="noopener noreferrer">RTI</a>
+            <Link to="/privacy">Privacy</Link>
+            <Link to="/terms">Terms</Link>
+            <Link to="/sitemap" className={styles.desktopOnly}>Sitemap</Link>
+            <a href="https://www.iiitnr.ac.in/content/rti" target="_blank" rel="noopener noreferrer" className={styles.desktopOnly}>RTI</a>
           </div>
         </div>
       </div>

@@ -250,6 +250,14 @@
   margin-top: 0.25rem;
 }
 
+.helpText {
+  display: block;
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+  font-style: italic;
+}
+
 .checkboxGroup {
   margin-bottom: 1.5rem;
   padding: 1rem;

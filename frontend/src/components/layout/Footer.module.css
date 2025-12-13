@@ -187,8 +187,33 @@
   text-decoration: none;
 }
 
+/* Mobile-specific styles */
+.desktopOnly {
+  display: none;
+}
+
+.mobileCopyright {
+  display: block;
+}
+
+.desktopCopyright {
+  display: none;
+}
+
 /* Responsive Design */
 @media (min-width: 640px) {
+  .desktopOnly {
+    display: block;
+  }
+
+  .mobileCopyright {
+    display: none;
+  }
+
+  .desktopCopyright {
+    display: block;
+  }
+
   .footerContent {
     grid-template-columns: repeat(2, 1fr);
   }
