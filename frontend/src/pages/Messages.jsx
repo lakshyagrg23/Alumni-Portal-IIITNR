@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useAuth } from '@context/AuthContext'
 import { useMessaging } from '@context/MessagingContext'
-import { getSocket, closeSocket, getLastSocketUrl } from '../utils/socketClient'
+import { getSocket, closeSocket, getLastSocketUrl, initSocket } from '../utils/socketClient'
 import * as crypto from '../utils/crypto'
 import axios from 'axios'
 import { useLocation } from 'react-router-dom'
@@ -76,6 +76,136 @@ const Messages = () => {
   // Use global messaging context for unread counts
   const { conversationUnreadMap, clearConversationUnread, setActiveConversationUserId } = useMessaging()
 
+  // Ensure we have the user's encryption keys available locally; fetch/decrypt from server if needed
+  const ensureLocalKeys = useCallback(async () => {
+    if (!user || !token) return null
+
+    let kp = null
+    let publicKeyBase64 = null
+
+    try {
+      // Priority 1: sessionStorage (current tab)
+      let storedPriv = sessionStorage.getItem('e2e_priv_jwk')
+      let storedPub = sessionStorage.getItem('e2e_pub_raw')
+      let decryptPw = sessionStorage.getItem('e2e_decrypt_pw') || localStorage.getItem('e2e_decrypt_pw')
+
+      // Priority 2: localStorage (persisted)
+      if (!storedPriv || !storedPub) {
+        storedPriv = localStorage.getItem('e2e_priv_jwk')
+        storedPub = localStorage.getItem('e2e_pub_raw')
+        if (storedPriv && storedPub) {
+          sessionStorage.setItem('e2e_priv_jwk', storedPriv)
+          sessionStorage.setItem('e2e_pub_raw', storedPub)
+        }
+      }
+
+      // Priority 3: fetch from server (no prompts; relies on stored password)
+      if (!storedPriv || !storedPub) {
+        let encryptedRecord = null
+        try {
+          console.log('[Messages] Keys not in storage, fetching from server...')
+          const resp = await axios.get(`${API}/messages/public-key`, { headers: { Authorization: `Bearer ${token}` } })
+          encryptedRecord = resp.data?.data || null
+        } catch (fetchErr) {
+          console.warn('[Messages] Failed to fetch keys from server:', fetchErr)
+          const errorMessage = fetchErr.response?.status === 404 
+            ? 'No encryption keys found on server. This appears to be your first time using messaging.'
+            : 'Failed to retrieve encryption keys. Please log out and log in again.'
+          setErrorMsg(errorMessage)
+          return null
+        }
+
+        if (encryptedRecord?.encrypted_private_key && encryptedRecord?.public_key) {
+          // Build candidate passwords to try (no prompts)
+          const candidates = []
+          if (decryptPw) candidates.push(decryptPw)
+          // Fallback: onboarding used a temp password pattern
+          if (user?.email) {
+            candidates.push(`${user.email}:temp_onboarding_password`)
+          }
+          // If decryptPw is just a password (not email:pass), also try email:decryptPw
+          if (decryptPw && user?.email && !decryptPw.startsWith(`${user.email}:`)) {
+            candidates.push(`${user.email}:${decryptPw}`)
+          }
+
+          const uniqueCandidates = [...new Set(candidates.filter(Boolean))]
+
+          if (!uniqueCandidates.length) {
+            console.warn('[Messages] No decryption password available to restore keys')
+            setErrorMsg('Encryption password missing. Please log out and log back in to re-sync secure messaging keys.')
+            return null
+          }
+
+          let decryptedPrivKey = null
+          let usedPassword = null
+          const encryptedData = JSON.parse(encryptedRecord.encrypted_private_key)
+          for (const cand of uniqueCandidates) {
+            try {
+              decryptedPrivKey = await crypto.decryptPrivateKeyWithPassword(encryptedData, cand)
+              usedPassword = cand
+              break
+            } catch (e) {
+              // try next
+            }
+          }
+
+          if (!decryptedPrivKey) {
+            console.warn('[Messages] Failed to decrypt server keys with provided password(s)')
+            setErrorMsg('Could not unlock your encryption keys. Please log out and log back in; if you changed your password, use the one used when messaging keys were first created.')
+            return null
+          }
+
+          storedPriv = decryptedPrivKey
+          storedPub = encryptedRecord.public_key
+
+          // Persist the working password so future loads skip prompt
+          sessionStorage.setItem('e2e_decrypt_pw', usedPassword)
+          localStorage.setItem('e2e_decrypt_pw', usedPassword)
+
+          localStorage.setItem('e2e_priv_jwk', storedPriv)
+          localStorage.setItem('e2e_pub_raw', storedPub)
+          sessionStorage.setItem('e2e_priv_jwk', storedPriv)
+          sessionStorage.setItem('e2e_pub_raw', storedPub)
+
+          console.log('✅ Keys fetched and decrypted from server')
+        } else {
+          console.warn('[Messages] Server returned no encrypted private key for user')
+          setErrorMsg('No encryption keys found on server. Please log out and log in again to regenerate them.')
+          return null
+        }
+      }
+
+      if (!storedPriv || !storedPub) {
+        console.error('❌ No encryption keys available. User must re-login.')
+        setErrorMsg('⚠️ Encryption keys not found. Please: 1) Log out, 2) Log back in, 3) Return to Messages. This syncs your keys across devices.')
+        return null
+      }
+
+      const privateKey = await crypto.importPrivateKey(storedPriv)
+      const publicKey = await crypto.importPublicKey(storedPub)
+      kp = { privateKey, publicKey }
+      publicKeyBase64 = storedPub // Use stored public key for upload
+      localKeysRef.current = kp
+
+      // Upload public key to server if we have one
+      if (publicKeyBase64) {
+        try {
+          console.log('[Messages] POST public-key ...')
+          const resp = await axios.post(`${API}/messages/public-key`, { publicKey: publicKeyBase64 }, { headers: { Authorization: `Bearer ${token}` }})
+          console.log('✅ public-key uploaded', resp?.status)
+        } catch (err) {
+          console.error('❌ public-key upload failed', err?.message || err)
+        }
+      }
+
+      return kp
+    } catch (err) {
+      console.warn('E2E key load error', err)
+      setErrorMsg('⚠️ Encryption keys not found. Please log out and log back in to sync them.')
+      return null
+    }
+  }, [API, token, user])
+
   // Detect mobile viewport
   useEffect(() => {
     const checkMobile = () => {
@@ -103,105 +233,8 @@ const Messages = () => {
         console.log('preTo=', preTo, 'userId=', user?.id, 'tokenLen=', token?.length)
         console.groupEnd()
       } catch {}
-      // load or generate keys and publish public key
-      let kp = null
-      let publicKeyBase64 = null
-      
-      try {
-        // Keys should already be fetched and decrypted during login
-        // Priority 1: Check sessionStorage (current session)
-        let storedPriv = sessionStorage.getItem('e2e_priv_jwk')
-        let storedPub = sessionStorage.getItem('e2e_pub_raw')
-        
-        // Priority 2: Check localStorage (persistent, device-specific)
-        if (!storedPriv || !storedPub) {
-          storedPriv = localStorage.getItem('e2e_priv_jwk')
-          storedPub = localStorage.getItem('e2e_pub_raw')
-          
-          // If found in localStorage, also store in sessionStorage for faster access
-          if (storedPriv && storedPub) {
-            sessionStorage.setItem('e2e_priv_jwk', storedPriv)
-            sessionStorage.setItem('e2e_pub_raw', storedPub)
-          }
-        }
-        
-        // If still no keys, check if we can fetch and decrypt from server
-        if (!storedPriv || !storedPub) {
-          // Priority 1: sessionStorage (more secure, cleared on tab close)
-          // Priority 2: localStorage (persists across sessions for cross-device)
-          const decryptPw = sessionStorage.getItem('e2e_decrypt_pw') || localStorage.getItem('e2e_decrypt_pw')
-          
-          if (decryptPw) {
-            try {
-              console.log('[Messages] Keys not in storage, fetching from server...')
-              const resp = await axios.get(`${API}/messages/public-key`, { 
-                headers: { Authorization: `Bearer ${token}` }
-              })
-              
-              if (resp.data?.data?.encrypted_private_key && resp.data?.data?.public_key) {
-                console.log('[Messages] Decrypting keys from server...')
-                const encryptedData = JSON.parse(resp.data.data.encrypted_private_key)
-                const decryptedPrivKey = await crypto.decryptPrivateKeyWithPassword(
-                  encryptedData,
-                  decryptPw
-                )
-                
-                storedPriv = decryptedPrivKey
-                storedPub = resp.data.data.public_key
-                
-                // Cache for future use
-                localStorage.setItem('e2e_priv_jwk', storedPriv)
-                localStorage.setItem('e2e_pub_raw', storedPub)
-                sessionStorage.setItem('e2e_priv_jwk', storedPriv)
-                sessionStorage.setItem('e2e_pub_raw', storedPub)
-                
-                console.log('✅ Keys fetched and decrypted from server')
-              }
-            } catch (fetchErr) {
-              console.warn('[Messages] Failed to fetch/decrypt keys from server:', fetchErr)
-              // Provide helpful error message
-              const errorMessage = fetchErr.response?.status === 404 
-                ? 'No encryption keys found on server. This appears to be your first time using messaging.'
-                : 'Failed to retrieve encryption keys. Please log out and log in again.'
-              setErrorMsg(errorMessage)
-            }
-          } else {
-            console.warn('[Messages] No decryption password available. Please re-login to enable messaging.')
-            setErrorMsg('Encryption password not available. Please log out and log in again to enable secure messaging.')
-          }
-        }
-        
-        if (storedPriv && storedPub) {
-          const privateKey = await crypto.importPrivateKey(storedPriv)
-          const publicKey = await crypto.importPublicKey(storedPub)
-          kp = { privateKey, publicKey }
-          publicKeyBase64 = storedPub // Use stored public key for upload
-          
-          // Log for debugging
-          console.log('[Messages] ✅ Keys loaded successfully. Public key preview:', storedPub.slice(0, 50))
-        } else {
-          // CRITICAL: Don't generate new keys - this breaks cross-device encryption!
-          // User needs to re-login to access their encrypted private key
-          console.error('❌ No encryption keys available. User must re-login.')
-          setErrorMsg('⚠️ Encryption keys not found. Please: 1) Log out, 2) Log back in, 3) Return to Messages. This syncs your keys across devices.')
-          return // Don't proceed without keys
-        }
-        
-        // Upload public key to server if we have one
-        if (publicKeyBase64) {
-          try {
-            console.log('[Messages] POST public-key ...')
-            const resp = await axios.post(`${API}/messages/public-key`, { publicKey: publicKeyBase64 }, { headers: { Authorization: `Bearer ${token}` }})
-            console.log('✅ public-key uploaded', resp?.status)
-          } catch (err) {
-            console.error('❌ public-key upload failed', err?.message || err)
-          }
-        }
-      } catch (err) {
-        console.warn('E2E key load/generate error', err)
-        kp = await crypto.generateKeyPair()
-      }
-      localKeysRef.current = kp
+      const kp = await ensureLocalKeys()
+      if (!kp) return
 
       const socket = getSocket()
       if (!socket) {
@@ -684,6 +717,15 @@ const Messages = () => {
       return;
     }
 
+    let keyPair = localKeysRef.current
+    if (!keyPair) {
+      keyPair = await ensureLocalKeys()
+    }
+    if (!keyPair) {
+      setErrorMsg('Encryption keys not loaded. Please log out and log back in to re-sync secure messaging.')
+      return
+    }
+
     setSending(true)
     try {
       console.log('📡 Initializing socket...')
@@ -719,7 +761,7 @@ const Messages = () => {
 
         console.log('🔐 Deriving shared encryption key (first time for this conversation)...')
         const imported = await crypto.importPublicKey(theirPub)
-        const shared = await crypto.deriveSharedSecret(localKeysRef.current.privateKey, imported)
+        const shared = await crypto.deriveSharedSecret(keyPair.privateKey, imported)
         aes = await crypto.deriveAESGCMKey(shared)
         
         // Cache the key for future messages
