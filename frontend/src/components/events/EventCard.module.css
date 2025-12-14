@@ -91,6 +91,7 @@
 
 .eventDate,
 .eventTime,
+.eventDateTime,
 .eventLocation,
 .participants,
 .level,
@@ -100,6 +101,11 @@
   gap: 0.5rem;
   font-size: 0.875rem;
   color: #6b7280;
+}
+
+.eventDateTime {
+  min-width: 100%;
+  font-weight: 500;
 }
 
 .eventLocation {

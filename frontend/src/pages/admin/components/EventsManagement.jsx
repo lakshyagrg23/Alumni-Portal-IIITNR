@@ -346,13 +346,6 @@ const EventsManagement = () => {
         </label>
       </div>
 
-      <div className={styles.formGroup}>
-        <label>Event Image</label>
-        <button type="button" className={styles.placeholderButton} disabled>
-          Upload Image (Coming Soon)
-        </button>
-      </div>
-
       <div className={styles.formActions}>
         <button type="submit" className={styles.submitButton}>
           {submitLabel}
