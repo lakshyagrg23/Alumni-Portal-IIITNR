@@ -200,7 +200,7 @@ function App() {
             element={
               <ProtectedRoute>
                 <OnboardingRoute>
-                  <MessageNew />
+                  <Messages />
                 </OnboardingRoute>
               </ProtectedRoute>
             } 

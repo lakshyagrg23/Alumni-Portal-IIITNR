@@ -90,14 +90,14 @@ const Messages = () => {
       let decryptPw = sessionStorage.getItem('e2e_decrypt_pw') || localStorage.getItem('e2e_decrypt_pw')
 
       // Priority 2: localStorage (persisted)
-      if (!storedPriv || !storedPub) {
-        storedPriv = localStorage.getItem('e2e_priv_jwk')
-        storedPub = localStorage.getItem('e2e_pub_raw')
-        if (storedPriv && storedPub) {
-          sessionStorage.setItem('e2e_priv_jwk', storedPriv)
-          sessionStorage.setItem('e2e_pub_raw', storedPub)
-        }
-      }
+      // if (!storedPriv || !storedPub) {
+      //   storedPriv = localStorage.getItem('e2e_priv_jwk')
+      //   storedPub = localStorage.getItem('e2e_pub_raw')
+      //   if (storedPriv && storedPub) {
+      //     sessionStorage.setItem('e2e_priv_jwk', storedPriv)
+      //     sessionStorage.setItem('e2e_pub_raw', storedPub)
+      //   }
+      // }
 
       // Priority 3: fetch from server (no prompts; relies on stored password)
       if (!storedPriv || !storedPub) {

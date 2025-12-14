@@ -172,8 +172,30 @@ const MessageNew = () => {
       })
       
       const conversationList = response.data?.data || []
-      setConversations(conversationList)
-      console.log('[MessageNew] Loaded conversations:', conversationList.length)
+      
+      // Normalize conversation structure from backend
+      const normalizedConversations = conversationList.map(conv => ({
+        // Map partnerUserId to other_user_id for frontend compatibility
+        other_user_id: conv.partnerUserId,
+        user_id: conv.partnerUserId,
+        
+        // Map partner name
+        other_name: conv.partnerName,
+        partner_name: conv.partnerName,
+        
+        // Map avatar
+        partner_avatar: conv.partnerAvatar,
+        
+        // Map last message (include public keys if available)
+        last_message: conv.lastMessage?.content || conv.lastMessage?.decryptedContent || '',
+        lastMessage: conv.lastMessage,
+        
+        // Include full message object for reference
+        ...conv
+      }))
+      
+      setConversations(normalizedConversations)
+      console.log('[MessageNew] Loaded conversations:', normalizedConversations.length)
     } catch (error) {
       console.error('[MessageNew] Failed to fetch conversations:', error)
       setErrorMsg('Failed to load conversations. Please refresh the page.')
@@ -187,7 +209,7 @@ const MessageNew = () => {
     if (!token || !partnerUserId) return
 
     try {
-      const response = await axios.get(`${API}/messages/${partnerUserId}`, {
+      const response = await axios.get(`${API}/messages/conversation/${partnerUserId}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
 
@@ -267,7 +289,18 @@ const MessageNew = () => {
         throw new Error('Conversation not found')
       }
 
-      const partnerPublicKey = conversation.other_public_key || conversation.partner_public_key
+      // Get partner's public key from the last message
+      // If user is the sender of the last message, use receiver's public key
+      // If user is the receiver of the last message, use sender's public key
+      let partnerPublicKey = conversation.other_public_key || conversation.partner_public_key
+      
+      if (!partnerPublicKey && conversation.lastMessage) {
+        const lastMsg = conversation.lastMessage
+        const isOutgoing = lastMsg.sender_id === user.id || lastMsg.sender_user_id === user.id
+        partnerPublicKey = isOutgoing 
+          ? (lastMsg.receiver_public_key || lastMsg.other_public_key)
+          : (lastMsg.sender_public_key || lastMsg.other_public_key)
+      }
 
       if (!partnerPublicKey) {
         throw new Error('Partner public key not found')
@@ -333,17 +366,27 @@ const MessageNew = () => {
     if (markedReadSet.current.has(partnerUserId)) return
     
     try {
-      await axios.put(
-        `${API}/messages/${partnerUserId}/read`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
+      // Mark all unread messages from this partner as read
+      for (const msg of messages) {
+        const isSenderThePartner = msg.sender_user_id === partnerUserId
+        if (isSenderThePartner && !msg.is_read) {
+          try {
+            await axios.put(
+              `${API}/messages/${msg.id}/read`,
+              {},
+              { headers: { Authorization: `Bearer ${token}` } }
+            )
+          } catch (e) {
+            console.error('[MessageNew] Failed to mark message as read:', msg.id, e)
+          }
+        }
+      }
       markedReadSet.current.add(partnerUserId)
       clearConversationUnread(partnerUserId)
     } catch (error) {
-      console.error('[MessageNew] Failed to mark as read:', error)
+      console.error('[MessageNew] Failed to mark messages as read:', error)
     }
-  }, [API, token, clearConversationUnread])
+  }, [API, token, clearConversationUnread, messages])
 
   /**
    * Fetch partner's public key
