@@ -272,34 +272,54 @@ const Messages = () => {
             console.warn('Failed to refresh conversations list', e?.message || e)
           }
 
-          // If message carries a sender_public_key snapshot, use it directly to derive the per-message AES key
+          // CRITICAL: Determine which public key to use for decryption
+          // If this is OUR OWN message from another device (from === user.id), 
+          // we need to decrypt using the RECEIVER's public key, not our own!
+          const isOwnMessage = from === user.id
+          const decryptionPartnerId = isOwnMessage ? saved.receiver_user_id : from
+          
+          console.log('[Messages] Decryption logic:', { 
+            from, 
+            userId: user.id, 
+            isOwnMessage, 
+            decryptionPartnerId,
+            receiverUserId: saved.receiver_user_id 
+          })
+
+          // If message carries public key snapshots, use the appropriate one
           let usedAes = null
-          if (saved.sender_public_key) {
+          const relevantPublicKey = isOwnMessage ? saved.receiver_public_key : saved.sender_public_key
+          
+          if (relevantPublicKey) {
             try {
-              const imported = await crypto.importPublicKey(saved.sender_public_key)
+              const imported = await crypto.importPublicKey(relevantPublicKey)
               const shared = await crypto.deriveSharedSecret(localKeysRef.current.privateKey, imported)
               usedAes = await crypto.deriveAESGCMKey(shared)
+              console.log('[Messages] Using snapshot public key for decryption')
             } catch (e) {
-              console.warn('Failed to derive aes from sender_public_key snapshot', e)
+              console.warn('Failed to derive aes from snapshot public key', e)
             }
           }
 
-          // If no per-message snapshot, fall back to conversation-level aes stored in aesKeyRef
+          // If no snapshot, fall back to fetching the partner's public key
           if (!usedAes) {
-            if (!aesKeyRef.current || aesKeyRef.current.peer !== from) {
+            if (!aesKeyRef.current || aesKeyRef.current.peer !== decryptionPartnerId) {
               try {
-                console.log('[Messages] GET sender public-key for from=', from)
-                const res = await axios.get(`${API}/messages/public-key/${from}`, { headers: { Authorization: `Bearer ${token}` }})
+                console.log('[Messages] GET public-key for decryptionPartnerId=', decryptionPartnerId)
+                const res = await axios.get(`${API}/messages/public-key/${decryptionPartnerId}`, { headers: { Authorization: `Bearer ${token}` }})
                 const theirPub = res.data?.data?.public_key || res.data?.publicKey || res.data?.public_key
                 if (theirPub) {
                   const imported = await crypto.importPublicKey(theirPub)
                   const shared = await crypto.deriveSharedSecret(localKeysRef.current.privateKey, imported)
                   const aes = await crypto.deriveAESGCMKey(shared)
-                  aesKeyRef.current = { key: aes, peer: from }
+                  aesKeyRef.current = { key: aes, peer: decryptionPartnerId }
+                  console.log('[Messages] Fetched and cached public key for', decryptionPartnerId)
                 }
               } catch (err) {
-                console.warn("Couldn't fetch sender public key for realtime message", err?.message || err)
+                console.warn("Couldn't fetch public key for realtime message", err?.message || err)
               }
+            } else {
+              console.log('[Messages] Using cached AES key for', decryptionPartnerId)
             }
             usedAes = aesKeyRef.current?.key || null
           }
@@ -561,29 +581,38 @@ const Messages = () => {
             continue
           }
 
-          // Fallback: try per-message sender_public_key (stored with message) or try public-key endpoints
-          let senderPub = m.sender_public_key || m.senderPublicKey || null
-          if (!senderPub) {
-            const tryIds = [m.sender_user_id, fromAuthUserId, m.sender_id, m.alumniFrom].filter(Boolean)
+          // Fallback: try per-message public key snapshots
+          // CRITICAL: If this is OUR message (isOutgoing), use receiver_public_key
+          // Otherwise, use sender_public_key
+          const isOwnMessage = fromAuthUserId === user.id
+          let relevantPubKey = isOwnMessage ? (m.receiver_public_key || m.receiverPublicKey) : (m.sender_public_key || m.senderPublicKey)
+          
+          // If no snapshot, fetch the appropriate public key
+          if (!relevantPubKey) {
+            // For our own messages, fetch the OTHER person's key (otherUserId)
+            // For incoming messages, fetch the sender's key
+            const keyUserId = isOwnMessage ? otherUserId : fromAuthUserId
+            const tryIds = [keyUserId, m.sender_user_id, m.receiver_user_id, m.sender_id, m.alumniFrom].filter(Boolean)
+            
             for (const idToTry of tryIds) {
               try {
-                console.log('[Messages] GET sender public-key idToTry=', idToTry)
-                const senderPubRes = await axios.get(`${API}/messages/public-key/${idToTry}`, { headers: { Authorization: `Bearer ${token}` }})
-                senderPub = senderPubRes.data?.data?.public_key || senderPubRes.data?.publicKey || senderPubRes.data?.public_key
-                if (senderPub) break
+                console.log('[Messages] GET public-key for historical message, idToTry=', idToTry, 'isOwnMessage=', isOwnMessage)
+                const pubKeyRes = await axios.get(`${API}/messages/public-key/${idToTry}`, { headers: { Authorization: `Bearer ${token}` }})
+                relevantPubKey = pubKeyRes.data?.data?.public_key || pubKeyRes.data?.publicKey || pubKeyRes.data?.public_key
+                if (relevantPubKey) break
               } catch (e) {
                 // ignore and try next
               }
             }
           }
 
-          if (!senderPub) {
+          if (!relevantPubKey) {
             decoded.push({ ...messageData, text: 'Encrypted message (no pubkey)' })
             continue
           }
 
-          const senderPubKey = await crypto.importPublicKey(senderPub)
-          const shared = await crypto.deriveSharedSecret(kp.privateKey, senderPubKey)
+          const pubKey = await crypto.importPublicKey(relevantPubKey)
+          const shared = await crypto.deriveSharedSecret(kp.privateKey, pubKey)
           const aes = await crypto.deriveAESGCMKey(shared)
           let plain = await crypto.decryptMessage(aes, iv, ciphertext)
           let fileData = null
@@ -633,6 +662,8 @@ const Messages = () => {
     setSelectedPartnerName(conv.partnerName || '')
     setActiveConversationUserId(id)
     clearConversationUnread(id)
+    // Clear marked read messages when switching conversations
+    markedReadRef.current.clear()
     if (localKeysRef.current) await loadConversation(id, localKeysRef.current)
     // Check if user is blocked
     checkIfBlocked(id)
@@ -918,6 +949,8 @@ const Messages = () => {
     setSelectedPartnerName(fullName)
     setActiveConversationUserId(userId)
     setShowNewChatModal(false)
+    // Clear marked read messages when starting new conversation
+    markedReadRef.current.clear()
     if (localKeysRef.current) await loadConversation(userId, localKeysRef.current)
     // On mobile, hide sidebar when new chat starts
     if (isMobile) {
