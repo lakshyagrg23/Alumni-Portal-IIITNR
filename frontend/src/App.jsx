@@ -17,6 +17,7 @@ import RegisterPersonalEmail from '@pages/auth/RegisterPersonalEmail'
 import ProfileCompletion from '@pages/auth/ProfileCompletion'
 import LinkedInCallback from '@pages/auth/LinkedInCallback'
 import VerifyEmail from '@pages/auth/VerifyEmail'
+import VerifyPersonalEmail from '@pages/auth/VerifyPersonalEmail'
 import EmailSent from '@pages/auth/EmailSent'
 import ForgotPassword from '@pages/auth/ForgotPassword'
 import ResetPassword from '@pages/auth/ResetPassword'
@@ -126,6 +127,7 @@ function App() {
           
           {/* Email Verification Routes */}
           <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/verify-personal-email" element={<VerifyPersonalEmail />} />
           <Route path="/email-sent" element={<EmailSent />} />
           
           {/* Password Reset Routes */}

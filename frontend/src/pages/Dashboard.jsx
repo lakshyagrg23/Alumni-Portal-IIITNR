@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet-async'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@hooks/useAuth'
 import axios from 'axios'
+import PersonalEmailVerificationBanner from '@components/common/PersonalEmailVerificationBanner'
 import styles from './Dashboard.module.css'
 import { DayPicker } from 'react-day-picker'
 import 'react-day-picker/dist/style.css'
@@ -62,6 +63,29 @@ const Dashboard = () => {
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
   const ASSETS_BASE_URL = API_URL.replace(/\/api$/, '')
+  const currentCalendarYear = new Date().getFullYear()
+  const userAdmissionYearRaw = user?.alumniProfile?.admissionYear || user?.alumniProfile?.admission_year
+  const userGraduationYearRaw = user?.alumniProfile?.graduationYear || user?.alumniProfile?.graduation_year
+  const userAdmissionYear = userAdmissionYearRaw ? Number(userAdmissionYearRaw) : undefined
+  const userGraduationYear = userGraduationYearRaw ? Number(userGraduationYearRaw) : undefined
+  const inferredAdmissionYear = userAdmissionYear || (userGraduationYear ? userGraduationYear - 4 : undefined)
+  const userBatchYearLabel = userAdmissionYear || userGraduationYear || inferredAdmissionYear
+  const isCurrentStudent = userGraduationYear
+    ? userGraduationYear > currentCalendarYear
+    : inferredAdmissionYear
+      ? inferredAdmissionYear + 4 > currentCalendarYear
+      : false
+  const batchSeeAllParams = new URLSearchParams()
+  if (userAdmissionYear) {
+    batchSeeAllParams.set('admissionYear', userAdmissionYear)
+  } else if (userGraduationYear) {
+    batchSeeAllParams.set('graduationYear', userGraduationYear)
+  } else if (inferredAdmissionYear) {
+    batchSeeAllParams.set('admissionYear', inferredAdmissionYear)
+  }
+  batchSeeAllParams.set('studentType', isCurrentStudent ? 'current' : 'alumni')
+  const batchSeeAllQuery = batchSeeAllParams.toString()
+  const batchSeeAllHref = batchSeeAllQuery ? `/directory?${batchSeeAllQuery}` : '/directory'
 
   const resolveAvatar = (url) => {
     if (!url) return '/default-avatar.svg'
@@ -117,7 +141,14 @@ const Dashboard = () => {
       // Support both camelCase and snake_case field names
       const currentCompany = profile.currentCompany || profile.current_company
       const industry = profile.industrySector || profile.industry_sector || profile.industry
-      const graduationYear = profile.graduationYear || profile.graduation_year
+      const graduationYearRaw = profile.graduationYear || profile.graduation_year
+      const admissionYearRaw = profile.admissionYear || profile.admission_year
+      const graduationYear = graduationYearRaw ? Number(graduationYearRaw) : undefined
+      const admissionYear = admissionYearRaw
+        ? Number(admissionYearRaw)
+        : graduationYear
+          ? Number(graduationYear) - 4
+          : undefined
       const branch = profile.branch
       const currentYear = new Date().getFullYear()
       const professionalInterests = profile.professionalInterests || profile.professional_interests || []
@@ -245,17 +276,27 @@ const Dashboard = () => {
         }
       }
 
-      // 5. Batchmates (always useful)
-      if (graduationYear) {
+      // 5. Batchmates (always useful) - use true admission year when available, otherwise fall back to grad year
+      const batchYear = admissionYear || graduationYear
+      const isCurrentBatch = graduationYear
+        ? graduationYear > currentYear
+        : admissionYear
+          ? admissionYear + 4 > currentYear
+          : false
+      if (batchYear) {
         const params = new URLSearchParams()
-        params.set('batch', graduationYear)
+        if (admissionYear) {
+          params.set('admissionYear', admissionYear)
+        } else if (graduationYear) {
+          params.set('graduationYear', graduationYear)
+        }
         params.set('limit', 4)
 
-        if (graduationYear > currentYear) {
+        if (isCurrentBatch) {
           params.set('studentType', 'current')
         }
 
-        console.log('🎓 Searching for batchmates:', graduationYear)
+        console.log('🎓 Searching for batchmates (enrollment year):', batchYear)
         try {
           const batchResponse = await axios.get(
             `${API_URL}/alumni?${params.toString()}`
@@ -363,6 +404,9 @@ const Dashboard = () => {
             
           </div>
         </div>
+
+        {/* Personal Email Verification Banner */}
+        <PersonalEmailVerificationBanner />
 
         {/* Profile Completion Alert */}
         {showProfileReminder && stats.profileCompletion < 100 && (
@@ -606,6 +650,13 @@ const Dashboard = () => {
                             </h3>
                             <p className={styles.recSubtitle}>Career insights from your industry</p>
                           </div>
+                          <Link 
+                            to={`/directory?industry=${encodeURIComponent(user.alumniProfile?.industrySector || user.alumniProfile?.industry_sector || user.alumniProfile?.industry)}`}
+                            className={styles.viewAllButton}
+                          >
+                            <span>See All</span>
+                            <BiChevronRight size={18} />
+                          </Link>
                         </div>
                         <div className={styles.alumniGridModern}>
                           {recommendations.sameIndustry.map((alum, index) => (
@@ -805,6 +856,13 @@ const Dashboard = () => {
                             <h3 className={styles.recTitle}>Alumni at {user.alumniProfile?.currentCompany || user.alumniProfile?.current_company}</h3>
                             <p className={styles.recSubtitle}>Connect with colleagues from your company</p>
                           </div>
+                          <Link 
+                            to={`/directory?company=${encodeURIComponent(user.alumniProfile?.currentCompany || user.alumniProfile?.current_company)}`}
+                            className={styles.viewAllButton}
+                          >
+                            <span>See All</span>
+                            <BiChevronRight size={18} />
+                          </Link>
                         </div>
                         <div className={styles.alumniGridModern}>
                           {recommendations.sameCompany.map((alum, index) => (
@@ -853,14 +911,21 @@ const Dashboard = () => {
                     {/* Same Batch - Priority 5 */}
                     {recommendations.sameBatch.length > 0 && (
                       <div className={styles.recGroupModern}>
-                        <div className={styles.recHeader}>
+                          <div className={styles.recHeader}>
                           <div className={styles.recIconBadge} style={{ background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' }}>
                             <BiGroup size={20} />
                           </div>
                           <div>
-                            <h3 className={styles.recTitle}>Your Batchmates (Class of {user.alumniProfile?.graduationYear || user.alumniProfile?.graduation_year})</h3>
+                            <h3 className={styles.recTitle}>Your Batchmates (Batch of {userBatchYearLabel || '—'})</h3>
                             <p className={styles.recSubtitle}>Reconnect with your batch peers</p>
                           </div>
+                          <Link 
+                            to={batchSeeAllHref}
+                            className={styles.viewAllButton}
+                          >
+                            <span>See All</span>
+                            <BiChevronRight size={18} />
+                          </Link>
                         </div>
                         <div className={styles.alumniGridModern}>
                           {recommendations.sameBatch.map((alum, index) => (

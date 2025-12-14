@@ -808,9 +808,15 @@
   display: flex;
   gap: 1rem;
   align-items: center;
+  justify-content: flex-start;
   margin-bottom: 2rem;
   padding-bottom: 1rem;
   border-bottom: 2px solid var(--dash-border);
+  flex-wrap: wrap;
+}
+
+.recHeader .viewAllButton {
+  margin-left: auto;
 }
 
 .recIconBadge {

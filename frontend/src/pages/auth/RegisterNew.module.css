@@ -49,7 +49,10 @@
   border: 2px solid #e5e7eb;
   border-radius: 12px;
   padding: 2rem;
-  text-align: center;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   transition: all 0.3s ease;
 }
 
@@ -60,8 +63,30 @@
 }
 
 .methodIcon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  margin: 0 0 1rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(30, 58, 138, 0.25);
+}
+
+.primaryIcon {
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+}
+
+.secondaryIcon {
+  background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
+}
+
+.iconInitial {
+  font-size: 0.95rem;
+  text-transform: uppercase;
 }
 
 .methodCard h3 {
@@ -85,10 +110,35 @@
 }
 
 .methodFeatures li {
-  font-size: 0.9rem;
-  color: #4b5563;
-  margin-bottom: 0.5rem;
-  padding-left: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.95rem;
+  color: #374151;
+  margin-bottom: 0.75rem;
+  padding-left: 0;
+}
+
+.featureCheck {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #e0f2fe;
+  border: 1px solid #60a5fa;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.featureCheck::after {
+  content: '';
+  width: 6px;
+  height: 10px;
+  border-right: 2px solid #1d4ed8;
+  border-bottom: 2px solid #1d4ed8;
+  transform: rotate(45deg);
+  margin-top: -1px;
 }
 
 .selectBtn {
@@ -257,6 +307,29 @@
   transform: none;
 }
 
+.secondaryBtn {
+  padding: 1rem 2rem;
+  background: #f8fafc;
+  color: #1e3a8a;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: auto;
+}
+
+.secondaryBtn:hover:not(:disabled) {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+.secondaryBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .backLink {
   display: inline-flex;
   align-items: center;
@@ -269,6 +342,15 @@
 
 .backLink:hover {
   color: #1e3a8a;
+}
+
+.backCaret {
+  width: 7px;
+  height: 7px;
+  border-left: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  display: inline-block;
 }
 
 .divider {
@@ -343,19 +425,32 @@
   border-left: 4px solid #22c55e;
   box-shadow: 0 8px 24px rgba(22, 197, 125, 0.15);
   font-weight: 600;
+  position: relative;
+  padding-left: 3rem;
 }
 
 .successMessage::before {
-  content: '✓';
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  content: '';
+  position: absolute;
+  left: 1.2rem;
+  top: 50%;
+  transform: translateY(-50%);
   width: 24px;
   height: 24px;
   border-radius: 50%;
   background: #16a34a;
-  color: #fff;
-  font-size: 0.9rem;
+}
+
+.successMessage::after {
+  content: '';
+  position: absolute;
+  left: 2.05rem;
+  top: 50%;
+  transform: translate(-50%, -48%) rotate(45deg);
+  width: 6px;
+  height: 12px;
+  border-right: 2px solid #fff;
+  border-bottom: 2px solid #fff;
 }
 
 .errorMessage {
@@ -371,19 +466,30 @@
   border-left: 4px solid #ef4444;
   box-shadow: 0 8px 24px rgba(239, 68, 68, 0.12);
   font-weight: 600;
+  position: relative;
+  padding-left: 3rem;
 }
 
 .errorMessage::before {
-  content: '!';
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  content: '';
+  position: absolute;
+  left: 1.2rem;
+  top: 50%;
+  transform: translateY(-50%);
   width: 24px;
   height: 24px;
   border-radius: 50%;
   background: #ef4444;
+}
+
+.errorMessage::after {
+  content: '!';
+  position: absolute;
+  left: 1.2rem;
+  top: 50%;
+  transform: translate(-50%, -50%);
   color: #fff;
-  font-size: 0.9rem;
+  font-weight: 800;
 }
 
 .infoBox {
@@ -407,6 +513,74 @@
   font-size: 0.9rem;
   font-weight: 600;
   margin-bottom: 1rem;
+}
+
+.badgeIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #16a34a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.checkIcon {
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  border-right: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(45deg);
+  margin-top: -1px;
+}
+
+.stepIndicator {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.stepIndicator span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.stepBadge {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #1e3a8a;
+  display: inline-block;
+}
+
+.stepBadgeMuted {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  display: inline-block;
+}
+
+.activeStep {
+  background: #e0e7ff;
+  color: #1e3a8a;
+}
+
+.inactiveStep {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.completedStep {
+  background: #dcfce7;
+  color: #166534;
 }
 
 /* Responsive */

@@ -92,8 +92,14 @@ const VerifyIdentityStep = ({ onVerified }) => {
   return (
     <div className={styles.formContainer}>
       <div className={styles.stepIndicator}>
-        <span className={styles.activeStep}>Step 1: Verify Identity</span>
-        <span className={styles.inactiveStep}>Step 2: Create Account</span>
+        <span className={styles.activeStep}>
+          <span className={styles.stepBadge} aria-hidden="true"></span>
+          Step 1: Verify Identity
+        </span>
+        <span className={styles.inactiveStep}>
+          <span className={styles.stepBadgeMuted} aria-hidden="true"></span>
+          Step 2: Create Account
+        </span>
       </div>
 
       {errors.submit && (
@@ -299,12 +305,20 @@ const CreateAccountStep = ({ verificationToken, userData, onBack }) => {
   return (
     <div className={styles.formContainer}>
       <div className={styles.stepIndicator}>
-        <span className={styles.completedStep}>✓ Step 1: Verify Identity</span>
-        <span className={styles.activeStep}>Step 2: Create Account</span>
+        <span className={styles.completedStep}>
+          <span className={styles.stepBadge} aria-hidden="true"></span>
+          Step 1: Verify Identity
+        </span>
+        <span className={styles.activeStep}>
+          <span className={styles.stepBadge} aria-hidden="true"></span>
+          Step 2: Create Account
+        </span>
       </div>
 
       <div className={styles.verifiedBadge}>
-        <div className={styles.badgeIcon}>✓</div>
+        <div className={styles.badgeIcon}>
+          <span className={styles.checkIcon} aria-hidden="true"></span>
+        </div>
         <div className={styles.badgeContent}>
           <h3>Identity Verified</h3>
           <p><strong>{userData.full_name}</strong></p>
@@ -422,7 +436,8 @@ const CreateAccountStep = ({ verificationToken, userData, onBack }) => {
             className={styles.secondaryBtn}
             disabled={loading}
           >
-            ← Back
+            <span className={styles.backCaret} aria-hidden="true"></span>
+            Back
           </button>
           <button 
             type="submit" 
@@ -472,7 +487,8 @@ const RegisterPersonalEmail = () => {
       <div className={styles.container}>
         <div className={styles.wrapper}>
           <Link to="/register" className={styles.backLink}>
-            ← Back to registration options
+            <span className={styles.backCaret} aria-hidden="true"></span>
+            Back to registration options
           </Link>
 
           <div className={styles.header}>

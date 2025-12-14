@@ -157,6 +157,18 @@ export const authService = {
     const response = await API.post("/auth/complete-onboarding");
     return response;
   },
+
+  // Send personal email verification
+  sendPersonalEmailVerification: async () => {
+    const response = await API.post("/auth/send-personal-email-verification");
+    return response;
+  },
+
+  // Verify personal email with token
+  verifyPersonalEmail: async (token) => {
+    const response = await API.get(`/auth/verify-personal-email/${token}`);
+    return response;
+  },
 };
 
 export default API;

@@ -406,3 +406,56 @@
     font-size: 1.5rem;
   }
 }
+
+/* Email verification styles */
+.emailVerificationRow {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.emailVerificationRow input {
+  flex: 1;
+}
+
+.verifyButton {
+  padding: 0.5rem 1rem;
+  background: #1e3a8a;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.verifyButton:hover:not(:disabled) {
+  background: #1e40af;
+  transform: translateY(-1px);
+}
+
+.verifyButton:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.verifiedBadge {
+  padding: 0.5rem 1rem;
+  background: #10b981;
+  color: white;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.helpText {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+  line-height: 1.4;
+}

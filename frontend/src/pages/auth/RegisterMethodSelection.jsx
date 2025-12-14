@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import styles from './RegisterNew.module.css';
@@ -22,15 +22,26 @@ const RegisterMethodSelection = () => {
           <div className={styles.methodGrid}>
             {/* Institute Email Registration */}
             <div className={styles.methodCard}>
-              <div className={styles.methodIcon}>🎓</div>
+              <div className={`${styles.methodIcon} ${styles.primaryIcon}`} aria-hidden="true">
+                <span className={styles.iconInitial}>IE</span>
+              </div>
               <h3>Institute Email</h3>
               <p className={styles.methodDesc}>
                 Use your @iiitnr.edu.in or @iiitnr.ac.in email address
               </p>
               <ul className={styles.methodFeatures}>
-                <li>✓ Direct registration</li>
-                <li>✓ Email verification required</li>
-                <li>✓ Fastest process</li>
+                <li>
+                  <span className={styles.featureCheck} aria-hidden="true"></span>
+                  <span>Direct registration</span>
+                </li>
+                <li>
+                  <span className={styles.featureCheck} aria-hidden="true"></span>
+                  <span>Email verification required</span>
+                </li>
+                <li>
+                  <span className={styles.featureCheck} aria-hidden="true"></span>
+                  <span>Fastest process</span>
+                </li>
               </ul>
               <button
                 className={styles.selectBtn}
@@ -42,15 +53,26 @@ const RegisterMethodSelection = () => {
 
             {/* Personal Email Registration */}
             <div className={styles.methodCard}>
-              <div className={styles.methodIcon}>📧</div>
+              <div className={`${styles.methodIcon} ${styles.secondaryIcon}`} aria-hidden="true">
+                <span className={styles.iconInitial}>PE</span>
+              </div>
               <h3>Personal Email</h3>
               <p className={styles.methodDesc}>
                 Verify with roll number and use any email address
               </p>
               <ul className={styles.methodFeatures}>
-                <li>✓ Use any email (Gmail, Outlook, etc.)</li>
-                <li>✓ Identity verification required</li>
-                <li>✓ Secure process</li>
+                <li>
+                  <span className={styles.featureCheck} aria-hidden="true"></span>
+                  <span>Use any email (Gmail, Outlook, etc.)</span>
+                </li>
+                <li>
+                  <span className={styles.featureCheck} aria-hidden="true"></span>
+                  <span>Identity verification required</span>
+                </li>
+                <li>
+                  <span className={styles.featureCheck} aria-hidden="true"></span>
+                  <span>Secure process</span>
+                </li>
               </ul>
               <button
                 className={`${styles.selectBtn} ${styles.secondary}`}

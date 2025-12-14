@@ -27,6 +27,9 @@ router.get("/", async (req, res) => {
     const {
       search,
       batch,
+      admissionYear,
+      enrollmentYear,
+      graduationYear,
       branch,
       company,
       location,
@@ -39,6 +42,10 @@ router.get("/", async (req, res) => {
     } = req.query;
 
     const currentYear = new Date().getFullYear();
+    const parsedAdmissionYear = parseInt(
+      admissionYear || enrollmentYear || batch
+    );
+    const parsedGraduationYear = parseInt(graduationYear);
 
     // Construct orderBy in format expected by AlumniProfile.findAll
     const orderBy = `${sortBy} ${sortOrder}`;
@@ -48,7 +55,12 @@ router.get("/", async (req, res) => {
       page: parseInt(page),
       limit: parseInt(limit),
       search,
-      graduationYear: batch ? parseInt(batch) : undefined,
+      admissionYear: Number.isNaN(parsedAdmissionYear)
+        ? undefined
+        : parsedAdmissionYear,
+      graduationYear: Number.isNaN(parsedGraduationYear)
+        ? undefined
+        : parsedGraduationYear,
       branch,
       company,
       currentCity: location, // Map location to currentCity

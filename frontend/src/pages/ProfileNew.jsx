@@ -103,6 +103,10 @@ const Profile = () => {
 
   // Editable profile data
   const [profileData, setProfileData] = useState({
+    // Personal Email
+    personalEmail: '',
+    personalEmailVerified: false,
+    
     // Professional Details
     currentCity: '',
     currentState: '',
@@ -128,6 +132,8 @@ const Profile = () => {
     openToReferrals: false,
     availableForSpeaking: false,
   })
+
+  const [sendingVerification, setSendingVerification] = useState(false)
 
   const [errors, setErrors] = useState({})
   const [uploadingPicture, setUploadingPicture] = useState(false)
@@ -166,6 +172,8 @@ const Profile = () => {
 
         // Set editable profile data
         setProfileData({
+          personalEmail: data.personalEmail || '',
+          personalEmailVerified: data.personalEmailVerified || false,
           currentCity: alumni.currentCity || '',
           currentState: alumni.currentState || '',
           currentCountry: alumni.currentCountry || 'India',
@@ -263,6 +271,31 @@ const Profile = () => {
     
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }))
+    }
+  }
+
+  // Handle sending secondary email verification
+  const handleSendVerification = async () => {
+    if (!profileData.personalEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileData.personalEmail)) {
+      setMessage({ type: 'error', text: 'Please enter a valid secondary email first' })
+      return
+    }
+
+    try {
+      setSendingVerification(true)
+      const response = await authService.sendPersonalEmailVerification()
+      
+      if (response.success) {
+        setMessage({ type: 'success', text: 'Verification email sent! Please check your inbox.' })
+        setTimeout(() => setMessage({ type: '', text: '' }), 5000)
+      } else {
+        setMessage({ type: 'error', text: response.message || 'Failed to send verification email' })
+      }
+    } catch (error) {
+      console.error('Error sending verification:', error)
+      setMessage({ type: 'error', text: 'Failed to send verification email. Please try again.' })
+    } finally {
+      setSendingVerification(false)
     }
   }
 
@@ -947,6 +980,46 @@ const Profile = () => {
             {activeTab === 'social' && (
               <div className={styles.tabContent}>
                 <h3>{isCurrentStudent ? 'Social Profiles' : 'Social Profiles & Community Engagement'}</h3>
+
+                {/* Secondary Email */}
+                <div className={styles.section}>
+                  <h4>Secondary Email (Private)</h4>
+                  
+                  <div className={styles.formGroup}>
+                    <label htmlFor="personalEmail">
+                      Secondary Email Address
+                    </label>
+                    <div className={styles.emailVerificationRow}>
+                      <input
+                        type="email"
+                        id="personalEmail"
+                        name="personalEmail"
+                        value={profileData.personalEmail}
+                        onChange={handleInputChange}
+                        placeholder="your.email@gmail.com"
+                        className={errors.personalEmail ? styles.inputError : ''}
+                      />
+                      {profileData.personalEmailVerified ? (
+                        <span className={styles.verifiedBadge}>Verified</span>
+                      ) : profileData.personalEmail ? (
+                        <button
+                          type="button"
+                          onClick={handleSendVerification}
+                          disabled={sendingVerification}
+                          className={styles.verifyButton}
+                        >
+                          {sendingVerification ? 'Sending...' : 'Verify'}
+                        </button>
+                      ) : null}
+                    </div>
+                    <small className={styles.helpText}>
+                      Your secondary email is private and will not be shown on your public profile. It can be used for account recovery and important updates.
+                    </small>
+                    {errors.personalEmail && (
+                      <span className={styles.errorText}>{errors.personalEmail}</span>
+                    )}
+                  </div>
+                </div>
 
                 {/* Social Profiles */}
                 <div className={styles.section}>

@@ -17,6 +17,8 @@ const Profile = () => {
     firstName: '',
     lastName: '',
     email: '',
+    personalEmail: '',
+    personalEmailVerified: false,
     profilePicture: '',
     
     // Alumni profile info - using camelCase
@@ -37,6 +39,7 @@ const Profile = () => {
     interests: '',
     isProfilePublic: true,
   })
+  const [sendingVerification, setSendingVerification] = useState(false)
   const [errors, setErrors] = useState({})
   const [message, setMessage] = useState('')
   const [activeTab, setActiveTab] = useState('basic')
@@ -55,6 +58,31 @@ const Profile = () => {
     }))
     setMessage('Profile picture updated successfully!')
     setTimeout(() => setMessage(''), 3000)
+  }
+
+  // Handle sending personal email verification
+  const handleSendVerification = async () => {
+    if (!profileData.personalEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileData.personalEmail)) {
+      setMessage('Please enter a valid personal email first')
+      return
+    }
+
+    try {
+      setSendingVerification(true)
+      const response = await authService.sendPersonalEmailVerification()
+      
+      if (response.success) {
+        setMessage('Verification email sent! Please check your inbox.')
+        setTimeout(() => setMessage(''), 5000)
+      } else {
+        setMessage(response.message || 'Failed to send verification email')
+      }
+    } catch (error) {
+      console.error('Error sending verification:', error)
+      setMessage('Failed to send verification email. Please try again.')
+    } finally {
+      setSendingVerification(false)
+    }
   }
 
   const loadProfileData = async () => {
@@ -90,6 +118,8 @@ const Profile = () => {
           firstName: data.firstName || '',
           lastName: data.lastName || '',
           email: data.email || '',
+          personalEmail: data.personalEmail || '',
+          personalEmailVerified: data.personalEmailVerified || false,
           profilePicture: alumni.profilePictureUrl ?? alumni.profile_picture_url ?? data.profilePicture ?? '',
           
           // Alumni profile data - convert to camelCase
@@ -429,6 +459,37 @@ const Profile = () => {
                     rows="4"
                     placeholder="Tell us about yourself..."
                   />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label htmlFor="personalEmail">Personal Email</label>
+                  <div className={styles.emailVerificationRow}>
+                    <input
+                      type="email"
+                      id="personalEmail"
+                      name="personalEmail"
+                      value={profileData.personalEmail}
+                      onChange={handleInputChange}
+                      placeholder="your.email@gmail.com"
+                      className={errors.personalEmail ? styles.error : ''}
+                    />
+                    {profileData.personalEmailVerified ? (
+                      <span className={styles.verifiedBadge}>Verified</span>
+                    ) : profileData.personalEmail ? (
+                      <button
+                        type="button"
+                        onClick={handleSendVerification}
+                        disabled={sendingVerification}
+                        className={styles.verifyButton}
+                      >
+                        {sendingVerification ? 'Sending...' : 'Verify'}
+                      </button>
+                    ) : null}
+                  </div>
+                  <small className={styles.helpText}>
+                    Your personal email is private and will not be shown on your public profile. We'll use it to contact you after graduation.
+                  </small>
+                  {errors.personalEmail && <span className={styles.errorText}>{errors.personalEmail}</span>}
                 </div>
               </div>
             )}

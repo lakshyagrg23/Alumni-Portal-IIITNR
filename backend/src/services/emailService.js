@@ -42,6 +42,149 @@ class EmailService {
   }
 
   /**
+   * Send personal email verification link
+   * @param {string} email - Personal email to verify
+   * @param {string} verificationToken - Unique verification token
+   * @param {string} firstName - User's first name
+   */
+  async sendPersonalEmailVerification(email, verificationToken, firstName = "there") {
+    const verificationUrl = `${process.env.FRONTEND_URL}/verify-personal-email?token=${verificationToken}`;
+
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || "IIIT Naya Raipur Alumni Portal",
+      to: email,
+      subject: "Verify Your Secondary Email - IIIT Naya Raipur Alumni Portal",
+      html: this.getPersonalEmailVerificationTemplate(firstName, verificationUrl),
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log("✅ Personal email verification sent:", info.messageId);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error("❌ Error sending personal email verification:", error);
+      throw new Error("Failed to send personal email verification");
+    }
+  }
+
+  /**
+   * HTML template for personal email verification
+   */
+  getPersonalEmailVerificationTemplate(firstName, verificationUrl) {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+          }
+          .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 24px;
+          }
+          .content {
+            padding: 40px 30px;
+            color: #333;
+            line-height: 1.6;
+          }
+          .button {
+            display: inline-block;
+            padding: 14px 40px;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white !important;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-weight: 600;
+            transition: transform 0.2s;
+          }
+          .button:hover {
+            transform: translateY(-2px);
+          }
+          .footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+          }
+          .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin: 20px 0;
+            border-radius: 4px;
+          }
+          .info {
+            background: #e7f3ff;
+            border-left: 4px solid #1e3a8a;
+            padding: 12px;
+            margin: 20px 0;
+            border-radius: 4px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>IIIT Naya Raipur Alumni Portal</h1>
+          </div>
+          <div class="content">
+            <h2>Verify Your Secondary Email</h2>
+            <p>Hello ${firstName},</p>
+            
+            <p>Thank you for providing your secondary email address. Please verify this email to ensure we can reach you for important updates and account recovery.</p>
+            
+            <div className="info">
+              <strong>Why verify?</strong> Your secondary email serves as a backup contact method for important alumni updates and account recovery.
+            </div>
+            
+            <p>Click the button below to verify your secondary email address:</p>
+            
+            <center>
+              <a href="${verificationUrl}" className="button">Verify Secondary Email</a>
+            </center>
+            
+            <p>Or copy and paste this link into your browser:</p>
+            <p style="background: #f8f9fa; padding: 12px; border-radius: 4px; word-break: break-all; font-size: 13px;">
+              ${verificationUrl}
+            </p>
+            
+            <div class="warning">
+              <strong>Note:</strong> This verification link will expire in 24 hours. Your secondary email will not be displayed on your public profile.
+            </div>
+            
+            <p>If you didn't add this email to your alumni profile, please ignore this message.</p>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} IIIT Naya Raipur Alumni Portal</p>
+            <p>This is an automated email. Please do not reply to this message.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  /**
    * HTML template for verification email
    */
   getVerificationEmailTemplate(firstName, verificationUrl) {

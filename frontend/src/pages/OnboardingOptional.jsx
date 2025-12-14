@@ -13,6 +13,7 @@ const OnboardingOptional = () => {
   const [isCurrentStudent, setIsCurrentStudent] = useState(false)
 
   const [formData, setFormData] = useState({
+    personalEmail: '',
     githubUrl: '',
     twitterUrl: '',
     portfolioUrl: '',
@@ -44,6 +45,7 @@ const OnboardingOptional = () => {
 
         // Load existing data if any
         setFormData({
+          personalEmail: alumni.personalEmail || '',
           githubUrl: alumni.githubUrl || '',
           twitterUrl: alumni.twitterUrl || '',
           portfolioUrl: alumni.portfolioUrl || '',
@@ -76,6 +78,7 @@ const OnboardingOptional = () => {
       setMessage({ type: '', text: '' })
 
       const submitData = {
+        personalEmail: formData.personalEmail || null,
         githubUrl: formData.githubUrl || null,
         twitterUrl: formData.twitterUrl || null,
         portfolioUrl: formData.portfolioUrl || null,
@@ -148,6 +151,24 @@ const OnboardingOptional = () => {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className={styles.form}>
+            {/* Secondary Email */}
+            <div className={styles.section}>
+              <div className={styles.sectionHeader}>
+                <h3>Secondary Email Address</h3>
+              </div>
+              <p className={styles.helpText}>
+                Add a secondary email for account recovery and important updates.
+                This will NOT be visible on your public profile.
+              </p>
+              <input
+                type="email"
+                name="personalEmail"
+                value={formData.personalEmail}
+                onChange={handleInputChange}
+                placeholder="your.secondary.email@gmail.com"
+              />
+            </div>
+
             {/* Additional Social Links */}
             <div className={styles.section}>
               <div className={styles.sectionHeader}>

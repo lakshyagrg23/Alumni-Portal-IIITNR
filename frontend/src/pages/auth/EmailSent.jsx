@@ -33,7 +33,12 @@ const EmailSent = () => {
   return (
     <div className={styles.container}>
       <div className={styles.card}>
-        <div className={styles.emailIcon}>📧</div>
+        <div className={styles.emailIcon} aria-hidden="true">
+          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="6" y="14" width="52" height="36" rx="6" fill="#e0e7ff" stroke="#1e3a8a" strokeWidth="2"/>
+            <path d="M8 18l24 18L56 18" stroke="#1e3a8a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
         <h1>Check Your Email</h1>
         <p className={styles.mainText}>We've sent a verification link to:</p>
         <p className={styles.email}>{email}</p>

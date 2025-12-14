@@ -156,7 +156,8 @@ const RegisterInstituteEmail = () => {
       <div className={styles.container}>
         <div className={styles.wrapper}>
           <Link to="/register" className={styles.backLink}>
-            ← Back to registration options
+            <span className={styles.backCaret} aria-hidden="true"></span>
+            Back to registration options
           </Link>
 
           <div className={styles.header}>

@@ -711,8 +711,6 @@ const OnboardingNew = () => {
               )}
             </div>
 
-
-
             {/* Submit Buttons */}
             <div className={styles.actions}>
               <button 

@@ -761,13 +761,64 @@ router.post("/google", async (req, res) => {
     let user = await User.findByEmail(email);
     let isNewUser = false;
 
-    // OAuth should only work for existing users, not for registration
     if (!user) {
-      return res.status(403).json({
-        success: false,
-        message:
-          "No account found with this email. Please register first using the registration form.",
-      });
+      // Determine registration path based on email domain or verification token
+      const emailLower = email.toLowerCase();
+      const isInstituteEmail =
+        emailLower.endsWith("@iiitnr.edu.in") ||
+        emailLower.endsWith("@iiitnr.ac.in");
+
+      let registrationPath = "oauth";
+      let instituteRecordId = null;
+
+      // If verification token provided, this is personal email path
+      if (verificationToken) {
+        try {
+          const tokenData = jwt.verify(
+            verificationToken,
+            process.env.JWT_SECRET
+          );
+          if (tokenData.type === "identity_verification") {
+            registrationPath = "personal_email";
+            instituteRecordId = tokenData.instituteRecordId;
+
+            // Check if someone already registered with this institute record
+            const existingRecord = await query(
+              "SELECT id FROM users WHERE institute_record_id = $1",
+              [instituteRecordId]
+            );
+
+            if (existingRecord.rows.length > 0) {
+              return res.status(400).json({
+                success: false,
+                message:
+                  "An account has already been registered with this roll number.",
+              });
+            }
+          }
+        } catch (err) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid or expired verification token.",
+          });
+        }
+      } else if (isInstituteEmail) {
+        registrationPath = "institute_email";
+      }
+
+      // Register new user with Google provider
+      const userData = {
+        email: emailLower,
+        provider: "google",
+        providerId: googleId,
+        role: "alumni",
+        isApproved: true, // OAuth users are auto-approved
+        email_verified: true, // OAuth emails are pre-verified by Google
+        registration_path: registrationPath,
+        institute_record_id: instituteRecordId,
+      };
+      user = await User.create(userData);
+      isNewUser = true;
     }
 
     // Check if alumni profile exists; do NOT auto-create one
@@ -857,13 +908,64 @@ router.post("/linkedin", async (req, res) => {
     let user = await User.findByEmail(email);
     let isNewUser = false;
 
-    // OAuth should only work for existing users, not for registration
     if (!user) {
-      return res.status(403).json({
-        success: false,
-        message:
-          "No account found with this email. Please register first using the registration form.",
-      });
+      // Determine registration path based on email domain or verification token
+      const emailLower = email.toLowerCase();
+      const isInstituteEmail =
+        emailLower.endsWith("@iiitnr.edu.in") ||
+        emailLower.endsWith("@iiitnr.ac.in");
+
+      let registrationPath = "oauth";
+      let instituteRecordId = null;
+
+      // If verification token provided, this is personal email path
+      if (verificationToken) {
+        try {
+          const tokenData = jwt.verify(
+            verificationToken,
+            process.env.JWT_SECRET
+          );
+          if (tokenData.type === "identity_verification") {
+            registrationPath = "personal_email";
+            instituteRecordId = tokenData.instituteRecordId;
+
+            // Check if someone already registered with this institute record
+            const existingRecord = await query(
+              "SELECT id FROM users WHERE institute_record_id = $1",
+              [instituteRecordId]
+            );
+
+            if (existingRecord.rows.length > 0) {
+              return res.status(400).json({
+                success: false,
+                message:
+                  "An account has already been registered with this roll number.",
+              });
+            }
+          }
+        } catch (err) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid or expired verification token.",
+          });
+        }
+      } else if (isInstituteEmail) {
+        registrationPath = "institute_email";
+      }
+
+      // Register new user with LinkedIn provider
+      const userData = {
+        email: emailLower,
+        provider: "linkedin",
+        providerId: linkedinId,
+        role: "alumni",
+        isApproved: true, // OAuth users are auto-approved
+        email_verified: true, // OAuth emails are pre-verified by LinkedIn
+        registration_path: registrationPath,
+        institute_record_id: instituteRecordId,
+      };
+      user = await User.create(userData);
+      isNewUser = true;
     }
 
     // Check if alumni profile exists; do NOT auto-create one
@@ -1238,6 +1340,8 @@ router.get("/profile", authenticate, async (req, res) => {
       data: {
         id: user.id,
         email: user.email,
+        personalEmail: user.personal_email || "",
+        personalEmailVerified: user.personal_email_verified || false,
         role: user.role,
         isApproved: user.is_approved,
         isActive: user.is_active,
@@ -1315,6 +1419,7 @@ router.get("/onboarding-data", authenticate, async (req, res) => {
       branchLocked: false,
       contactNumber: null,
       contactNumberLocked: false,
+      personalEmail: null, // Add personal email to onboarding data
     };
 
     // If user registered via personal email, fetch institute record data
@@ -1464,6 +1569,11 @@ router.get("/onboarding-data", authenticate, async (req, res) => {
       );
     }
 
+    // If user registered with personal email (non-institute), pre-fill it
+    if (user.registration_path === 'personal_email' || !user.email.endsWith('@iiitnr.edu.in')) {
+      preFillData.personalEmail = user.email;
+    }
+
     console.log("📤 Sending response with data:", preFillData);
     res.json({
       success: true,
@@ -1498,6 +1608,15 @@ router.put("/profile", authenticate, async (req, res) => {
     // Separate user data from alumni profile data
     if (updateData.email) {
       userData.email = updateData.email;
+    }
+
+    // Handle personal email updates (goes to users table)
+    if (updateData.personalEmail) {
+      userData.personal_email = updateData.personalEmail.toLowerCase();
+      // Mark as unverified when changed
+      userData.personal_email_verified = false;
+      userData.personal_email_verification_token = null;
+      userData.personal_email_verification_token_expires = null;
     }
 
     // All other data goes to alumni profile (using camelCase)
@@ -1743,17 +1862,61 @@ router.post("/complete-onboarding", authenticate, async (req, res) => {
     }
 
     const profile = profileCheck.rows[0];
-    // Simplified validation - only require name and graduation year
-    if (!profile.first_name || !profile.last_name || !profile.graduation_year) {
+    console.log("Profile validation data:", {
+      first_name: profile.first_name,
+      last_name: profile.last_name,
+      graduation_year: profile.graduation_year
+    });
+    
+    // Simplified validation - only require first name and graduation year (last name can be empty)
+    if (!profile.first_name || !profile.graduation_year) {
+      console.log("❌ Validation failed - missing required fields");
       return res.status(400).json({
         success: false,
         message:
-          "Please complete all required fields in your profile (name, graduation year).",
+          "Please complete all required fields in your profile (first name, graduation year).",
       });
     }
 
     // Mark onboarding as complete
     const updatedUser = await User.markOnboardingComplete(userId);
+
+    // Send personal email verification in background if personal email exists and not verified
+    const userWithEmail = await query(
+      "SELECT personal_email, personal_email_verified FROM users WHERE id = $1",
+      [userId]
+    );
+    
+    if (userWithEmail.rows[0]?.personal_email && !userWithEmail.rows[0]?.personal_email_verified) {
+      // Generate verification token
+      const crypto = await import("crypto");
+      const verificationToken = crypto.randomBytes(32).toString("hex");
+      const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+      // Update user with verification token
+      await query(
+        `UPDATE users 
+         SET personal_email_verification_token = $1,
+             personal_email_verification_token_expires = $2
+         WHERE id = $3`,
+        [verificationToken, tokenExpiry, userId]
+      );
+
+      // Send verification email (don't wait for it, run in background)
+      const profileResult = await query(
+        "SELECT first_name FROM alumni_profiles WHERE user_id = $1",
+        [userId]
+      );
+      const firstName = profileResult.rows[0]?.first_name || "there";
+      
+      emailService.sendPersonalEmailVerification(
+        userWithEmail.rows[0].personal_email,
+        verificationToken,
+        firstName
+      ).catch(err => console.error("Background email error:", err));
+
+      console.log(`✅ Background verification email queued for: ${userWithEmail.rows[0].personal_email}`);
+    }
 
     res.json({
       success: true,
@@ -2053,6 +2216,140 @@ router.post("/reset-password", async (req, res) => {
     });
   } catch (error) {
     console.error("Reset password error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error. Please try again later.",
+    });
+  }
+});
+
+/**
+ * @route   POST /api/auth/send-personal-email-verification
+ * @desc    Send verification email to personal email address
+ * @access  Private
+ */
+router.post("/send-personal-email-verification", authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Check if personal email exists
+    if (!user.personal_email) {
+      return res.status(400).json({
+        success: false,
+        message: "No personal email found. Please add a personal email first.",
+      });
+    }
+
+    // Generate verification token
+    const crypto = await import("crypto");
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+    const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    // Update user with verification token
+    await query(
+      `UPDATE users 
+       SET personal_email_verification_token = $1,
+           personal_email_verification_token_expires = $2
+       WHERE id = $3`,
+      [verificationToken, tokenExpiry, userId]
+    );
+
+    // Get user's name for email
+    const profileResult = await query(
+      "SELECT first_name FROM alumni_profiles WHERE user_id = $1",
+      [userId]
+    );
+    const firstName = profileResult.rows[0]?.first_name || "there";
+
+    // Send verification email
+    await emailService.sendPersonalEmailVerification(
+      user.personal_email,
+      verificationToken,
+      firstName
+    );
+
+    console.log(`✅ Personal email verification sent to: ${user.personal_email}`);
+
+    res.json({
+      success: true,
+      message: "Verification email sent successfully. Please check your inbox.",
+    });
+  } catch (error) {
+    console.error("Send personal email verification error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to send verification email. Please try again later.",
+    });
+  }
+});
+
+/**
+ * @route   GET /api/auth/verify-personal-email/:token
+ * @desc    Verify personal email address with token
+ * @access  Public
+ */
+router.get("/verify-personal-email/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "Verification token is required",
+      });
+    }
+
+    // Find user with this verification token
+    const result = await query(
+      `SELECT id, personal_email, personal_email_verification_token_expires 
+       FROM users 
+       WHERE personal_email_verification_token = $1`,
+      [token]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired verification token",
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Check if token has expired
+    if (new Date() > new Date(user.personal_email_verification_token_expires)) {
+      return res.status(400).json({
+        success: false,
+        message: "Verification token has expired. Please request a new one.",
+      });
+    }
+
+    // Mark personal email as verified
+    await query(
+      `UPDATE users 
+       SET personal_email_verified = TRUE,
+           personal_email_verification_token = NULL,
+           personal_email_verification_token_expires = NULL
+       WHERE id = $1`,
+      [user.id]
+    );
+
+    console.log(`✅ Personal email verified for user ID: ${user.id}`);
+
+    res.json({
+      success: true,
+      message: "Personal email verified successfully!",
+    });
+  } catch (error) {
+    console.error("Verify personal email error:", error);
     res.status(500).json({
       success: false,
       message: "Server error. Please try again later.",

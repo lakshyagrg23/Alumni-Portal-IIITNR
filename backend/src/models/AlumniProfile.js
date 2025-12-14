@@ -292,6 +292,7 @@ class AlumniProfile {
       page = 1,
       limit = 20,
       search,
+      admissionYear,
       graduationYear,
       branch,
       currentCity,
@@ -309,6 +310,7 @@ class AlumniProfile {
     let whereConditions = [];
     let queryParams = [];
     let paramIndex = 1;
+    const gradYearExpr = "COALESCE(ap.graduation_year, ap.admission_year + 4)";
 
     // Only show alumni role users (not admin users)
     whereConditions.push(`u.role = $${paramIndex}`);
@@ -317,13 +319,13 @@ class AlumniProfile {
 
     // Filter by student type (alumni vs current students)
     if (studentType === "alumni") {
-      // Alumni: graduation year <= current year
-      whereConditions.push(`ap.graduation_year <= $${paramIndex}`);
+      // Alumni: graduation (or inferred graduation) year <= current year
+      whereConditions.push(`${gradYearExpr} <= $${paramIndex}`);
       queryParams.push(currentYear);
       paramIndex++;
     } else if (studentType === "current") {
-      // Current students: graduation year > current year
-      whereConditions.push(`ap.graduation_year > $${paramIndex}`);
+      // Current students: graduation (or inferred) year > current year
+      whereConditions.push(`${gradYearExpr} > $${paramIndex}`);
       queryParams.push(currentYear);
       paramIndex++;
     }
@@ -348,6 +350,15 @@ class AlumniProfile {
     if (graduationYear) {
       whereConditions.push(`ap.graduation_year = $${paramIndex}`);
       queryParams.push(graduationYear);
+      paramIndex++;
+    }
+
+    // Filter by admission (enrollment) year
+    if (admissionYear) {
+      whereConditions.push(
+        `(ap.admission_year = $${paramIndex} OR ap.graduation_year = $${paramIndex} + 4)`
+      );
+      queryParams.push(admissionYear);
       paramIndex++;
     }
 

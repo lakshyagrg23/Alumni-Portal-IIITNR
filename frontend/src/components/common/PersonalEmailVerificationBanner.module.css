@@ -1,0 +1,142 @@
+/* PersonalEmailVerificationBanner.module.css */
+
+.banner {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border-left: 4px solid #f59e0b;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+}
+
+.icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  background: #f59e0b;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 1.25rem;
+}
+
+.message {
+  flex: 1;
+  color: #78350f;
+}
+
+.message strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+  color: #92400e;
+}
+
+.message p {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.verifyButton {
+  padding: 0.5rem 1.25rem;
+  background: #1e3a8a;
+  color: white;
+  text-decoration: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.verifyButton:hover {
+  background: #1e40af;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(30, 58, 138, 0.3);
+}
+
+.dismissButton {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  color: #92400e;
+  border: 1px solid #d97706;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.dismissButton:hover {
+  background: rgba(217, 119, 6, 0.1);
+  border-color: #b45309;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .verifyButton,
+  .dismissButton {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .content {
+    padding: 1rem;
+  }
+
+  .icon {
+    width: 32px;
+    height: 32px;
+    font-size: 1.1rem;
+  }
+
+  .message strong {
+    font-size: 0.9rem;
+  }
+
+  .message p {
+    font-size: 0.8rem;
+  }
+}

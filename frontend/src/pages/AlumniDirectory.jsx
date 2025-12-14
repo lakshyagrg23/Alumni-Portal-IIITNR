@@ -1,30 +1,52 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Helmet } from 'react-helmet-async'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
 import { getAvatarUrl, handleAvatarError } from '@utils/avatarUtils'
 import styles from './AlumniDirectory.module.css'
 
 const AlumniDirectory = () => {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [alumni, setAlumni] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalRecords, setTotalRecords] = useState(0)
+  const currentYear = new Date().getFullYear()
+  const queryAdmissionYear = searchParams.get('admissionYear') || searchParams.get('enrollmentYear') || searchParams.get('batch') || ''
+  const queryGraduationYear = searchParams.get('graduationYear') || searchParams.get('gradYear') || ''
+  const initialStudentType = (() => {
+    const paramType = searchParams.get('studentType')
+    if (paramType === 'alumni' || paramType === 'current') return paramType
+    const grad = parseInt(queryGraduationYear, 10)
+    if (!Number.isNaN(grad)) {
+      return grad > currentYear ? 'current' : 'alumni'
+    }
+    const admit = parseInt(queryAdmissionYear, 10)
+    if (!Number.isNaN(admit)) {
+      // Assume 4-year program for inference; adjust if needed
+      return admit + 4 > currentYear ? 'current' : 'alumni'
+    }
+    return 'alumni'
+  })()
   
-  // Search and filter states
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedBatch, setSelectedBatch] = useState('')
-  const [selectedBranch, setSelectedBranch] = useState('')
+  // Initialize filters from URL params or defaults
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '')
+  const [selectedBatch, setSelectedBatch] = useState(queryAdmissionYear)
+  const [selectedBranch, setSelectedBranch] = useState(searchParams.get('branch') || '')
+  const [selectedIndustry, setSelectedIndustry] = useState(searchParams.get('industry') || '')
+  const [selectedCompany, setSelectedCompany] = useState(searchParams.get('company') || '')
   const [sortBy, setSortBy] = useState('graduation_year')
   const [sortOrder, setSortOrder] = useState('DESC')
-  const [studentType, setStudentType] = useState('alumni') // 'alumni' or 'current'
+  const [studentType, setStudentType] = useState(initialStudentType) // 'alumni' or 'current'
 
   // Get available batches and branches for filters
   const [batches, setBatches] = useState([])
   const [branches, setBranches] = useState([])
+  const [industries, setIndustries] = useState([])
+  const [companies, setCompanies] = useState([])
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -44,8 +66,10 @@ const AlumniDirectory = () => {
       }
 
       if (searchTerm) params.append('search', searchTerm)
-      if (selectedBatch) params.append('batch', selectedBatch)
+      if (selectedBatch) params.append('admissionYear', selectedBatch)
       if (selectedBranch) params.append('branch', selectedBranch)
+      if (selectedIndustry) params.append('industry', selectedIndustry)
+      if (selectedCompany) params.append('company', selectedCompany)
       if (studentType) params.append('studentType', studentType)
 
       const response = await axios.get(`${API_URL}/alumni?${params}`)
@@ -65,15 +89,31 @@ const AlumniDirectory = () => {
     } finally {
       setLoading(false)
     }
-  }, [searchTerm, selectedBatch, selectedBranch, sortBy, sortOrder, studentType])
+  }, [searchTerm, selectedBatch, selectedBranch, selectedIndustry, selectedCompany, sortBy, sortOrder, studentType])
 
-  // Extract unique batches and branches for filters
+  // Extract unique filter options from the currently visible profiles
   useEffect(() => {
-    const uniqueBatches = [...new Set(alumni.map(a => a.graduationYear))].sort((a, b) => b - a)
-    const uniqueBranches = [...new Set(alumni.map(a => a.branch))].sort()
+    const uniqueBatches = [...new Set(
+      alumni
+        .map(a => a.admissionYear || a.admission_year || a.graduationYear)
+        .filter(Boolean)
+    )].sort((a, b) => b - a)
+    const uniqueBranches = [...new Set(alumni.map(a => a.branch).filter(Boolean))].sort()
+    const uniqueIndustries = [...new Set(alumni.map(a => a.industrySector || a.industry).filter(Boolean))].sort((a, b) => a.localeCompare(b))
+    const uniqueCompanies = [...new Set(alumni.map(a => a.currentCompany || a.currentEmployer).filter(Boolean))].sort((a, b) => a.localeCompare(b))
+
+    if (selectedIndustry && !uniqueIndustries.includes(selectedIndustry)) {
+      uniqueIndustries.unshift(selectedIndustry)
+    }
+    if (selectedCompany && !uniqueCompanies.includes(selectedCompany)) {
+      uniqueCompanies.unshift(selectedCompany)
+    }
+
     setBatches(uniqueBatches)
     setBranches(uniqueBranches)
-  }, [alumni])
+    setIndustries(uniqueIndustries)
+    setCompanies(uniqueCompanies)
+  }, [alumni, selectedIndustry, selectedCompany])
 
   // Initial fetch and refetch on filter changes
   useEffect(() => {
@@ -100,6 +140,8 @@ const AlumniDirectory = () => {
     setSearchTerm('')
     setSelectedBatch('')
     setSelectedBranch('')
+    setSelectedIndustry('')
+    setSelectedCompany('')
     setSortBy('graduation_year')
     setSortOrder('DESC')
     setStudentType('alumni')
@@ -192,7 +234,7 @@ const AlumniDirectory = () => {
 
             <div className={styles.filterRow}>
               <label className={styles.filterControl}>
-                <span className={styles.filterLabel}>Batch</span>
+                <span className={styles.filterLabel}>Batch (Enrollment Year)</span>
                 <select
                   value={selectedBatch}
                   onChange={(e) => setSelectedBatch(e.target.value)}
@@ -222,6 +264,34 @@ const AlumniDirectory = () => {
                       ]
                   ).map(branch => (
                     <option key={branch} value={branch}>{branch}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className={styles.filterControl}>
+                <span className={styles.filterLabel}>Industry</span>
+                <select
+                  value={selectedIndustry}
+                  onChange={(e) => setSelectedIndustry(e.target.value)}
+                  className={styles.filterSelect}
+                >
+                  <option value="">All Industries</option>
+                  {industries.map((industry) => (
+                    <option key={industry} value={industry}>{industry}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className={styles.filterControl}>
+                <span className={styles.filterLabel}>Company</span>
+                <select
+                  value={selectedCompany}
+                  onChange={(e) => setSelectedCompany(e.target.value)}
+                  className={styles.filterSelect}
+                >
+                  <option value="">All Companies</option>
+                  {companies.map((company) => (
+                    <option key={company} value={company}>{company}</option>
                   ))}
                 </select>
               </label>

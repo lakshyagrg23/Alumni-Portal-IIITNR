@@ -29,6 +29,7 @@ const ProfileCompletion = () => {
     last_name: user?.lastName || '',
     roll_number: '',
     profile_picture_url: user?.profilePicture || user?.profilePictureUrl || '',
+    personal_email: '', // Will be pre-filled if registered with personal email
     
     // Academic Information
     degree: '',
@@ -88,6 +89,7 @@ const ProfileCompletion = () => {
               degree: data.degree || prev.degree,
               branch: data.branch || prev.branch,
               graduation_year: data.graduationYear || prev.graduation_year,
+              personal_email: data.personalEmail || prev.personal_email, // Pre-fill personal email if available
             }))
             
             // Set locked fields based on verification
@@ -212,6 +214,12 @@ const ProfileCompletion = () => {
     if (!formData.profile_picture_url) {
       newErrors.profile_picture_url = 'Profile picture is required'
     }
+    
+    // Personal email validation (optional, but validate format if provided)
+    if (formData.personal_email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.personal_email)) {
+      newErrors.personal_email = 'Please enter a valid email address'
+    }
+    
     if (!isFutureGraduation) {
       if (!formData.employment_status) {
         newErrors.employment_status = 'Current status is required'
@@ -259,6 +267,7 @@ const ProfileCompletion = () => {
         degree: formData.degree,
         branch: formData.branch,
         graduationYear: parseInt(formData.graduation_year),
+        personalEmail: formData.personal_email, // Add personal email to profile data
         isProfilePublic: true,
       
         // Set defaults for optional fields
@@ -427,6 +436,25 @@ const ProfileCompletion = () => {
                 </small>
                 {errors.roll_number && (
                   <span className={styles.errorText}>{errors.roll_number}</span>
+                )}
+              </div>
+
+              <div className={styles.formGroup}>
+                <label htmlFor="personal_email">Personal Email Address (Optional)</label>
+                <input
+                  type="email"
+                  id="personal_email"
+                  name="personal_email"
+                  value={formData.personal_email}
+                  onChange={handleInputChange}
+                  className={errors.personal_email ? styles.error : ''}
+                  placeholder="your.email@gmail.com"
+                />
+                <small className={styles.helpText}>
+                  We'll use this to contact you after graduation when your institute email expires. This will not be shown on your public profile.
+                </small>
+                {errors.personal_email && (
+                  <span className={styles.errorText}>{errors.personal_email}</span>
                 )}
               </div>
             </div>
