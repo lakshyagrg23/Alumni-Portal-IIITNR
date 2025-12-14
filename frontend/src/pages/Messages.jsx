@@ -116,21 +116,12 @@ const Messages = () => {
         }
 
         if (encryptedRecord?.encrypted_private_key && encryptedRecord?.public_key) {
-          // Build candidate passwords to try (no prompts)
+          // Build candidate passwords to try (email only now)
           const candidates = []
           if (decryptPw) candidates.push(decryptPw)
-          // Fallback: onboarding used a temp password pattern
-          // CRITICAL: Use lowercase email for consistency
+          // Primary pattern: email only
           if (user?.email) {
-            candidates.push(`${user.email.toLowerCase()}:temp_onboarding_password`)
-            // For OAuth users, try email:oauth_providerId pattern
-            if (user.provider === 'google' || user.provider === 'linkedin') {
-              candidates.push(`${user.email.toLowerCase()}:oauth_${user.providerId || user.provider_id || ''}`)
-            }
-          }
-          // If decryptPw is just a password (not email:pass), also try email:decryptPw
-          if (decryptPw && user?.email && !decryptPw.startsWith(`${user.email.toLowerCase()}:`)) {
-            candidates.push(`${user.email.toLowerCase()}:${decryptPw}`)
+            candidates.push(user.email.toLowerCase())
           }
 
           const uniqueCandidates = [...new Set(candidates.filter(Boolean))]

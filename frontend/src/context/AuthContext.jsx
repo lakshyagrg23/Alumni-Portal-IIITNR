@@ -225,9 +225,8 @@ export const AuthProvider = ({ children }) => {
         
         if (keyData.success && keyData.data?.encrypted_private_key && keyData.data?.public_key) {
           console.log('[Login] Keys found on server, decrypting...')
-          // Decrypt using email+password
-          // CRITICAL: Use lowercase email to match registration encryption
-          const encryptionPassword = `${credentials.email.toLowerCase()}:${credentials.password}`
+          // Decrypt using email only
+          const encryptionPassword = credentials.email.toLowerCase()
           const encryptedData = JSON.parse(keyData.data.encrypted_private_key)
           
           try {
@@ -257,9 +256,8 @@ export const AuthProvider = ({ children }) => {
 
             if (fallbackPriv && fallbackPub) {
               try {
-                // Re-encrypt local private key with the current password and upload so other devices can decrypt
-                // Use lowercase email for consistency
-                const normalizedEncryptionPassword = `${credentials.email.toLowerCase()}:${credentials.password}`
+                // Re-encrypt local private key with email only and upload so other devices can decrypt
+                const normalizedEncryptionPassword = credentials.email.toLowerCase()
                 const encryptedPrivKeyNew = await crypto.encryptPrivateKeyWithPassword(fallbackPriv, normalizedEncryptionPassword)
                 const encryptedPrivKeyStrNew = JSON.stringify(encryptedPrivKeyNew)
 
@@ -303,9 +301,8 @@ export const AuthProvider = ({ children }) => {
           const publicKey = await crypto.exportPublicKey(keyPair.publicKey)
             const privateKey = await crypto.exportPrivateKey(keyPair.privateKey)
             
-            // Encrypt private key with email+password
-            // CRITICAL: Use lowercase email for cross-device compatibility
-            const encryptionPassword = `${credentials.email.toLowerCase()}:${credentials.password}`
+            // Encrypt private key with email only
+            const encryptionPassword = credentials.email.toLowerCase()
             const encryptedPrivKey = await crypto.encryptPrivateKeyWithPassword(privateKey, encryptionPassword)
             const encryptedPrivKeyStr = JSON.stringify(encryptedPrivKey)
             
@@ -341,8 +338,8 @@ export const AuthProvider = ({ children }) => {
         } else {
           // Keys already exist locally, just store the decryption password
           console.log('[Login] Using existing local keys')
-          // CRITICAL: Use lowercase email for consistency
-          const decryptPw = `${credentials.email.toLowerCase()}:${credentials.password}`
+          // Use only email for consistency
+          const decryptPw = credentials.email.toLowerCase()
           sessionStorage.setItem('e2e_decrypt_pw', decryptPw)
           localStorage.setItem('e2e_decrypt_pw', decryptPw)
           sessionStorage.setItem('e2e_priv_jwk', storedPriv)
@@ -399,9 +396,8 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem('e2e_pub_raw', publicKey)
           localStorage.setItem('e2e_priv_jwk', privateKey)
           
-          // Encrypt private key with email+password combination for cross-device support
-          // CRITICAL: Use lowercase email to ensure consistent decryption across devices
-          const encryptionPassword = `${userData.email.toLowerCase()}:${userData.password}`
+          // Encrypt private key with email only for cross-device support
+          const encryptionPassword = userData.email.toLowerCase()
           console.log('[Registration] Encrypting private key...')
           const encryptedPrivKey = await crypto.encryptPrivateKeyWithPassword(privateKey, encryptionPassword)
           const encryptedPrivKeyStr = JSON.stringify(encryptedPrivKey)
@@ -524,23 +520,11 @@ export const AuthProvider = ({ children }) => {
             const keyData = await keyResp.json()
             
             if (keyData.success && keyData.data?.encryptedPrivateKey) {
-              // Keys exist on server - check user's registration method
-              const userProvider = response.user?.provider
-              console.log(`[Google OAuth] Keys found on server. User provider: ${userProvider}`)
+              // Keys exist on server - decrypt them
+              console.log('[Google OAuth] Keys found on server, decrypting...')
               
-              // Build decryption password based on how user originally registered
-              let encryptionPassword
-              if (userProvider === 'google') {
-                encryptionPassword = `${googleData.email.toLowerCase()}:oauth_${googleData.googleId}`
-              } else if (userProvider === 'linkedin') {
-                // User registered with LinkedIn but logging in with Google - keys won't match
-                console.error('❌ Cannot decrypt: User registered with LinkedIn but logging in with Google')
-                throw new Error('Please login with the same method you registered with')
-              } else {
-                // User registered with email/password, can't decrypt with OAuth pattern
-                console.error('❌ Cannot decrypt: User registered with email/password but logging in with OAuth')
-                throw new Error('Please login with email/password instead of Google OAuth')
-              }
+              // Use only email for encryption/decryption (works across all auth methods)
+              const encryptionPassword = googleData.email.toLowerCase()
               
               try {
                 const encPrivKeyObj = JSON.parse(keyData.data.encryptedPrivateKey)
@@ -568,7 +552,7 @@ export const AuthProvider = ({ children }) => {
               const publicKey = await crypto.exportPublicKey(keyPair.publicKey)
               const privateKey = await crypto.exportPrivateKey(keyPair.privateKey)
               
-              const encryptionPassword = `${googleData.email.toLowerCase()}:oauth_${googleData.googleId}`
+              const encryptionPassword = googleData.email.toLowerCase()
               const encryptedPrivKey = await crypto.encryptPrivateKeyWithPassword(privateKey, encryptionPassword)
               const encryptedPrivKeyStr = JSON.stringify(encryptedPrivKey)
               
@@ -593,7 +577,7 @@ export const AuthProvider = ({ children }) => {
           } else {
             // Keys already in localStorage
             console.log('[Google OAuth] Using existing local keys')
-            const encryptionPassword = `${googleData.email.toLowerCase()}:oauth_${googleData.googleId}`
+            const encryptionPassword = googleData.email.toLowerCase()
             sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
             localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
             sessionStorage.setItem('e2e_priv_jwk', storedPriv)
@@ -655,23 +639,11 @@ export const AuthProvider = ({ children }) => {
             const keyData = await keyResp.json()
             
             if (keyData.success && keyData.data?.encryptedPrivateKey) {
-              // Keys exist on server - check user's registration method
-              const userProvider = response.user?.provider
-              console.log(`[LinkedIn OAuth] Keys found on server. User provider: ${userProvider}`)
+              // Keys exist on server - decrypt them
+              console.log('[LinkedIn OAuth] Keys found on server, decrypting...')
               
-              // Build decryption password based on how user originally registered
-              let encryptionPassword
-              if (userProvider === 'linkedin') {
-                encryptionPassword = `${linkedinData.email.toLowerCase()}:oauth_${linkedinData.linkedinId}`
-              } else if (userProvider === 'google') {
-                // User registered with Google but logging in with LinkedIn - keys won't match
-                console.error('❌ Cannot decrypt: User registered with Google but logging in with LinkedIn')
-                throw new Error('Please login with the same method you registered with')
-              } else {
-                // User registered with email/password, can't decrypt with OAuth pattern
-                console.error('❌ Cannot decrypt: User registered with email/password but logging in with OAuth')
-                throw new Error('Please login with email/password instead of LinkedIn OAuth')
-              }
+              // Use only email for encryption/decryption (works across all auth methods)
+              const encryptionPassword = linkedinData.email.toLowerCase()
               
               try {
                 const encPrivKeyObj = JSON.parse(keyData.data.encryptedPrivateKey)
@@ -699,7 +671,7 @@ export const AuthProvider = ({ children }) => {
               const publicKey = await crypto.exportPublicKey(keyPair.publicKey)
               const privateKey = await crypto.exportPrivateKey(keyPair.privateKey)
               
-              const encryptionPassword = `${linkedinData.email.toLowerCase()}:oauth_${linkedinData.linkedinId}`
+              const encryptionPassword = linkedinData.email.toLowerCase()
               const encryptedPrivKey = await crypto.encryptPrivateKeyWithPassword(privateKey, encryptionPassword)
               const encryptedPrivKeyStr = JSON.stringify(encryptedPrivKey)
               
@@ -724,7 +696,7 @@ export const AuthProvider = ({ children }) => {
           } else {
             // Keys already in localStorage
             console.log('[LinkedIn OAuth] Using existing local keys')
-            const encryptionPassword = `${linkedinData.email.toLowerCase()}:oauth_${linkedinData.linkedinId}`
+            const encryptionPassword = linkedinData.email.toLowerCase()
             sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
             localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
             sessionStorage.setItem('e2e_priv_jwk', storedPriv)
