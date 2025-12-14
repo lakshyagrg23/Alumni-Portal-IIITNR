@@ -504,41 +504,104 @@ export const AuthProvider = ({ children }) => {
         payload: response,
       })
 
-      // Generate encryption keys for OAuth users (they don't have passwords)
-      // Use email + googleId as encryption password for OAuth
-      if (response.isNewUser && googleData?.email && googleData?.googleId) {
+      // Handle encryption keys for OAuth users
+      if (googleData?.email && googleData?.googleId) {
         try {
-          console.log('[Google OAuth] Generating encryption keys for new OAuth user...')
           const crypto = await import('../utils/crypto.js')
-          const keyPair = await crypto.generateKeyPair()
-          const publicKey = await crypto.exportPublicKey(keyPair.publicKey)
-          const privateKey = await crypto.exportPrivateKey(keyPair.privateKey)
-          
-          // For OAuth, use email + provider ID as encryption password
-          const encryptionPassword = `${googleData.email.toLowerCase()}:oauth_${googleData.googleId}`
-          const encryptedPrivKey = await crypto.encryptPrivateKeyWithPassword(privateKey, encryptionPassword)
-          const encryptedPrivKeyStr = JSON.stringify(encryptedPrivKey)
-          
           const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
-          await fetch(`${API}/messages/public-key`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${response.token}`
-            },
-            body: JSON.stringify({ publicKey, encryptedPrivateKey: encryptedPrivKeyStr })
-          })
           
-          localStorage.setItem('e2e_priv_jwk', privateKey)
-          localStorage.setItem('e2e_pub_raw', publicKey)
-          localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
-          sessionStorage.setItem('e2e_priv_jwk', privateKey)
-          sessionStorage.setItem('e2e_pub_raw', publicKey)
-          sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+          // Check localStorage first
+          let storedPriv = localStorage.getItem('e2e_priv_jwk')
+          let storedPub = localStorage.getItem('e2e_pub_raw')
           
-          console.log('✅ OAuth encryption keys generated')
+          if (!storedPriv || !storedPub) {
+            // Try to fetch from server
+            console.log('[Google OAuth] Fetching encryption keys from server...')
+            const keyResp = await fetch(`${API}/messages/public-key`, {
+              headers: { 'Authorization': `Bearer ${response.token}` }
+            })
+            
+            const keyData = await keyResp.json()
+            
+            if (keyData.success && keyData.data?.encryptedPrivateKey) {
+              // Keys exist on server - check user's registration method
+              const userProvider = response.user?.provider
+              console.log(`[Google OAuth] Keys found on server. User provider: ${userProvider}`)
+              
+              // Build decryption password based on how user originally registered
+              let encryptionPassword
+              if (userProvider === 'google') {
+                encryptionPassword = `${googleData.email.toLowerCase()}:oauth_${googleData.googleId}`
+              } else if (userProvider === 'linkedin') {
+                // User registered with LinkedIn but logging in with Google - keys won't match
+                console.error('❌ Cannot decrypt: User registered with LinkedIn but logging in with Google')
+                throw new Error('Please login with the same method you registered with')
+              } else {
+                // User registered with email/password, can't decrypt with OAuth pattern
+                console.error('❌ Cannot decrypt: User registered with email/password but logging in with OAuth')
+                throw new Error('Please login with email/password instead of Google OAuth')
+              }
+              
+              try {
+                const encPrivKeyObj = JSON.parse(keyData.data.encryptedPrivateKey)
+                const decryptedPrivKey = await crypto.decryptPrivateKeyWithPassword(encPrivKeyObj, encryptionPassword)
+                
+                storedPriv = decryptedPrivKey
+                storedPub = keyData.data.publicKey
+                
+                localStorage.setItem('e2e_priv_jwk', storedPriv)
+                localStorage.setItem('e2e_pub_raw', storedPub)
+                sessionStorage.setItem('e2e_priv_jwk', storedPriv)
+                sessionStorage.setItem('e2e_pub_raw', storedPub)
+                sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+                localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+                
+                console.log('✅ OAuth encryption keys fetched and decrypted')
+              } catch (decryptErr) {
+                console.error('❌ Failed to decrypt OAuth keys:', decryptErr)
+                // Don't throw - just log. Messaging won't work but login succeeds
+              }
+            } else if (response.isNewUser) {
+              // New user - generate keys
+              console.log('[Google OAuth] Generating encryption keys for new OAuth user...')
+              const keyPair = await crypto.generateKeyPair()
+              const publicKey = await crypto.exportPublicKey(keyPair.publicKey)
+              const privateKey = await crypto.exportPrivateKey(keyPair.privateKey)
+              
+              const encryptionPassword = `${googleData.email.toLowerCase()}:oauth_${googleData.googleId}`
+              const encryptedPrivKey = await crypto.encryptPrivateKeyWithPassword(privateKey, encryptionPassword)
+              const encryptedPrivKeyStr = JSON.stringify(encryptedPrivKey)
+              
+              await fetch(`${API}/messages/public-key`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${response.token}`
+                },
+                body: JSON.stringify({ publicKey, encryptedPrivateKey: encryptedPrivKeyStr })
+              })
+              
+              localStorage.setItem('e2e_priv_jwk', privateKey)
+              localStorage.setItem('e2e_pub_raw', publicKey)
+              localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+              sessionStorage.setItem('e2e_priv_jwk', privateKey)
+              sessionStorage.setItem('e2e_pub_raw', publicKey)
+              sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+              
+              console.log('✅ OAuth encryption keys generated')
+            }
+          } else {
+            // Keys already in localStorage
+            console.log('[Google OAuth] Using existing local keys')
+            const encryptionPassword = `${googleData.email.toLowerCase()}:oauth_${googleData.googleId}`
+            sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+            localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+            sessionStorage.setItem('e2e_priv_jwk', storedPriv)
+            sessionStorage.setItem('e2e_pub_raw', storedPub)
+          }
         } catch (err) {
-          console.error('⚠️ Failed to generate OAuth encryption keys:', err)
+          console.error('⚠️ Failed to handle OAuth encryption keys:', err)
+          // Don't fail the entire login - just means messaging won't work
         }
       }
 
@@ -572,41 +635,104 @@ export const AuthProvider = ({ children }) => {
         payload: response,
       })
 
-      // Generate encryption keys for OAuth users (they don't have passwords)
-      // Use email + linkedinId as encryption password for OAuth
-      if (response.isNewUser && linkedinData?.email && linkedinData?.linkedinId) {
+      // Handle encryption keys for OAuth users
+      if (linkedinData?.email && linkedinData?.linkedinId) {
         try {
-          console.log('[LinkedIn OAuth] Generating encryption keys for new OAuth user...')
           const crypto = await import('../utils/crypto.js')
-          const keyPair = await crypto.generateKeyPair()
-          const publicKey = await crypto.exportPublicKey(keyPair.publicKey)
-          const privateKey = await crypto.exportPrivateKey(keyPair.privateKey)
-          
-          // For OAuth, use email + provider ID as encryption password
-          const encryptionPassword = `${linkedinData.email.toLowerCase()}:oauth_${linkedinData.linkedinId}`
-          const encryptedPrivKey = await crypto.encryptPrivateKeyWithPassword(privateKey, encryptionPassword)
-          const encryptedPrivKeyStr = JSON.stringify(encryptedPrivKey)
-          
           const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
-          await fetch(`${API}/messages/public-key`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${response.token}`
-            },
-            body: JSON.stringify({ publicKey, encryptedPrivateKey: encryptedPrivKeyStr })
-          })
           
-          localStorage.setItem('e2e_priv_jwk', privateKey)
-          localStorage.setItem('e2e_pub_raw', publicKey)
-          localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
-          sessionStorage.setItem('e2e_priv_jwk', privateKey)
-          sessionStorage.setItem('e2e_pub_raw', publicKey)
-          sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+          // Check localStorage first
+          let storedPriv = localStorage.getItem('e2e_priv_jwk')
+          let storedPub = localStorage.getItem('e2e_pub_raw')
           
-          console.log('✅ OAuth encryption keys generated')
+          if (!storedPriv || !storedPub) {
+            // Try to fetch from server
+            console.log('[LinkedIn OAuth] Fetching encryption keys from server...')
+            const keyResp = await fetch(`${API}/messages/public-key`, {
+              headers: { 'Authorization': `Bearer ${response.token}` }
+            })
+            
+            const keyData = await keyResp.json()
+            
+            if (keyData.success && keyData.data?.encryptedPrivateKey) {
+              // Keys exist on server - check user's registration method
+              const userProvider = response.user?.provider
+              console.log(`[LinkedIn OAuth] Keys found on server. User provider: ${userProvider}`)
+              
+              // Build decryption password based on how user originally registered
+              let encryptionPassword
+              if (userProvider === 'linkedin') {
+                encryptionPassword = `${linkedinData.email.toLowerCase()}:oauth_${linkedinData.linkedinId}`
+              } else if (userProvider === 'google') {
+                // User registered with Google but logging in with LinkedIn - keys won't match
+                console.error('❌ Cannot decrypt: User registered with Google but logging in with LinkedIn')
+                throw new Error('Please login with the same method you registered with')
+              } else {
+                // User registered with email/password, can't decrypt with OAuth pattern
+                console.error('❌ Cannot decrypt: User registered with email/password but logging in with OAuth')
+                throw new Error('Please login with email/password instead of LinkedIn OAuth')
+              }
+              
+              try {
+                const encPrivKeyObj = JSON.parse(keyData.data.encryptedPrivateKey)
+                const decryptedPrivKey = await crypto.decryptPrivateKeyWithPassword(encPrivKeyObj, encryptionPassword)
+                
+                storedPriv = decryptedPrivKey
+                storedPub = keyData.data.publicKey
+                
+                localStorage.setItem('e2e_priv_jwk', storedPriv)
+                localStorage.setItem('e2e_pub_raw', storedPub)
+                sessionStorage.setItem('e2e_priv_jwk', storedPriv)
+                sessionStorage.setItem('e2e_pub_raw', storedPub)
+                sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+                localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+                
+                console.log('✅ OAuth encryption keys fetched and decrypted')
+              } catch (decryptErr) {
+                console.error('❌ Failed to decrypt OAuth keys:', decryptErr)
+                // Don't throw - just log. Messaging won't work but login succeeds
+              }
+            } else if (response.isNewUser) {
+              // New user - generate keys
+              console.log('[LinkedIn OAuth] Generating encryption keys for new OAuth user...')
+              const keyPair = await crypto.generateKeyPair()
+              const publicKey = await crypto.exportPublicKey(keyPair.publicKey)
+              const privateKey = await crypto.exportPrivateKey(keyPair.privateKey)
+              
+              const encryptionPassword = `${linkedinData.email.toLowerCase()}:oauth_${linkedinData.linkedinId}`
+              const encryptedPrivKey = await crypto.encryptPrivateKeyWithPassword(privateKey, encryptionPassword)
+              const encryptedPrivKeyStr = JSON.stringify(encryptedPrivKey)
+              
+              await fetch(`${API}/messages/public-key`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${response.token}`
+                },
+                body: JSON.stringify({ publicKey, encryptedPrivateKey: encryptedPrivKeyStr })
+              })
+              
+              localStorage.setItem('e2e_priv_jwk', privateKey)
+              localStorage.setItem('e2e_pub_raw', publicKey)
+              localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+              sessionStorage.setItem('e2e_priv_jwk', privateKey)
+              sessionStorage.setItem('e2e_pub_raw', publicKey)
+              sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+              
+              console.log('✅ OAuth encryption keys generated')
+            }
+          } else {
+            // Keys already in localStorage
+            console.log('[LinkedIn OAuth] Using existing local keys')
+            const encryptionPassword = `${linkedinData.email.toLowerCase()}:oauth_${linkedinData.linkedinId}`
+            sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+            localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+            sessionStorage.setItem('e2e_priv_jwk', storedPriv)
+            sessionStorage.setItem('e2e_pub_raw', storedPub)
+          }
         } catch (err) {
-          console.error('⚠️ Failed to generate OAuth encryption keys:', err)
+          console.error('⚠️ Failed to handle OAuth encryption keys:', err)
+          // Don't fail the entire login - just means messaging won't work
         }
       }
 

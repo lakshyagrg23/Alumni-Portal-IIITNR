@@ -12,19 +12,25 @@ const EventCard = ({
   onEventClick, 
   isPastEvent = false 
 }) => {
-  const formatDate = (dateString) => {
+  const formatDateTime = (dateString) => {
+    if (!dateString) {
+      console.warn('EventCard: No date string provided', event);
+      return 'Date not available';
+    }
+    
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      console.error('EventCard: Invalid date format', dateString, event);
+      return 'Invalid Date';
+    }
+    
+    return date.toLocaleString('en-US', {
       weekday: 'short',
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
-    });
-  };
-
-  const formatTime = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', {
+      day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     });
@@ -64,13 +70,9 @@ const EventCard = ({
         <h3 className={styles.eventTitle}>{event.title}</h3>
         
         <div className={styles.eventMeta}>
-          <div className={styles.eventDate}>
+          <div className={styles.eventDateTime}>
             <span className={styles.icon}>📅</span>
-            <span>{formatDate(event.startDatetime)}</span>
-          </div>
-          <div className={styles.eventTime}>
-            <span className={styles.icon}>🕒</span>
-            <span>{formatTime(event.startDatetime)}</span>
+            <span>{formatDateTime(event.startDateTime || event.start_datetime || event.startDatetime)}</span>
           </div>
         </div>
 
