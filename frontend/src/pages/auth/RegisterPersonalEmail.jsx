@@ -170,7 +170,7 @@ const VerifyIdentityStep = ({ onVerified }) => {
 
       <div className={styles.infoBox}>
         <h4>Need help?</h4>
-        <p>If your details don't match our records, please contact the alumni office at alumni@iiitnr.edu.in</p>
+        <p>If your details don't match our records, please contact the alumni office at alumnicoordinator@alumni.iiitnr.ac.in</p>
       </div>
     </div>
   );
