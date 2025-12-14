@@ -1884,50 +1884,6 @@ router.post("/complete-onboarding", authenticate, async (req, res) => {
     // Mark onboarding as complete
     const updatedUser = await User.markOnboardingComplete(userId);
 
-    // Send personal email verification in background if personal email exists and not verified
-    const userWithEmail = await query(
-      "SELECT personal_email, personal_email_verified FROM users WHERE id = $1",
-      [userId]
-    );
-
-    if (
-      userWithEmail.rows[0]?.personal_email &&
-      !userWithEmail.rows[0]?.personal_email_verified
-    ) {
-      // Generate verification token
-      const crypto = await import("crypto");
-      const verificationToken = crypto.randomBytes(32).toString("hex");
-      const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-      // Update user with verification token
-      await query(
-        `UPDATE users 
-         SET personal_email_verification_token = $1,
-             personal_email_verification_token_expires = $2
-         WHERE id = $3`,
-        [verificationToken, tokenExpiry, userId]
-      );
-
-      // Send verification email (don't wait for it, run in background)
-      const profileResult = await query(
-        "SELECT first_name FROM alumni_profiles WHERE user_id = $1",
-        [userId]
-      );
-      const firstName = profileResult.rows[0]?.first_name || "there";
-
-      emailService
-        .sendPersonalEmailVerification(
-          userWithEmail.rows[0].personal_email,
-          verificationToken,
-          firstName
-        )
-        .catch((err) => console.error("Background email error:", err));
-
-      console.log(
-        `✅ Background verification email queued for: ${userWithEmail.rows[0].personal_email}`
-      );
-    }
-
     res.json({
       success: true,
       message: "Onboarding completed successfully!",

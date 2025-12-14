@@ -105,6 +105,7 @@ const Messages = () => {
         try {
           console.log('[Messages] Keys not in storage, fetching from server...')
           const resp = await axios.get(`${API}/messages/public-key`, { headers: { Authorization: `Bearer ${token}` } })
+          console.log(resp);
           encryptedRecord = resp.data?.data || null
         } catch (fetchErr) {
           console.warn('[Messages] Failed to fetch keys from server:', fetchErr)
