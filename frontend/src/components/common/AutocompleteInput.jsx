@@ -223,7 +223,11 @@ const AutocompleteInput = ({
               className={`${styles.suggestionItem} ${
                 index === highlightedIndex ? styles.highlighted : ''
               }`}
-              onClick={() => handleSelectSuggestion(suggestion)}
+              onMouseDown={(e) => {
+                // Use mousedown so selection happens before the input loses focus
+                e.preventDefault();
+                handleSelectSuggestion(suggestion);
+              }}
               onMouseEnter={() => setHighlightedIndex(index)}
             >
               {suggestion}

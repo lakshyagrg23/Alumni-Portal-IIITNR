@@ -989,29 +989,15 @@ const Profile = () => {
                     <label htmlFor="personalEmail">
                       Secondary Email Address
                     </label>
-                    <div className={styles.emailVerificationRow}>
-                      <input
-                        type="email"
-                        id="personalEmail"
-                        name="personalEmail"
-                        value={profileData.personalEmail}
-                        onChange={handleInputChange}
-                        placeholder="your.email@gmail.com"
-                        className={errors.personalEmail ? styles.inputError : ''}
-                      />
-                      {profileData.personalEmailVerified ? (
-                        <span className={styles.verifiedBadge}>Verified</span>
-                      ) : profileData.personalEmail ? (
-                        <button
-                          type="button"
-                          onClick={handleSendVerification}
-                          disabled={sendingVerification}
-                          className={styles.verifyButton}
-                        >
-                          {sendingVerification ? 'Sending...' : 'Verify'}
-                        </button>
-                      ) : null}
-                    </div>
+                    <input
+                      type="email"
+                      id="personalEmail"
+                      name="personalEmail"
+                      value={profileData.personalEmail}
+                      onChange={handleInputChange}
+                      placeholder="your.secondary.email@gmail.com"
+                      className={errors.personalEmail ? styles.inputError : ''}
+                    />
                     <small className={styles.helpText}>
                       Your secondary email is private and will not be shown on your public profile. It can be used for account recovery and important updates.
                     </small>

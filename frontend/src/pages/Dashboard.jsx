@@ -3,7 +3,6 @@ import { Helmet } from 'react-helmet-async'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@hooks/useAuth'
 import axios from 'axios'
-import PersonalEmailVerificationBanner from '@components/common/PersonalEmailVerificationBanner'
 import styles from './Dashboard.module.css'
 import { DayPicker } from 'react-day-picker'
 import 'react-day-picker/dist/style.css'
@@ -394,9 +393,6 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Personal Email Verification Banner */}
-        <PersonalEmailVerificationBanner />
-
         {loading ? (
           <div className={styles.loadingContainer}>
             <div className={styles.spinner}></div>
@@ -585,10 +581,10 @@ const Dashboard = () => {
                   recommendations.sameBatch.length === 0) ? (
                   <div className={styles.emptyRecommendationsModern}>
                     <p className={styles.emptyRecommendationsText}>
-                      Complete your profile to get personalized alumni recommendations!
+                      No close matches yet
                     </p>
                     <p className={styles.emptyRecommendationsHint}>
-                      Add your industry, professional interests, career goals, and skills to discover alumni who can help advance your career.
+                      Update your profile to widen the net. You will be notified as soon as new matches appear.
                     </p>
                     <Link to="/profile" className={styles.completeProfileButton}>
                       Complete Your Profile

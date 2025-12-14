@@ -110,6 +110,16 @@ class User {
       db.email_verification_token_expires =
         updateData.emailVerificationTokenExpires;
 
+    // Handle personal email fields
+    if (typeof updateData.personal_email !== "undefined")
+      db.personal_email = updateData.personal_email;
+    if (typeof updateData.personal_email_verified !== "undefined")
+      db.personal_email_verified = updateData.personal_email_verified;
+    if (typeof updateData.personal_email_verification_token !== "undefined")
+      db.personal_email_verification_token = updateData.personal_email_verification_token;
+    if (typeof updateData.personal_email_verification_token_expires !== "undefined")
+      db.personal_email_verification_token_expires = updateData.personal_email_verification_token_expires;
+
     if (updateData.password) {
       const salt = await bcrypt.genSalt(10);
       db.password_hash = await bcrypt.hash(updateData.password, salt);
