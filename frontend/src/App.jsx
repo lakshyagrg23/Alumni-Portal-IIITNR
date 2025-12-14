@@ -28,6 +28,7 @@ import NewsDetail from '@pages/NewsDetail'
 import Events from '@pages/Events'
 import Connect from '@pages/Connect'
 import Messages from '@pages/Messages'
+import MessageNew from './pages/MessageNew'
 import Profile from '@pages/ProfileNew'
 import OnboardingNew from '@pages/OnboardingNew'
 import OnboardingOptional from '@pages/OnboardingOptional'
@@ -199,7 +200,7 @@ function App() {
             element={
               <ProtectedRoute>
                 <OnboardingRoute>
-                  <Messages />
+                  <MessageNew />
                 </OnboardingRoute>
               </ProtectedRoute>
             } 
