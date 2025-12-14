@@ -221,14 +221,15 @@ export const AuthProvider = ({ children }) => {
           
           console.log('[Login] Key fetch response status:', keyResp.status)
           const keyData = await keyResp.json()
-          console.log('[Login] Key fetch response:', keyData)
+        console.log('[Login] Key fetch response:', keyData)
+        
+        if (keyData.success && keyData.data?.encrypted_private_key && keyData.data?.public_key) {
+          console.log('[Login] Keys found on server, decrypting...')
+          // Decrypt using email+password
+          const encryptionPassword = `${credentials.email}:${credentials.password}`
+          const encryptedData = JSON.parse(keyData.data.encrypted_private_key)
           
-          if (keyData.success && keyData.data?.encrypted_private_key && keyData.data?.public_key) {
-            console.log('[Login] Keys found on server, decrypting...')
-            // Decrypt using email+password
-            const encryptionPassword = `${credentials.email}:${credentials.password}`
-            const encryptedData = JSON.parse(keyData.data.encrypted_private_key)
-            
+          try {
             const decryptedPrivKey = await crypto.decryptPrivateKeyWithPassword(
               encryptedData,
               encryptionPassword
@@ -244,17 +245,59 @@ export const AuthProvider = ({ children }) => {
             sessionStorage.setItem('e2e_pub_raw', storedPub)
             
             // Store decryption password for future use
-            // Priority 1: sessionStorage (cleared on tab close - more secure)
-            // Priority 2: localStorage (persists - for cross-device, less secure but necessary)
             sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
             localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
             
             console.log('✅ Encryption keys fetched and decrypted during login')
-          } else if (keyResp.status === 404 || !keyData.success) {
-            // No keys on server - generate new ones
-            console.log('[Login] No keys on server, generating new encryption keys...')
-            const keyPair = await crypto.generateKeyPair()
-            const publicKey = await crypto.exportPublicKey(keyPair.publicKey)
+          } catch (decryptErr) {
+            console.warn('[Login] Failed to decrypt server key with current password; attempting rotation using local key', decryptErr?.message || decryptErr)
+            const fallbackPriv = localStorage.getItem('e2e_priv_jwk') || sessionStorage.getItem('e2e_priv_jwk')
+            const fallbackPub = keyData.data.public_key || localStorage.getItem('e2e_pub_raw') || sessionStorage.getItem('e2e_pub_raw')
+
+            if (fallbackPriv && fallbackPub) {
+              try {
+                // Re-encrypt local private key with the current password and upload so other devices can decrypt
+                const encryptedPrivKeyNew = await crypto.encryptPrivateKeyWithPassword(fallbackPriv, encryptionPassword)
+                const encryptedPrivKeyStrNew = JSON.stringify(encryptedPrivKeyNew)
+
+                console.log('[Login] Uploading rotated encrypted key with current password...')
+                const uploadResp = await fetch(`${API}/messages/public-key`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${response.token}`
+                  },
+                  body: JSON.stringify({ 
+                    publicKey: fallbackPub, 
+                    encryptedPrivateKey: encryptedPrivKeyStrNew 
+                  })
+                })
+                const uploadData = await uploadResp.json()
+                console.log('[Login] Rotation upload response:', uploadData)
+
+                storedPriv = fallbackPriv
+                storedPub = fallbackPub
+
+                localStorage.setItem('e2e_priv_jwk', storedPriv)
+                localStorage.setItem('e2e_pub_raw', storedPub)
+                sessionStorage.setItem('e2e_priv_jwk', storedPriv)
+                sessionStorage.setItem('e2e_pub_raw', storedPub)
+                sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+                localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+
+                console.log('✅ Encryption keys rotated and uploaded with current password')
+              } catch (rotateErr) {
+                console.error('❌ Failed to rotate/upload encryption keys with current password', rotateErr)
+              }
+            } else {
+              console.warn('[Login] No local private key available to rotate encryption after decrypt failure')
+            }
+          }
+        } else if (keyResp.status === 404 || !keyData.success) {
+          // No keys on server - generate new ones
+          console.log('[Login] No keys on server, generating new encryption keys...')
+          const keyPair = await crypto.generateKeyPair()
+          const publicKey = await crypto.exportPublicKey(keyPair.publicKey)
             const privateKey = await crypto.exportPrivateKey(keyPair.privateKey)
             
             // Encrypt private key with email+password
