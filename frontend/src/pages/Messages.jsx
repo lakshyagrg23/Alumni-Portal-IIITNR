@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { Helmet } from 'react-helmet-async'
-import { useAuth } from '../context/AuthContext'
-import { useMessaging } from '../context/MessagingContext'
+import { useAuth } from '@context/AuthContext'
+import { useMessaging } from '@context/MessagingContext'
 import { getSocket, closeSocket, getLastSocketUrl } from '../utils/socketClient'
 import * as crypto from '../utils/crypto'
 import axios from 'axios'
@@ -48,6 +48,26 @@ const Messages = () => {
   const [showActionsMenu, setShowActionsMenu] = useState(false)
   const [showBlockModal, setShowBlockModal] = useState(false)
   const [showReportModal, setShowReportModal] = useState(false)
+
+  // DEBUG: Expose key info to console for troubleshooting
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.debugE2EKeys = () => {
+        const pub = localStorage.getItem('e2e_pub_raw') || sessionStorage.getItem('e2e_pub_raw')
+        const priv = localStorage.getItem('e2e_priv_jwk') || sessionStorage.getItem('e2e_priv_jwk')
+        const pw = localStorage.getItem('e2e_decrypt_pw') || sessionStorage.getItem('e2e_decrypt_pw')
+        console.log('🔑 Encryption Keys Debug:')
+        console.log('Public Key (first 50 chars):', pub?.slice(0, 50))
+        console.log('Private Key exists:', !!priv)
+        console.log('Decrypt password exists:', !!pw)
+        console.log('Keys stored in:', {
+          localStorage: { pub: !!localStorage.getItem('e2e_pub_raw'), priv: !!localStorage.getItem('e2e_priv_jwk'), pw: !!localStorage.getItem('e2e_decrypt_pw') },
+          sessionStorage: { pub: !!sessionStorage.getItem('e2e_pub_raw'), priv: !!sessionStorage.getItem('e2e_priv_jwk'), pw: !!sessionStorage.getItem('e2e_decrypt_pw') }
+        })
+      }
+      console.log('💡 Run window.debugE2EKeys() to check encryption keys')
+    }
+  }, [])
   const [reportType, setReportType] = useState('harassment')
   const [reportDescription, setReportDescription] = useState('')
   const [blockReason, setBlockReason] = useState('')
@@ -106,7 +126,9 @@ const Messages = () => {
         
         // If still no keys, check if we can fetch and decrypt from server
         if (!storedPriv || !storedPub) {
-          const decryptPw = sessionStorage.getItem('e2e_decrypt_pw')
+          // Priority 1: sessionStorage (more secure, cleared on tab close)
+          // Priority 2: localStorage (persists across sessions for cross-device)
+          const decryptPw = sessionStorage.getItem('e2e_decrypt_pw') || localStorage.getItem('e2e_decrypt_pw')
           
           if (decryptPw) {
             try {
@@ -136,9 +158,15 @@ const Messages = () => {
               }
             } catch (fetchErr) {
               console.warn('[Messages] Failed to fetch/decrypt keys from server:', fetchErr)
+              // Provide helpful error message
+              const errorMessage = fetchErr.response?.status === 404 
+                ? 'No encryption keys found on server. This appears to be your first time using messaging.'
+                : 'Failed to retrieve encryption keys. Please log out and log in again.'
+              setErrorMsg(errorMessage)
             }
           } else {
             console.warn('[Messages] No decryption password available. Please re-login to enable messaging.')
+            setErrorMsg('Encryption password not available. Please log out and log in again to enable secure messaging.')
           }
         }
         
@@ -147,20 +175,15 @@ const Messages = () => {
           const publicKey = await crypto.importPublicKey(storedPub)
           kp = { privateKey, publicKey }
           publicKeyBase64 = storedPub // Use stored public key for upload
+          
+          // Log for debugging
+          console.log('[Messages] ✅ Keys loaded successfully. Public key preview:', storedPub.slice(0, 50))
         } else {
-          // Generate new keys as last resort
-          kp = await crypto.generateKeyPair()
-          const pub = await crypto.exportPublicKey(kp.publicKey)
-          const priv = await crypto.exportPrivateKey(kp.privateKey)
-          publicKeyBase64 = pub
-          try {
-            sessionStorage.setItem('e2e_pub_raw', pub)
-            sessionStorage.setItem('e2e_priv_jwk', priv)
-            localStorage.setItem('e2e_pub_raw', pub)
-            localStorage.setItem('e2e_priv_jwk', priv)
-          } catch (e) {
-            console.warn('Failed to persist keys in storage', e)
-          }
+          // CRITICAL: Don't generate new keys - this breaks cross-device encryption!
+          // User needs to re-login to access their encrypted private key
+          console.error('❌ No encryption keys available. User must re-login.')
+          setErrorMsg('⚠️ Encryption keys not found. Please: 1) Log out, 2) Log back in, 3) Return to Messages. This syncs your keys across devices.')
+          return // Don't proceed without keys
         }
         
         // Upload public key to server if we have one
@@ -201,6 +224,14 @@ const Messages = () => {
           const iv = saved.iv || saved.metadata?.iv || payload.iv
 
           if (!from || !ciphertext) return
+
+          // Refresh conversations list to show latest message in sidebar
+          try {
+            const convRes = await axios.get(`${API}/messages`, { headers: { Authorization: `Bearer ${token}` }})
+            setConversations(convRes.data?.data || [])
+          } catch (e) {
+            console.warn('Failed to refresh conversations list', e?.message || e)
+          }
 
           // If message carries a sender_public_key snapshot, use it directly to derive the per-message AES key
           let usedAes = null
@@ -265,6 +296,20 @@ const Messages = () => {
           setMessages((prev) => {
             const msgId = saved.id || payload.id || saved.client_id || payload.clientId
             if (msgId && prev.some((x) => x.id === msgId || x.clientId === msgId)) return prev
+            
+            // CROSS-DEVICE SYNC: Check if this message is for the currently active conversation
+            // If user is viewing conversation with X and receives a message (from self or X), add it
+            const isForActiveConversation = toUserId && (
+              (from === user.id && saved.receiver_user_id === toUserId) || // Message from self (other device) to current partner
+              (from === toUserId && saved.receiver_user_id === user.id)    // Message from current partner to self
+            )
+            
+            // If viewing a different conversation, don't add to messages array but still update conversations list
+            if (!isForActiveConversation && toUserId) {
+              console.log('[Messages] Message for different conversation, skipping display')
+              return prev
+            }
+            
             return [...prev, { 
               id: saved.id, 
               clientId: saved.client_id || payload.clientId || null, 
@@ -288,6 +333,18 @@ const Messages = () => {
           } catch (e) {
             // non-fatal
             try { console.error('[Messages] mark-read realtime failed', e?.message || e) } catch {}
+          }
+
+          // CRITICAL FIX: If this message is for a conversation that's not currently active,
+          // but we're viewing Messages page, reload that conversation when user switches to it
+          // This ensures cross-device sync works properly
+          if (toUserId && (from === toUserId || saved.receiver_user_id === toUserId)) {
+            // Message is for the currently active conversation - already added above
+            // No additional action needed
+          } else if (from !== user.id) {
+            // This is an incoming message for a different conversation
+            // Trigger a visual indicator or auto-reload if user is on messages page
+            console.log('[Messages] New message in other conversation from:', from)
           }
         } catch (err) {
           console.error('Failed to decrypt incoming message', err)
@@ -690,6 +747,15 @@ const Messages = () => {
       setText('')
       setAttachmentMeta(null)
       console.log('✅ Message sent!')
+      
+      // Refresh conversations list to update cross-device state
+      try {
+        const convRes = await axios.get(`${API}/messages`, { headers: { Authorization: `Bearer ${token}` }})
+        setConversations(convRes.data?.data || [])
+        console.log('✅ Conversations list refreshed after send')
+      } catch (e) {
+        console.warn('Failed to refresh conversations after send', e?.message || e)
+      }
       
       // Auto-scroll to bottom after sending message
       setTimeout(() => {

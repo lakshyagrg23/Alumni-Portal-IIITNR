@@ -46,7 +46,6 @@ import { useAuth } from '@hooks/useAuth'
 
 // Styles
 import styles from './App.module.css'
-import { MessagingProvider } from './context/MessagingContext'
 
 function App() {
   const { user, initializing } = useAuth()
@@ -66,7 +65,6 @@ function App() {
   }
 
   return (
-    <MessagingProvider>
     <div className={styles.app}>
       <Helmet>
         <title>IIIT Naya Raipur Alumni Portal</title>
@@ -249,7 +247,6 @@ function App() {
       
       <Footer />
     </div>
-    </MessagingProvider>
   )
 }
 

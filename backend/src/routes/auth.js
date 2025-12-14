@@ -1570,7 +1570,10 @@ router.get("/onboarding-data", authenticate, async (req, res) => {
     }
 
     // If user registered with personal email (non-institute), pre-fill it
-    if (user.registration_path === 'personal_email' || !user.email.endsWith('@iiitnr.edu.in')) {
+    if (
+      user.registration_path === "personal_email" ||
+      !user.email.endsWith("@iiitnr.edu.in")
+    ) {
       preFillData.personalEmail = user.email;
     }
 
@@ -1865,9 +1868,9 @@ router.post("/complete-onboarding", authenticate, async (req, res) => {
     console.log("Profile validation data:", {
       first_name: profile.first_name,
       last_name: profile.last_name,
-      graduation_year: profile.graduation_year
+      graduation_year: profile.graduation_year,
     });
-    
+
     // Simplified validation - only require first name and graduation year (last name can be empty)
     if (!profile.first_name || !profile.graduation_year) {
       console.log("❌ Validation failed - missing required fields");
@@ -1886,8 +1889,11 @@ router.post("/complete-onboarding", authenticate, async (req, res) => {
       "SELECT personal_email, personal_email_verified FROM users WHERE id = $1",
       [userId]
     );
-    
-    if (userWithEmail.rows[0]?.personal_email && !userWithEmail.rows[0]?.personal_email_verified) {
+
+    if (
+      userWithEmail.rows[0]?.personal_email &&
+      !userWithEmail.rows[0]?.personal_email_verified
+    ) {
       // Generate verification token
       const crypto = await import("crypto");
       const verificationToken = crypto.randomBytes(32).toString("hex");
@@ -1908,14 +1914,18 @@ router.post("/complete-onboarding", authenticate, async (req, res) => {
         [userId]
       );
       const firstName = profileResult.rows[0]?.first_name || "there";
-      
-      emailService.sendPersonalEmailVerification(
-        userWithEmail.rows[0].personal_email,
-        verificationToken,
-        firstName
-      ).catch(err => console.error("Background email error:", err));
 
-      console.log(`✅ Background verification email queued for: ${userWithEmail.rows[0].personal_email}`);
+      emailService
+        .sendPersonalEmailVerification(
+          userWithEmail.rows[0].personal_email,
+          verificationToken,
+          firstName
+        )
+        .catch((err) => console.error("Background email error:", err));
+
+      console.log(
+        `✅ Background verification email queued for: ${userWithEmail.rows[0].personal_email}`
+      );
     }
 
     res.json({
@@ -2107,8 +2117,7 @@ router.get("/verify-reset-token/:token?", async (req, res) => {
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
-    } catch (jwtError) {
-    }
+    } catch (jwtError) {}
 
     // Check if token exists in database (supports legacy non-JWT tokens too)
     const user = await findUserByResetToken(token, decoded?.userId);
@@ -2171,8 +2180,7 @@ router.post("/reset-password", async (req, res) => {
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
-    } catch (jwtError) {
-    }
+    } catch (jwtError) {}
 
     // Check if token exists in database (supports legacy non-JWT tokens too)
     const user = await findUserByResetToken(token, decoded?.userId);
@@ -2228,68 +2236,76 @@ router.post("/reset-password", async (req, res) => {
  * @desc    Send verification email to personal email address
  * @access  Private
  */
-router.post("/send-personal-email-verification", authenticate, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const user = await User.findById(userId);
+router.post(
+  "/send-personal-email-verification",
+  authenticate,
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await User.findById(userId);
 
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
 
-    // Check if personal email exists
-    if (!user.personal_email) {
-      return res.status(400).json({
-        success: false,
-        message: "No personal email found. Please add a personal email first.",
-      });
-    }
+      // Check if personal email exists
+      if (!user.personal_email) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "No personal email found. Please add a personal email first.",
+        });
+      }
 
-    // Generate verification token
-    const crypto = await import("crypto");
-    const verificationToken = crypto.randomBytes(32).toString("hex");
-    const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      // Generate verification token
+      const crypto = await import("crypto");
+      const verificationToken = crypto.randomBytes(32).toString("hex");
+      const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    // Update user with verification token
-    await query(
-      `UPDATE users 
+      // Update user with verification token
+      await query(
+        `UPDATE users 
        SET personal_email_verification_token = $1,
            personal_email_verification_token_expires = $2
        WHERE id = $3`,
-      [verificationToken, tokenExpiry, userId]
-    );
+        [verificationToken, tokenExpiry, userId]
+      );
 
-    // Get user's name for email
-    const profileResult = await query(
-      "SELECT first_name FROM alumni_profiles WHERE user_id = $1",
-      [userId]
-    );
-    const firstName = profileResult.rows[0]?.first_name || "there";
+      // Get user's name for email
+      const profileResult = await query(
+        "SELECT first_name FROM alumni_profiles WHERE user_id = $1",
+        [userId]
+      );
+      const firstName = profileResult.rows[0]?.first_name || "there";
 
-    // Send verification email
-    await emailService.sendPersonalEmailVerification(
-      user.personal_email,
-      verificationToken,
-      firstName
-    );
+      // Send verification email
+      await emailService.sendPersonalEmailVerification(
+        user.personal_email,
+        verificationToken,
+        firstName
+      );
 
-    console.log(`✅ Personal email verification sent to: ${user.personal_email}`);
+      console.log(
+        `✅ Personal email verification sent to: ${user.personal_email}`
+      );
 
-    res.json({
-      success: true,
-      message: "Verification email sent successfully. Please check your inbox.",
-    });
-  } catch (error) {
-    console.error("Send personal email verification error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to send verification email. Please try again later.",
-    });
+      res.json({
+        success: true,
+        message:
+          "Verification email sent successfully. Please check your inbox.",
+      });
+    } catch (error) {
+      console.error("Send personal email verification error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to send verification email. Please try again later.",
+      });
+    }
   }
-});
+);
 
 /**
  * @route   GET /api/auth/verify-personal-email/:token

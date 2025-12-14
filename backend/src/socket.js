@@ -48,8 +48,23 @@ export default function (io) {
           return;
         }
 
+        // CRITICAL FIX: Dynamically fetch alumni profile if not cached
+        // This handles cases where socket connected before profile was created (e.g., during onboarding)
+        let senderAlumniId = socket.alumniId;
+        if (!senderAlumniId) {
+          try {
+            const profile = await AlumniProfile.findByUserId(socket.user.id);
+            if (profile) {
+              senderAlumniId = profile.id;
+              socket.alumniId = profile.id; // Update cache for future messages
+            }
+          } catch (err) {
+            console.error('Error fetching sender alumni profile:', err);
+          }
+        }
+
         // Ensure sender has an alumni profile (messages table FK references alumni_profiles.id)
-        if (!socket.alumniId) {
+        if (!senderAlumniId) {
           socket.emit('secure:error', { message: 'Sender has no alumni profile; cannot send messages' });
           return;
         }
@@ -90,7 +105,7 @@ export default function (io) {
         }
 
         // Get sender and receiver profile names for frontend display
-        const senderProfile = await AlumniProfile.findById(socket.alumniId);
+        const senderProfile = await AlumniProfile.findById(senderAlumniId);
         const receiverProfile = await AlumniProfile.findById(recipient.alumniId);
         
         const senderName = senderProfile ? `${senderProfile.first_name || ''} ${senderProfile.last_name || ''}`.trim() : null;
@@ -98,7 +113,7 @@ export default function (io) {
 
         // Persist the message (server stores ciphertext only), include any available public-key snapshots
         const savedMessage = await MessageModel.create({
-          sender_id: socket.alumniId,
+          sender_id: senderAlumniId,
           receiver_id: recipient.alumniId,
           content: ciphertext,
           iv: metadata?.iv || null,
@@ -124,7 +139,16 @@ export default function (io) {
         // Emit to recipient if online (their sockets are joined to room `user:<userId>`)
         io.to(`user:${recipient.userId}`).emit('secure:receive', {
           from: socket.user.id,
-          alumniFrom: socket.alumniId,
+          alumniFrom: senderAlumniId,
+          message: enrichedMessage,
+          clientId,
+        });
+
+        // CRITICAL FIX: Also emit to all sender's devices (except the current socket)
+        // This ensures cross-device synchronization for the sender
+        socket.to(`user:${socket.user.id}`).emit('secure:receive', {
+          from: socket.user.id,
+          alumniFrom: senderAlumniId,
           message: enrichedMessage,
           clientId,
         });

@@ -123,7 +123,93 @@ const OnboardingNew = () => {
       return
     }
     loadUserData()
+    
+    // CRITICAL: Generate encryption keys if missing (fallback for registrations that skipped key generation)
+    initializeEncryptionKeys()
   }, [user, navigate])
+
+  const initializeEncryptionKeys = async () => {
+    try {
+      // Check if keys already exist
+      const hasKeys = localStorage.getItem('e2e_priv_jwk') && localStorage.getItem('e2e_pub_raw')
+      if (hasKeys) {
+        console.log('[Onboarding] Encryption keys already exist, skipping generation')
+        return
+      }
+
+      console.log('[Onboarding] No encryption keys found, generating now...')
+      
+      const crypto = await import('../utils/crypto.js')
+      const token = localStorage.getItem('token')
+      
+      if (!token) {
+        console.warn('[Onboarding] No auth token, cannot generate keys')
+        return
+      }
+
+      // Check if keys exist on server
+      const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+      const checkResp = await fetch(`${API}/messages/public-key`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+
+      if (checkResp.status === 200) {
+        console.log('[Onboarding] Keys exist on server but not locally - this shouldnt happen')
+        return
+      }
+
+      // Generate new keys
+      console.log('[Onboarding] Generating new encryption keys...')
+      const keyPair = await crypto.generateKeyPair()
+      const publicKey = await crypto.exportPublicKey(keyPair.publicKey)
+      const privateKey = await crypto.exportPrivateKey(keyPair.privateKey)
+
+      // Encrypt private key
+      // Use email from user data - if not available, prompt will be needed later
+      const email = user?.email || instituteData.email
+      if (!email) {
+        console.error('[Onboarding] Cannot encrypt keys without email')
+        return
+      }
+
+      // We don't have the password here, so we'll use email as fallback
+      // User will need to re-login to set proper password-based encryption
+      const encryptionPassword = `${email}:temp_onboarding_password`
+      const encryptedPrivKey = await crypto.encryptPrivateKeyWithPassword(privateKey, encryptionPassword)
+      const encryptedPrivKeyStr = JSON.stringify(encryptedPrivKey)
+
+      // Upload to server
+      console.log('[Onboarding] Uploading keys to server...')
+      const uploadResp = await fetch(`${API}/messages/public-key`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          publicKey, 
+          encryptedPrivateKey: encryptedPrivKeyStr 
+        })
+      })
+
+      const uploadData = await uploadResp.json()
+      console.log('[Onboarding] Upload response:', uploadData)
+
+      if (uploadData.success) {
+        // Store locally
+        localStorage.setItem('e2e_priv_jwk', privateKey)
+        localStorage.setItem('e2e_pub_raw', publicKey)
+        sessionStorage.setItem('e2e_priv_jwk', privateKey)
+        sessionStorage.setItem('e2e_pub_raw', publicKey)
+        localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+        sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+        
+        console.log('✅ Encryption keys generated during onboarding')
+      }
+    } catch (error) {
+      console.error('❌ Failed to generate keys during onboarding:', error)
+    }
+  }
 
   const loadUserData = async () => {
     try {

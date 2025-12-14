@@ -9,6 +9,7 @@ import { Toaster } from 'react-hot-toast'
 import App from './App'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
+import { MessagingProvider } from '@context/MessagingContext'
 import './styles/index.css'
 
 // Create a client for React Query
@@ -29,31 +30,33 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <BrowserRouter>
           <ThemeProvider>
             <AuthProvider>
-              <App />
-              <Toaster
-                position="top-right"
-                toastOptions={{
-                  duration: 4000,
-                  style: {
-                    background: '#363636',
-                    color: '#fff',
-                  },
-                  success: {
-                    duration: 3000,
-                    theme: {
-                      primary: '#10b981',
-                      secondary: 'black',
-                    },
-                  },
-                  error: {
+              <MessagingProvider>
+                <App />
+                <Toaster
+                  position="top-right"
+                  toastOptions={{
                     duration: 4000,
-                    theme: {
-                      primary: '#ef4444',
-                      secondary: 'black',
+                    style: {
+                      background: '#363636',
+                      color: '#fff',
                     },
-                  },
-                }}
-              />
+                    success: {
+                      duration: 3000,
+                      theme: {
+                        primary: '#10b981',
+                        secondary: 'black',
+                      },
+                    },
+                    error: {
+                      duration: 4000,
+                      theme: {
+                        primary: '#ef4444',
+                        secondary: 'black',
+                      },
+                    },
+                  }}
+                />
+              </MessagingProvider>
             </AuthProvider>
           </ThemeProvider>
         </BrowserRouter>
