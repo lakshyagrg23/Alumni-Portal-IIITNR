@@ -33,6 +33,7 @@ const Messages = () => {
   const typingTimerRef = useRef(null)
   const localKeysRef = useRef(null)
   const aesKeyRef = useRef(null)
+  const conversationKeysRef = useRef(new Map()) // Cache: userId -> { aesKey, publicKey }
   const markedReadRef = useRef(new Set())
   const [sending, setSending] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
@@ -86,7 +87,8 @@ const Messages = () => {
       let publicKeyBase64 = null
       
       try {
-        // Priority 1: Check sessionStorage (current session, works across devices if password entered)
+        // Keys should already be fetched and decrypted during login
+        // Priority 1: Check sessionStorage (current session)
         let storedPriv = sessionStorage.getItem('e2e_priv_jwk')
         let storedPub = sessionStorage.getItem('e2e_pub_raw')
         
@@ -102,35 +104,41 @@ const Messages = () => {
           }
         }
         
-        // Priority 3: Try to fetch encrypted private key from server
+        // If still no keys, check if we can fetch and decrypt from server
         if (!storedPriv || !storedPub) {
-          try {
-            console.log('[Messages] Keys not found locally, fetching from server...')
-            const resp = await axios.get(`${API}/messages/public-key`, { 
-              headers: { Authorization: `Bearer ${token}` }
-            })
-            
-            if (resp.data?.data?.encrypted_private_key) {
-              // Prompt user for password to decrypt
-              const password = prompt('Enter your password to decrypt your messages:')
-              if (!password) {
-                throw new Error('Password required to access encrypted messages')
+          const decryptPw = sessionStorage.getItem('e2e_decrypt_pw')
+          
+          if (decryptPw) {
+            try {
+              console.log('[Messages] Keys not in storage, fetching from server...')
+              const resp = await axios.get(`${API}/messages/public-key`, { 
+                headers: { Authorization: `Bearer ${token}` }
+              })
+              
+              if (resp.data?.data?.encrypted_private_key && resp.data?.data?.public_key) {
+                console.log('[Messages] Decrypting keys from server...')
+                const encryptedData = JSON.parse(resp.data.data.encrypted_private_key)
+                const decryptedPrivKey = await crypto.decryptPrivateKeyWithPassword(
+                  encryptedData,
+                  decryptPw
+                )
+                
+                storedPriv = decryptedPrivKey
+                storedPub = resp.data.data.public_key
+                
+                // Cache for future use
+                localStorage.setItem('e2e_priv_jwk', storedPriv)
+                localStorage.setItem('e2e_pub_raw', storedPub)
+                sessionStorage.setItem('e2e_priv_jwk', storedPriv)
+                sessionStorage.setItem('e2e_pub_raw', storedPub)
+                
+                console.log('✅ Keys fetched and decrypted from server')
               }
-              
-              const encryptedData = JSON.parse(resp.data.data.encrypted_private_key)
-              storedPriv = await crypto.decryptPrivateKeyWithPassword(encryptedData, password)
-              storedPub = resp.data.data.public_key
-              
-              // Store in both sessionStorage (temporary) and localStorage (backup)
-              sessionStorage.setItem('e2e_priv_jwk', storedPriv)
-              sessionStorage.setItem('e2e_pub_raw', storedPub)
-              localStorage.setItem('e2e_priv_jwk', storedPriv)
-              localStorage.setItem('e2e_pub_raw', storedPub)
-              
-              console.log('✅ Keys decrypted and loaded from server')
+            } catch (fetchErr) {
+              console.warn('[Messages] Failed to fetch/decrypt keys from server:', fetchErr)
             }
-          } catch (fetchErr) {
-            console.warn('Failed to fetch keys from server:', fetchErr?.message || fetchErr)
+          } else {
+            console.warn('[Messages] No decryption password available. Please re-login to enable messaging.')
           }
         }
         
@@ -155,7 +163,7 @@ const Messages = () => {
           }
         }
         
-        // Always upload public key to server (in case it's missing or outdated)
+        // Upload public key to server if we have one
         if (publicKeyBase64) {
           try {
             console.log('[Messages] POST public-key ...')
@@ -386,27 +394,41 @@ const Messages = () => {
       console.log('[Messages] conversation status', res?.status, 'items', res?.data?.data?.length)
       const old = res.data?.data || []
       const decoded = []
-      // Try to derive a conversation AES key using the partner's public key once
+      
+      // Check if we already have a cached key for this conversation
       let convoAes = null
       let recipientHasKey = false
-      try {
-        console.log('[Messages] GET partner public-key userId=', otherUserId)
-        const pkRes = await axios.get(`${API}/messages/public-key/${otherUserId}`, { headers: { Authorization: `Bearer ${token}` }})
-        const partnerPub = pkRes.data?.data?.public_key || pkRes.data?.publicKey || pkRes.data?.public_key || null
-        if (partnerPub) {
-          const imported = await crypto.importPublicKey(partnerPub)
-          const shared = await crypto.deriveSharedSecret(kp.privateKey, imported)
-          convoAes = await crypto.deriveAESGCMKey(shared)
-          recipientHasKey = true
+      const cachedKey = conversationKeysRef.current.get(otherUserId)
+      
+      if (cachedKey?.aesKey) {
+        console.log('[Messages] Using cached conversation key for user:', otherUserId)
+        convoAes = cachedKey.aesKey
+        recipientHasKey = true
+      } else {
+        // Derive key for the first time and cache it
+        try {
+          console.log('[Messages] GET partner public-key userId=', otherUserId)
+          const pkRes = await axios.get(`${API}/messages/public-key/${otherUserId}`, { headers: { Authorization: `Bearer ${token}` }})
+          const partnerPub = pkRes.data?.data?.public_key || pkRes.data?.publicKey || pkRes.data?.public_key || null
+          if (partnerPub) {
+            const imported = await crypto.importPublicKey(partnerPub)
+            const shared = await crypto.deriveSharedSecret(kp.privateKey, imported)
+            convoAes = await crypto.deriveAESGCMKey(shared)
+            recipientHasKey = true
+            
+            // Cache the key for future use
+            conversationKeysRef.current.set(otherUserId, { aesKey: convoAes, publicKey: partnerPub })
+            console.log('[Messages] Conversation key derived and cached')
+          }
+        } catch (e) {
+          // Recipient hasn't generated encryption keys yet
+          if (e.response?.status === 404) {
+            console.warn('Recipient has not set up encrypted messaging keys yet.')
+            setErrorMsg('Recipient has not initialized encryption keys. Ask them to open Messages once, then retry.')
+          }
+          // Fallback to per-message keys (will try again when sending)
+          convoAes = null
         }
-      } catch (e) {
-        // Recipient hasn't generated encryption keys yet
-        if (e.response?.status === 404) {
-          console.warn('Recipient has not set up encrypted messaging keys yet.')
-          setErrorMsg('Recipient has not initialized encryption keys. Ask them to open Messages once, then retry.')
-        }
-        // Fallback to per-message keys (will try again when sending)
-        convoAes = null
       }
 
       for (const m of old) {
@@ -502,7 +524,9 @@ const Messages = () => {
         }
       }
       setMessages(decoded)
-    } catch (e) { console.error('failed to load conv', e?.message || e) }
+    } catch (e) { 
+      console.error('failed to load conv', e?.message || e) 
+    }
   }
 
   const handleSelectConversation = async (conv) => {
@@ -619,17 +643,32 @@ const Messages = () => {
         console.log('✅ Socket already connected')
       }
 
-      // fetch recipient public key
-      console.log(`🔑 Fetching public key for user: ${toUserId}`)
-      const res = await axios.get(`${API}/messages/public-key/${toUserId}`, { headers: { Authorization: `Bearer ${token}` }})
-      console.log('✅ Public key fetched status=', res?.status)
-      const theirPub = res.data?.data?.public_key || res.data?.publicKey || res.data?.public_key
-      if (!theirPub) throw new Error('Recipient public key not found')
+      // Check if we have a cached conversation key for this user
+      let aes = null
+      const cachedKey = conversationKeysRef.current.get(toUserId)
+      
+      if (cachedKey?.aesKey) {
+        console.log('✅ Using cached conversation key for user:', toUserId)
+        aes = cachedKey.aesKey
+      } else {
+        // Derive key for the first time and cache it
+        console.log(`🔑 Fetching public key for user: ${toUserId}`)
+        const res = await axios.get(`${API}/messages/public-key/${toUserId}`, { headers: { Authorization: `Bearer ${token}` }})
+        console.log('✅ Public key fetched status=', res?.status)
+        const theirPub = res.data?.data?.public_key || res.data?.publicKey || res.data?.public_key
+        if (!theirPub) throw new Error('Recipient public key not found')
+
+        console.log('🔐 Deriving shared encryption key (first time for this conversation)...')
+        const imported = await crypto.importPublicKey(theirPub)
+        const shared = await crypto.deriveSharedSecret(localKeysRef.current.privateKey, imported)
+        aes = await crypto.deriveAESGCMKey(shared)
+        
+        // Cache the key for future messages
+        conversationKeysRef.current.set(toUserId, { aesKey: aes, publicKey: theirPub })
+        console.log('✅ Conversation key cached')
+      }
 
       console.log('🔐 Encrypting message...')
-      const imported = await crypto.importPublicKey(theirPub)
-      const shared = await crypto.deriveSharedSecret(localKeysRef.current.privateKey, imported)
-      const aes = await crypto.deriveAESGCMKey(shared)
       const payloadObject = attachmentMeta ? { file: attachmentMeta, caption: text } : { text }
       const enc = await crypto.encryptMessage(aes, JSON.stringify(payloadObject))
       console.log('✅ Message encrypted')
@@ -1169,6 +1208,7 @@ const Messages = () => {
             </div>
           </div>
         )}
+
       </div>
     </>
   )

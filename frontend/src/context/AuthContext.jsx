@@ -198,6 +198,61 @@ export const AuthProvider = ({ children }) => {
         payload: response,
       })
 
+      // Fetch and decrypt encryption keys immediately after login
+      try {
+        const crypto = await import('../utils/crypto.js')
+        const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+        
+        // Check if keys already exist locally
+        let storedPriv = localStorage.getItem('e2e_priv_jwk')
+        let storedPub = localStorage.getItem('e2e_pub_raw')
+        
+        if (!storedPriv || !storedPub) {
+          // Fetch encrypted keys from server
+          console.log('[Login] Fetching encryption keys from server...')
+          const keyResp = await fetch(`${API}/messages/public-key`, {
+            headers: { 'Authorization': `Bearer ${response.token}` }
+          })
+          const keyData = await keyResp.json()
+          
+          if (keyData.success && keyData.data?.encrypted_private_key) {
+            // Decrypt using email+password
+            const encryptionPassword = `${credentials.email}:${credentials.password}`
+            const encryptedData = JSON.parse(keyData.data.encrypted_private_key)
+            
+            const decryptedPrivKey = await crypto.decryptPrivateKeyWithPassword(
+              encryptedData,
+              encryptionPassword
+            )
+            
+            storedPriv = decryptedPrivKey
+            storedPub = keyData.data.public_key
+            
+            // Store for this session
+            localStorage.setItem('e2e_priv_jwk', storedPriv)
+            localStorage.setItem('e2e_pub_raw', storedPub)
+            sessionStorage.setItem('e2e_priv_jwk', storedPriv)
+            sessionStorage.setItem('e2e_pub_raw', storedPub)
+            
+            // Store decryption password for future use during this session
+            sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+            
+            console.log('✅ Encryption keys fetched and decrypted during login')
+          } else {
+            console.warn('[Login] No encrypted keys found on server')
+          }
+        } else {
+          // Keys already exist locally, just store the decryption password
+          sessionStorage.setItem('e2e_decrypt_pw', `${credentials.email}:${credentials.password}`)
+          sessionStorage.setItem('e2e_priv_jwk', storedPriv)
+          sessionStorage.setItem('e2e_pub_raw', storedPub)
+          console.log('✅ Using existing local encryption keys')
+        }
+      } catch (keyErr) {
+        console.error('❌ Failed to fetch/decrypt encryption keys during login:', keyErr)
+        // Don't fail login if key fetching fails
+      }
+
       // Eagerly load full user data (including alumni profile for dashboard)
       try {
         const userData = await hydrateUserWithProfile(response.user)
@@ -239,8 +294,9 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem('e2e_pub_raw', publicKey)
           localStorage.setItem('e2e_priv_jwk', privateKey)
           
-          // Encrypt private key with user's password for cross-device support
-          const encryptedPrivKey = await crypto.encryptPrivateKeyWithPassword(privateKey, userData.password)
+          // Encrypt private key with email+password combination for cross-device support
+          const encryptionPassword = `${userData.email}:${userData.password}`
+          const encryptedPrivKey = await crypto.encryptPrivateKeyWithPassword(privateKey, encryptionPassword)
           const encryptedPrivKeyStr = JSON.stringify(encryptedPrivKey)
           
           // Upload public key AND encrypted private key to server
@@ -256,6 +312,9 @@ export const AuthProvider = ({ children }) => {
               encryptedPrivateKey: encryptedPrivKeyStr 
             })
           })
+          
+          // Store email+password combo in session for later use
+          sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
           
           console.log('✅ Encryption keys generated and uploaded during registration')
         } catch (cryptoError) {
