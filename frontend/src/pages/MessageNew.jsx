@@ -668,12 +668,12 @@ const MessageNew = () => {
         <title>Messages - IIIT NR Alumni Portal</title>
       </Helmet>
 
-      <div className={styles.messagesWrapper}>
+      <div className={styles.layout}>
         {/* ===== SIDEBAR: Conversation List ===== */}
         {(!isMobile || showSidebar) && (
-          <div className={styles.sidebar}>
+          <div className={styles.sidebarShell}>
             <div className={styles.sidebarHeader}>
-              <h2>
+              <h2 className={styles.sidebarTitle}>
                 <BiMessageRounded /> Messages
               </h2>
               <button
@@ -689,6 +689,7 @@ const MessageNew = () => {
             <div className={styles.searchBox}>
               <BiSearch />
               <input
+                className={styles.searchInput}
                 type="text"
                 placeholder="Search conversations..."
                 value={search}
@@ -735,18 +736,18 @@ const MessageNew = () => {
                         if (isMobile) setShowSidebar(false)
                       }}
                     >
-                      <div className={styles.convAvatar}>
+                      <div className={styles.conversationAvatar}>
                         {convName.charAt(0).toUpperCase()}
                       </div>
-                      <div className={styles.convDetails}>
-                        <div className={styles.convName}>{convName}</div>
-                        <div className={styles.convLastMsg}>
+                      <div className={styles.conversationMeta}>
+                        <div className={styles.conversationName}>{convName}</div>
+                        <div className={styles.conversationPreview}>
                           {lastMsg.substring(0, 40)}
                           {lastMsg.length > 40 ? '...' : ''}
                         </div>
                       </div>
                       {unreadCount > 0 && (
-                        <div className={styles.unreadBadge}>{unreadCount}</div>
+                        <div className={styles.unreadDot}></div>
                       )}
                     </div>
                   )
@@ -757,9 +758,9 @@ const MessageNew = () => {
         )}
 
         {/* ===== CHAT AREA: Messages Thread ===== */}
-        <div className={styles.chatArea}>
+        <div className={styles.chatShell}>
           {!activeConversationId ? (
-            <div className={styles.emptyChat}>
+            <div className={styles.emptyState}>
               <BiMessageRounded size={64} />
               <p>Select a conversation to start messaging</p>
             </div>
@@ -769,27 +770,27 @@ const MessageNew = () => {
               <div className={styles.chatHeader}>
                 {isMobile && (
                   <button
-                    className={styles.backBtn}
+                    className={styles.showSidebarBtn}
                     onClick={() => setShowSidebar(true)}
                   >
                     ←
                   </button>
                 )}
                 <div className={styles.chatHeaderInfo}>
-                  <div className={styles.chatAvatar}>
+                  <div className={styles.avatar}>
                     {partnerName.charAt(0).toUpperCase()}
                   </div>
-                  <div className={styles.chatName}>{partnerName}</div>
+                  <div className={styles.chatTitle}>{partnerName}</div>
                 </div>
-                <div className={styles.chatActions}>
+                <div className={styles.actionsMenuContainer}>
                   <button
-                    className={styles.actionBtn}
+                    className={styles.actionsMenuBtn}
                     onClick={() => setShowActionsMenu(!showActionsMenu)}
                   >
                     <BiDotsVerticalRounded />
                   </button>
                   {showActionsMenu && (
-                    <div className={styles.actionsMenu}>
+                    <div className={styles.actionsDropdown}>
                       <button onClick={() => {
                         setShowBlockModal(true)
                         setShowActionsMenu(false)
@@ -808,7 +809,7 @@ const MessageNew = () => {
               </div>
 
               {/* Messages List */}
-              <div className={styles.messagesList}>
+              <div className={styles.messagesViewport}>
                 {messages.length === 0 ? (
                   <div className={styles.emptyMessages}>
                     <p>No messages yet. Start the conversation!</p>
@@ -819,9 +820,9 @@ const MessageNew = () => {
                     return (
                       <div
                         key={msg.id}
-                        className={`${styles.messageItem} ${isOwn ? styles.own : styles.other}`}
+                        className={`${styles.messageRow} ${isOwn ? styles.messageOutgoing : styles.messageIncoming}`}
                       >
-                        <div className={styles.messageBubble}>
+                        <div className={`${styles.bubble} ${isOwn ? styles.bubbleOutgoing : styles.bubbleIncoming}`}>
                           {msg.decryptError && (
                             <span className={styles.decryptError}>⚠️ </span>
                           )}
@@ -837,7 +838,7 @@ const MessageNew = () => {
                             </div>
                           )}
                         </div>
-                        <div className={styles.messageTime}>
+                        <div className={styles.bubbleMeta}>
                           {new Date(msg.created_at).toLocaleTimeString([], {
                             hour: '2-digit',
                             minute: '2-digit'
@@ -851,16 +852,16 @@ const MessageNew = () => {
               </div>
 
               {/* Message Input */}
-              <div className={styles.messageInput}>
+              <div className={styles.composerBox}>
                 {attachmentMeta && (
                   <div className={styles.attachmentPreview}>
                     <span>{attachmentMeta.filename}</span>
                     <BiX onClick={() => setAttachmentMeta(null)} />
                   </div>
                 )}
-                <div className={styles.inputRow}>
+                <div className={styles.composerRow}>
                   <button
-                    className={styles.attachBtn}
+                    className={styles.composerIcon}
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploading}
                   >
@@ -873,6 +874,7 @@ const MessageNew = () => {
                     onChange={handleFileSelect}
                   />
                   <textarea
+                    className={styles.composerTextarea}
                     placeholder="Type a message..."
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
@@ -880,7 +882,7 @@ const MessageNew = () => {
                     rows={1}
                   />
                   <button
-                    className={styles.sendBtn}
+                    className={styles.composerSubmit}
                     onClick={sendMessage}
                     disabled={!messageText.trim() || sending || uploading}
                   >
