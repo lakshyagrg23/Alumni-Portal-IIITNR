@@ -972,20 +972,9 @@
   border-bottom: 1px solid var(--msg-border-light);
 }
 
-.modalSearch .searchIcon {
-  position: absolute;
-  left: 2.5rem;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 1.125rem;
-  color: var(--msg-text-light);
-  pointer-events: none;
-  z-index: 2;
-}
-
 .modalSearchInput {
   width: 100%;
-  padding: 0.875rem 1.125rem 0.875rem 2.75rem;
+  padding: 0.875rem 1.125rem;
   border: 2px solid var(--msg-border-light);
   border-radius: var(--msg-radius-md);
   font-size: 0.9375rem;

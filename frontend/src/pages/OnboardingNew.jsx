@@ -44,12 +44,12 @@ const CAREER_GOALS = [
 
 // Employment Status options
 const EMPLOYMENT_STATUS_OPTIONS = [
-  'Employed',
-  'Self-employed',
-  'Higher Studies',
-  'Entrepreneur',
-  'Unemployed',
-  'Not specified',
+  'Employed Full-time',
+  'Self-Employed / Entrepreneur',
+  'Freelancing / Consulting',
+  'Looking for Opportunities',
+  'Pursuing Higher Education',
+  'Career Break',
 ]
 
 // Industry options
@@ -408,16 +408,15 @@ const OnboardingNew = () => {
       }
 
       // Conditional validation based on employment status
-      if (formData.employmentStatus === 'Employed' ||
-          formData.employmentStatus === 'Self-employed' ||
-          formData.employmentStatus === 'Entrepreneur') {
+      if (formData.employmentStatus === 'Employed Full-time' ||
+          formData.employmentStatus === 'Self-Employed / Entrepreneur') {
         if (!formData.currentCompany.trim()) {
           newErrors.currentCompany = 'Company name is required'
         }
         if (!formData.currentPosition.trim()) {
           newErrors.currentPosition = 'Position/role is required'
         }
-      } else if (formData.employmentStatus === 'Higher Studies') {
+      } else if (formData.employmentStatus === 'Pursuing Higher Education') {
         if (!formData.institutionName.trim()) {
           newErrors.institutionName = 'Institution name is required'
         }
@@ -673,9 +672,8 @@ const OnboardingNew = () => {
                   )}
 
                   {/* Conditional fields based on employment status */}
-                  {(formData.employmentStatus === 'Employed' || 
-                    formData.employmentStatus === 'Self-employed' ||
-                    formData.employmentStatus === 'Entrepreneur') && (
+                  {(formData.employmentStatus === 'Employed Full-time' || 
+                    formData.employmentStatus === 'Self-Employed / Entrepreneur') && (
                     <div className={styles.conditionalFields}>
                       <AutocompleteInput
                         name="currentCompany"
@@ -683,7 +681,7 @@ const OnboardingNew = () => {
                         onChange={handleInputChange}
                         apiEndpoint="companies"
                         placeholder={
-                          formData.employmentStatus === 'Self-employed' || formData.employmentStatus === 'Entrepreneur'
+                          formData.employmentStatus === 'Self-Employed / Entrepreneur'
                             ? 'Start typing company/venture name...'
                             : 'Start typing company name...'
                         }
@@ -706,7 +704,7 @@ const OnboardingNew = () => {
                     </div>
                   )}
 
-                  {formData.employmentStatus === 'Higher Studies' && (
+                  {formData.employmentStatus === 'Pursuing Higher Education' && (
                     <div className={styles.conditionalFields}>
                       <input
                         type="text"

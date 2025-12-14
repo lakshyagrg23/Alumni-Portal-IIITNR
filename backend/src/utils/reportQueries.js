@@ -54,10 +54,10 @@ async function getOverviewKPIs(filters = {}) {
         WITH alumni_stats AS (
             SELECT 
                 COUNT(*) as total_profiles_alumni,
-                COUNT(*) FILTER (WHERE employment_status = 'Employed') as employed_count,
-                COUNT(*) FILTER (WHERE employment_status = 'Higher Studies') as higher_studies_count,
-                COUNT(*) FILTER (WHERE employment_status = 'Entrepreneur') as entrepreneur_count,
-                COUNT(*) FILTER (WHERE employment_status = 'Self-employed') as self_employed_count,
+                COUNT(*) FILTER (WHERE employment_status = 'Employed Full-time') as employed_count,
+                COUNT(*) FILTER (WHERE employment_status = 'Pursuing Higher Education') as higher_studies_count,
+                COUNT(*) FILTER (WHERE employment_status = 'Self-Employed / Entrepreneur') as entrepreneur_count,
+                COUNT(*) FILTER (WHERE employment_status = 'Freelancing / Consulting') as freelancing_count,
                 COUNT(*) FILTER (WHERE consent_for_accreditation = true) as consented_count,
                 COUNT(*) FILTER (WHERE profile_verified_at IS NOT NULL) as verified_count,
                 COUNT(*) FILTER (WHERE linkedin_url IS NOT NULL) as complete_contact_count
@@ -110,7 +110,7 @@ async function getOverviewKPIs(filters = {}) {
             a.employed_count,
             a.higher_studies_count,
             a.entrepreneur_count,
-            a.self_employed_count,
+            a.freelancing_count,
             a.consented_count,
             a.verified_count,
             a.complete_contact_count,

@@ -41,13 +41,14 @@ const Messages = () => {
   const messagesEndRef = useRef(null)
   const [showSidebar, setShowSidebar] = useState(true)
   const [showNewChatModal, setShowNewChatModal] = useState(false)
-  const [alumniList, setAlumniList] = useState([])
-  const [searchAlumni, setSearchAlumni] = useState('')
-  const [loadingAlumni, setLoadingAlumni] = useState(false)
+  const [peopleList, setPeopleList] = useState([])
+  const [searchPeople, setSearchPeople] = useState('')
+  const [loadingPeople, setLoadingPeople] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [showActionsMenu, setShowActionsMenu] = useState(false)
   const [showBlockModal, setShowBlockModal] = useState(false)
   const [showReportModal, setShowReportModal] = useState(false)
+  const [selectedPartnerName, setSelectedPartnerName] = useState('')
 
   // DEBUG: Expose key info to console for troubleshooting
   useEffect(() => {
@@ -591,6 +592,7 @@ const Messages = () => {
     if (!conv || !conv.partnerUserId) return
     const id = conv.partnerUserId
     setToUserId(id)
+    setSelectedPartnerName(conv.partnerName || '')
     setActiveConversationUserId(id)
     clearConversationUnread(id)
     if (localKeysRef.current) await loadConversation(id, localKeysRef.current)
@@ -828,33 +830,45 @@ const Messages = () => {
     typingTimerRef.current = setTimeout(() => setIsTyping(false), 1200)
   }
 
-  const loadAlumniList = async () => {
-    if (loadingAlumni) return
-    setLoadingAlumni(true)
+  const loadPeopleList = async () => {
+    if (loadingPeople) return
+    setLoadingPeople(true)
     try {
-      const res = await axios.get(`${API}/alumni`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { limit: 50, sortBy: 'first_name', sortOrder: 'ASC' }
-      })
-      const data = res.data?.data || []
-      // Filter out current user and existing conversations
+      const [alumniRes, studentRes] = await Promise.all([
+        axios.get(`${API}/alumni`, {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { limit: 50, sortBy: 'first_name', sortOrder: 'ASC', studentType: 'alumni' }
+        }),
+        axios.get(`${API}/alumni`, {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { limit: 50, sortBy: 'first_name', sortOrder: 'ASC', studentType: 'current' }
+        })
+      ])
+      const alumniData = alumniRes.data?.data || []
+      const studentData = studentRes.data?.data || []
+      // Filter out current user, existing conversations, and deduplicate by user id
       const existingUserIds = new Set(conversations.map(c => c.partnerUserId))
-      const filtered = data.filter(a => {
-        const userId = a.userId || a.user_id
-        return userId && userId !== user.id && !existingUserIds.has(userId)
+      const seen = new Set()
+      const combined = [...alumniData, ...studentData].filter(person => {
+        const userId = person.userId || person.user_id
+        if (!userId || userId === user.id || existingUserIds.has(userId) || seen.has(userId)) return false
+        seen.add(userId)
+        return true
       })
-      setAlumniList(filtered)
+      setPeopleList(combined)
     } catch (err) {
-      console.error('Failed to load alumni list', err)
+      console.error('Failed to load directory list', err)
     } finally {
-      setLoadingAlumni(false)
+      setLoadingPeople(false)
     }
   }
 
-  const handleStartNewChat = async (alumni) => {
-    const userId = alumni.userId || alumni.user_id
+  const handleStartNewChat = async (person) => {
+    const userId = person.userId || person.user_id
     if (!userId) return
+    const fullName = `${person.firstName || ''} ${person.lastName || ''}`.trim() || 'User'
     setToUserId(userId)
+    setSelectedPartnerName(fullName)
     setActiveConversationUserId(userId)
     setShowNewChatModal(false)
     if (localKeysRef.current) await loadConversation(userId, localKeysRef.current)
@@ -864,14 +878,25 @@ const Messages = () => {
     }
   }
 
-  const filteredAlumni = useMemo(() => {
-    if (!searchAlumni) return alumniList
-    const term = searchAlumni.toLowerCase()
-    return alumniList.filter(a => {
-      const name = `${a.firstName || ''} ${a.lastName || ''}`.toLowerCase()
+  const filteredPeople = useMemo(() => {
+    if (!searchPeople) return peopleList
+    const term = searchPeople.toLowerCase()
+    return peopleList.filter(p => {
+      const name = `${p.firstName || ''} ${p.lastName || ''}`.toLowerCase()
       return name.includes(term)
     })
-  }, [searchAlumni, alumniList])
+  }, [searchPeople, peopleList])
+
+  // Keep selected partner name in sync with loaded conversations (for new chats not yet in list)
+  useEffect(() => {
+    if (!toUserId) return
+    const conv = conversations.find(c => c.partnerUserId === toUserId)
+    if (conv?.partnerName) setSelectedPartnerName(conv.partnerName)
+  }, [conversations, toUserId])
+
+  const activeConversation = conversations.find(c => c.partnerUserId === toUserId)
+  const activePartnerName = activeConversation?.partnerName || selectedPartnerName || (toUserId ? 'Chat' : 'Messages')
+  const activePartnerInitials = activePartnerName.slice(0, 2).toUpperCase()
 
   return (
     <>
@@ -930,7 +955,7 @@ const Messages = () => {
               className={styles.fabInSidebar}
               onClick={() => {
                 setShowNewChatModal(true)
-                loadAlumniList()
+                loadPeopleList()
               }}
               aria-label="Start new chat"
               title="Start new chat"
@@ -950,9 +975,9 @@ const Messages = () => {
                 </button>
               )}  
               <div style={{ display:'flex', alignItems:'center', gap:14, flex:1 }}>
-                <div className={styles.avatar}>{(conversations.find(c => c.partnerUserId === toUserId)?.partnerName || 'Chat').slice(0,2).toUpperCase()}</div>
+                <div className={styles.avatar}>{activePartnerInitials}</div>
                 <div style={{ flex:1 }}>
-                  <div className={styles.chatTitle}>{conversations.find(c => c.partnerUserId === toUserId)?.partnerName || 'Messages'}</div>
+                  <div className={styles.chatTitle}>{activePartnerName}</div>
                   <div className={styles.chatSubtitle}>{toUserId ? 'End-to-end encrypted' : 'Choose a conversation to start messaging'}</div>
                 </div>
               </div>
@@ -1009,7 +1034,7 @@ const Messages = () => {
                 return (
                   <div key={key} className={`${styles.messageRow} ${isOutgoing ? styles.messageOutgoing : styles.messageIncoming}`}> 
                     <div className={bubbleClass}> 
-                      <div style={{ fontSize:12, fontWeight:600, marginBottom:4 }}>{isOutgoing ? 'You' : (m.sender_name || conversations.find(c => c.partnerUserId === toUserId)?.partnerName || 'User')}</div>
+                      <div style={{ fontSize:12, fontWeight:600, marginBottom:4 }}>{isOutgoing ? 'You' : (m.sender_name || activePartnerName || 'User')}</div>
                       {m.file && m.file.mimeType?.startsWith('image/') && (
                         <div style={{ marginBottom:6 }}>
                           <a href={m.file.url} target="_blank" rel="noopener noreferrer" style={{ display:'inline-block' }}>
@@ -1217,51 +1242,50 @@ const Messages = () => {
               </div>
 
               <div className={styles.modalSearch}>
-                <span className={styles.searchIcon}><BiSearch size={18} /></span>
                 <input
                   type="text"
                   className={styles.modalSearchInput}
-                  placeholder="Search alumni..."
-                  value={searchAlumni}
-                  onChange={(e) => setSearchAlumni(e.target.value)}
+                  placeholder="Search alumni or students..."
+                  value={searchPeople}
+                  onChange={(e) => setSearchPeople(e.target.value)}
                   autoFocus
                 />
               </div>
 
               <div className={styles.modalContent}>
-                {loadingAlumni ? (
+                {loadingPeople ? (
                   <div className={styles.modalLoading}>
                     <div className={styles.spinner}></div>
-                    <p>Loading alumni...</p>
+                    <p>Loading people...</p>
                   </div>
-                ) : filteredAlumni.length === 0 ? (
+                ) : filteredPeople.length === 0 ? (
                   <div className={styles.emptyState}>
                     <span className={styles.emptyIcon}><BiGroup size={48} /></span>
-                    <p>No alumni found</p>
+                    <p>No people found</p>
                   </div>
                 ) : (
                   <div className={styles.alumniGrid}>
-                    {filteredAlumni.map((alumni) => {
-                      const userId = alumni.userId || alumni.user_id
-                      const fullName = `${alumni.firstName || ''} ${alumni.lastName || ''}`.trim()
-                      const initials = `${alumni.firstName?.charAt(0) || ''}${alumni.lastName?.charAt(0) || ''}`
+                    {filteredPeople.map((person) => {
+                      const userId = person.userId || person.user_id
+                      const fullName = `${person.firstName || ''} ${person.lastName || ''}`.trim()
+                      const initials = `${person.firstName?.charAt(0) || ''}${person.lastName?.charAt(0) || ''}`
                       return (
                         <div
                           key={userId}
                           className={styles.alumniItem}
-                          onClick={() => handleStartNewChat(alumni)}
+                          onClick={() => handleStartNewChat(person)}
                         >
                           <div className={styles.alumniAvatar}>{initials}</div>
                           <div className={styles.alumniInfo}>
                             <div className={styles.alumniName}>{fullName}</div>
-                            {alumni.currentCompany && (
+                            {person.currentCompany && (
                               <div className={styles.alumniMeta}>
-                                {alumni.currentCompany}
+                                {person.currentCompany}
                               </div>
                             )}
-                            {alumni.graduationYear && (
+                            {person.graduationYear && (
                               <div className={styles.alumniMeta}>
-                                Class of {alumni.graduationYear}
+                                Class of {person.graduationYear}
                               </div>
                             )}
                           </div>

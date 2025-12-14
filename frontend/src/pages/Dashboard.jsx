@@ -20,10 +20,7 @@ import {
   BiMapPin,
   BiStar,
   BiRocket,
-  BiChevronRight,
-  BiInfoCircle,
-  BiCheck,
-  BiX
+  BiChevronRight
 } from 'react-icons/bi'
 
 
@@ -34,7 +31,6 @@ const Dashboard = () => {
   const [latestNews, setLatestNews] = useState([])
   const [upcomingEvents, setUpcomingEvents] = useState([])
   const [calendarDate, setCalendarDate] = useState(new Date())
-  const [showProfileReminder, setShowProfileReminder] = useState(true)
 
   // Normalize events to include start/end dates for multi-day support
   const normalizedEvents = React.useMemo(() => {
@@ -98,13 +94,6 @@ const Dashboard = () => {
       fetchDashboardData()
     }
   }, [isAuthenticated, user])
-
-  useEffect(() => {
-    const isDismissed = localStorage.getItem('hideProfileReminder') === 'true'
-    if (isDismissed) {
-      setShowProfileReminder(false)
-    }
-  }, [])
 
   const fetchDashboardData = async () => {
     try {
@@ -407,36 +396,6 @@ const Dashboard = () => {
 
         {/* Personal Email Verification Banner */}
         <PersonalEmailVerificationBanner />
-
-        {/* Profile Completion Alert */}
-        {showProfileReminder && stats.profileCompletion < 100 && (
-          <div className={styles.alertBanner}>
-            <div className={styles.alertIcon}>
-              <BiInfoCircle size={24} />
-            </div>
-            <div className={styles.alertContent}>
-              <h3 className={styles.alertTitle}>Complete Your Profile</h3>
-              <p className={styles.alertText}>
-                Your profile is {stats.profileCompletion}% complete. Add more details to unlock better recommendations!
-              </p>
-            </div>
-            <div className={styles.alertActions}>
-              <Link to="/profile" className={styles.alertButton}>
-                <BiCheck size={18} />
-                Complete Now
-              </Link>
-              <button
-                className={styles.alertDismiss}
-                onClick={() => {
-                  setShowProfileReminder(false)
-                  localStorage.setItem('hideProfileReminder', 'true')
-                }}
-              >
-                <BiX size={20} />
-              </button>
-            </div>
-          </div>
-        )}
 
         {loading ? (
           <div className={styles.loadingContainer}>
