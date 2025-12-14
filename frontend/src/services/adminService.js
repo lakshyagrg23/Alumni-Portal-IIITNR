@@ -91,6 +91,10 @@ export const adminService = {
     const response = await API.post('/admin/superadmin/demote', { userId })
     return response
   },
+  removeAdmin: async (userId) => {
+    const response = await API.delete(`/admin/superadmin/remove/${userId}`)
+    return response
+  },
   grantPermission: async (userId, permission) => {
     const response = await API.post('/admin/superadmin/permissions/grant', { userId, permission })
     return response

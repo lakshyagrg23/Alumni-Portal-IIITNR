@@ -1,11 +1,23 @@
 import React, { useEffect, useState } from 'react'
 import { getEventProposals, manageEventProposal } from '@services/eventService'
+import { useAuth } from '@hooks/useAuth'
 import styles from '../AdminPanel.module.css'
 
 const EventProposals = () => {
+  const { user } = useAuth()
   const [proposals, setProposals] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  // Only superadmins can view and manage proposals
+  if (user?.role !== 'superadmin') {
+    return (
+      <div className={styles.accessDenied}>
+        <h3>Access Restricted</h3>
+        <p>Only superadmins can approve or reject event proposals.</p>
+      </div>
+    )
+  }
 
   const loadProposals = async () => {
     try {

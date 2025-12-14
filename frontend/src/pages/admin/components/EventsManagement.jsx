@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { adminService } from '@services/adminService'
+import { useAuth } from '@hooks/useAuth'
 import styles from '../AdminPanel.module.css'
 import EventProposals from './EventProposals'
 
@@ -19,6 +20,7 @@ const EventsManagement = () => {
     isPublished: true,
   }
 
+  const { user } = useAuth()
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -379,13 +381,15 @@ const EventsManagement = () => {
           >
             {showForm ? 'Cancel' : 'Add Event'}
           </button>
-          <button
-            className={styles.secondaryButton}
-            onClick={() => { setShowProposals(!showProposals); setShowForm(false); }}
-            style={{ marginLeft: '0.5rem' }}
-          >
-            {showProposals ? 'Hide Proposals' : 'View Proposals'}
-          </button>
+          {user?.role === 'superadmin' && (
+            <button
+              className={styles.secondaryButton}
+              onClick={() => { setShowProposals(!showProposals); setShowForm(false); }}
+              style={{ marginLeft: '0.5rem' }}
+            >
+              {showProposals ? 'Hide Proposals' : 'View Proposals'}
+            </button>
+          )}
         </div>
       </div>
 

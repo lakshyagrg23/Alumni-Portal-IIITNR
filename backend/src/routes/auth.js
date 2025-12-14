@@ -496,8 +496,8 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    // Find user by email
-    const user = await User.findByEmail(email);
+    // Find user by email (normalize to lowercase for consistency)
+    const user = await User.findByEmail(email.toLowerCase());
     if (!user) {
       return res.status(401).json({
         success: false,
