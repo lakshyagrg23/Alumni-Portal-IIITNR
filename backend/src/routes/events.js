@@ -1,6 +1,7 @@
 import express from "express";
 const router = express.Router();
 import Event from "../models/Event.js";
+import { requireSuperadminAuth } from "../models/middleware/auth.js";
 
 /**
  * @route   GET /api/events/upcoming
@@ -238,11 +239,10 @@ router.post("/propose", async (req, res) => {
 /**
  * @route   GET /api/events/admin/proposals
  * @desc    Get event proposals for admin review
- * @access  Private (Admin only)
+ * @access  Private (Superadmin only)
  */
-router.get("/admin/proposals", async (req, res) => {
+router.get("/admin/proposals", requireSuperadminAuth, async (req, res) => {
   try {
-    // TODO: Add admin authentication middleware
     const {
       status = 'pending',
       page = 1,
@@ -275,11 +275,10 @@ router.get("/admin/proposals", async (req, res) => {
 /**
  * @route   PUT /api/events/admin/proposals/:id/:action
  * @desc    Approve or reject event proposal
- * @access  Private (Admin only)
+ * @access  Private (Superadmin only)
  */
-router.put("/admin/proposals/:id/:action", async (req, res) => {
+router.put("/admin/proposals/:id/:action", requireSuperadminAuth, async (req, res) => {
   try {
-    // TODO: Add admin authentication middleware
     const { id, action } = req.params;
 
     if (!['approve', 'reject'].includes(action)) {

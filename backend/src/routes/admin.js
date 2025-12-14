@@ -493,8 +493,13 @@ router.get("/permissions/me", async (req, res) => {
 // List admins with permissions (superadmin only)
 router.get("/superadmin/admins", requireSuperadminAuth, async (req, res) => {
   try {
+    // Fetch admins with profile check
     const adminsRes = await query(
-      "SELECT id, email, role, is_active, is_approved FROM users WHERE role IN ('admin','superadmin') ORDER BY role DESC, email ASC"
+      `SELECT u.id, u.email, u.role, u.is_active, u.is_approved,
+              EXISTS(SELECT 1 FROM alumni_profiles WHERE user_id = u.id) as has_profile
+       FROM users u 
+       WHERE u.role IN ('admin','superadmin') 
+       ORDER BY u.role DESC, u.email ASC`
     );
     const ids = adminsRes.rows.map((r) => r.id);
     let permMap = new Map();
@@ -512,6 +517,7 @@ router.get("/superadmin/admins", requireSuperadminAuth, async (req, res) => {
     }
     const data = adminsRes.rows.map((u) => ({
       ...u,
+      hasProfile: u.has_profile,
       permissions: permMap.get(u.id) || [],
     }));
     res.json({ success: true, data });
@@ -593,7 +599,7 @@ router.post("/superadmin/promote", requireSuperadminAuth, async (req, res) => {
   }
 });
 
-// Demote admin to alumni (superadmin only)
+// Demote admin to alumni (superadmin only) - for users with alumni profiles
 router.post("/superadmin/demote", requireSuperadminAuth, async (req, res) => {
   try {
     const { userId } = req.body;
@@ -621,6 +627,57 @@ router.post("/superadmin/demote", requireSuperadminAuth, async (req, res) => {
   } catch (e) {
     console.error("demote admin error", e);
     res.status(500).json({ success: false, message: "Failed to demote user" });
+  }
+});
+
+// Remove admin account (superadmin only) - for admins created directly without alumni profiles
+router.delete("/superadmin/remove/:userId", requireSuperadminAuth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!userId)
+      return res
+        .status(400)
+        .json({ success: false, message: "userId required" });
+    
+    const user = await User.findById(userId);
+    if (!user)
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    
+    if (user.role === "superadmin")
+      return res
+        .status(400)
+        .json({ success: false, message: "Cannot remove superadmin" });
+    
+    // Check if user has alumni profile - should not remove if they do
+    const hasProfile = await query(
+      "SELECT id FROM alumni_profiles WHERE user_id = $1",
+      [userId]
+    );
+    
+    if (hasProfile.rows && hasProfile.rows.length > 0) {
+      return res
+        .status(400)
+        .json({ 
+          success: false, 
+          message: "Cannot remove admin with alumni profile. Use demote instead." 
+        });
+    }
+    
+    // Delete admin permissions first
+    await query("DELETE FROM admin_permissions WHERE user_id=$1", [userId]);
+    
+    // Delete the user account
+    await query("DELETE FROM users WHERE id=$1", [userId]);
+    
+    res.json({
+      success: true,
+      message: "Admin account removed successfully",
+    });
+  } catch (e) {
+    console.error("remove admin error", e);
+    res.status(500).json({ success: false, message: "Failed to remove admin account" });
   }
 });
 

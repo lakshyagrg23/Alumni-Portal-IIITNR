@@ -115,133 +115,197 @@ const AdminAccessTab = () => {
     }
   }
 
-  const demote = async (userId, email) => {
-    if (!confirm(`Demote ${email} to alumni?`)) return
-    try {
-      await adminService.demoteToAlumni(userId)
-      toast.success(`Demoted ${email}`)
-      await refresh()
-    } catch (e) {
-      console.error('Demote failed', e)
-      toast.error(e?.message || 'Demote failed')
+  const demoteOrRemove = async (userId, email, hasProfile) => {
+    if (hasProfile) {
+      // User was promoted from alumni - demote back to alumni
+      if (!confirm(`Demote ${email} back to alumni role?`)) return
+      try {
+        await adminService.demoteToAlumni(userId)
+        toast.success(`Demoted ${email} to alumni`)
+        await refresh()
+      } catch (e) {
+        console.error('Demote failed', e)
+        toast.error(e?.message || 'Demote failed')
+      }
+    } else {
+      // User was created as admin - remove completely
+      if (!confirm(`Remove admin account ${email}? This cannot be undone.`)) return
+      try {
+        await adminService.removeAdmin(userId)
+        toast.success(`Removed admin ${email}`)
+        await refresh()
+      } catch (e) {
+        console.error('Remove failed', e)
+        toast.error(e?.message || 'Remove failed')
+      }
     }
   }
 
   return (
-    <div className={styles.accessContainer}>
-      <div className={styles.accessHeader}>
+    <div className={styles.accessPage}>
+      {/* Header Section */}
+      <div className={styles.accessPageHeader}>
         <div>
           <h1 className={styles.pageTitle}>Admin Access Control</h1>
-          <p className={styles.pageSubtitle}>Promote/demote admins and manage granular permissions</p>
+          <p className={styles.pageSubtitle}>Manage administrators and their permissions</p>
         </div>
-        <div className={styles.accessActions}>
-          <button className={styles.refreshButton} onClick={refresh} disabled={loading}>
-            {loading ? 'Loading…' : 'Refresh'}
-          </button>
+        <button className={styles.refreshButton} onClick={refresh} disabled={loading}>
+          {loading ? 'Loading…' : '↻ Refresh'}
+        </button>
+      </div>
+
+      {/* Two Column Layout */}
+      <div className={styles.accessLayout}>
+        {/* Left Column: Admin Management Actions */}
+        <div className={styles.accessSidebar}>
+          {/* Promote Existing User */}
+          <div className={styles.actionCard}>
+            <h3 className={styles.cardTitle}>Promote Existing User</h3>
+            <p className={styles.cardDescription}>Promote a registered alumni to admin role</p>
+            <form onSubmit={handlePromoteByEmail} className={styles.actionForm}>
+              <input
+                type="email"
+                placeholder="Enter user email"
+                className={styles.formInput}
+                value={promoteEmail}
+                onChange={(e) => setPromoteEmail(e.target.value)}
+                required
+              />
+              <button type="submit" className={styles.promoteButton}>
+                <span>Promote to Admin</span>
+              </button>
+            </form>
+          </div>
+
+          {/* Create New Admin */}
+          <div className={styles.actionCard}>
+            <h3 className={styles.cardTitle}>Create New Admin</h3>
+            <p className={styles.cardDescription}>Create an admin account directly (Superadmin only)</p>
+            <form onSubmit={handleCreateAdmin} className={styles.actionForm}>
+              <input
+                type="email"
+                placeholder="Admin email"
+                className={styles.formInput}
+                value={newAdminEmail}
+                onChange={(e) => setNewAdminEmail(e.target.value)}
+                required
+              />
+              <input
+                type="password"
+                placeholder="Temporary password"
+                className={styles.formInput}
+                value={newAdminPassword}
+                onChange={(e) => setNewAdminPassword(e.target.value)}
+                required
+                minLength={6}
+              />
+              <button type="submit" className={styles.createButton}>
+                <span>Create Admin</span>
+              </button>
+            </form>
+          </div>
+
+          {/* Info Box */}
+          <div className={styles.infoBox}>
+            <div className={styles.infoIcon}>ℹ️</div>
+            <div>
+              <strong>Permission Types:</strong>
+              <ul className={styles.infoList}>
+                <li><strong>Manage Users:</strong> Approve/reject registrations</li>
+                <li><strong>Manage News:</strong> Create/edit news articles</li>
+                <li><strong>Manage Events:</strong> Create/edit events</li>
+              </ul>
+              <p style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>
+                Superadmins have all permissions by default.
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div className={styles.promoteBox}>
-        <form onSubmit={handlePromoteByEmail} className={styles.promoteForm}>
-          <input
-            type="email"
-            placeholder="Promote by email (exact)"
-            className={styles.searchInput}
-            value={promoteEmail}
-            onChange={(e) => setPromoteEmail(e.target.value)}
-            required
-          />
-          <button type="submit" className={styles.primaryButton}>Promote to Admin</button>
-        </form>
-        <div className={styles.hint}>Tip: Enter the exact email of a registered user to promote.</div>
-        <hr className={styles.divider} />
-        <form onSubmit={handleCreateAdmin} className={styles.promoteForm}>
-          <input
-            type="email"
-            placeholder="Create admin by email"
-            className={styles.searchInput}
-            value={newAdminEmail}
-            onChange={(e) => setNewAdminEmail(e.target.value)}
-            required
-          />
-          <input
-            type="password"
-            placeholder="Temporary password"
-            className={styles.searchInput}
-            value={newAdminPassword}
-            onChange={(e) => setNewAdminPassword(e.target.value)}
-            required
-          />
-          <button type="submit" className={styles.secondaryButton}>Create Admin (Superadmin)</button>
-        </form>
-        <div className={styles.hint}>Superadmin can directly create an admin account with a temp password.</div>
-      </div>
+        {/* Right Column: Admin List */}
+        <div className={styles.accessMain}>
+          {/* Search Bar */}
+          <div className={styles.searchBar}>
+            <input
+              type="text"
+              placeholder="🔍 Search admins by email..."
+              className={styles.searchInput}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <span className={styles.adminCount}>
+              {filtered.length} {filtered.length === 1 ? 'admin' : 'admins'}
+            </span>
+          </div>
 
-      <div className={styles.filters}>
-        <input
-          type="text"
-          placeholder="Filter admins by email…"
-          className={styles.searchInput}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-      </div>
-
-      {loading ? (
-        <div className={styles.loadingSpinner}><div className={styles.spinner}></div></div>
-      ) : filtered.length === 0 ? (
-        <div className={styles.emptyState}><p>No admins found.</p></div>
-      ) : (
-        <div className={styles.accessGrid}>
-          {filtered.map((u) => {
-            const perms = new Set(u.permissions || [])
-            const busy = busyIds.has(u.id)
-            return (
-              <div className={styles.adminCard} key={u.id}>
-                <div className={styles.adminHeader}>
-                  <div>
-                    <div className={styles.adminEmail}>{u.email}</div>
-                    <div className={styles.roleRow}>
-                      <span className={`${styles.roleTag} ${u.role === 'superadmin' ? styles.roleSuper : styles.roleAdmin}`}>
-                        {u.role}
-                      </span>
-                    </div>
-                  </div>
-                  {u.role !== 'superadmin' && (
-                    <button
-                      className={`${styles.actionButton} ${styles.reject}`}
-                      disabled={busy}
-                      onClick={withBusy(u.id, () => demote(u.id, u.email))}
-                    >
-                      Demote
-                    </button>
-                  )}
-                </div>
-
-                <div className={styles.permissionToggles}>
-                  {PERMISSIONS.map(p => {
-                    const has = perms.has(p.key)
-                    return (
-                      <label key={p.key} className={styles.permissionToggle}>
-                        <span>{p.label}</span>
+          {/* Admin Cards */}
+          {loading ? (
+            <div className={styles.loadingSpinner}><div className={styles.spinner}></div></div>
+          ) : filtered.length === 0 ? (
+            <div className={styles.emptyState}>
+              <p>No admins found</p>
+            </div>
+          ) : (
+            <div className={styles.adminList}>
+              {filtered.map((u) => {
+                const perms = new Set(u.permissions || [])
+                const busy = busyIds.has(u.id)
+                return (
+                  <div className={styles.adminCardNew} key={u.id}>
+                    {/* Card Header */}
+                    <div className={styles.cardHeader}>
+                      <div className={styles.adminInfo}>
+                        <div className={styles.adminEmailNew}>{u.email}</div>
+                        <span className={`${styles.roleTagNew} ${u.role === 'superadmin' ? styles.roleSuperNew : styles.roleAdminNew}`}>
+                          {u.role === 'superadmin' ? '👑 Superadmin' : '🔧 Admin'}
+                        </span>
+                      </div>
+                      {u.role !== 'superadmin' && (
                         <button
-                          type="button"
-                          className={`${styles.switch} ${has ? styles.switchOn : styles.switchOff}`}
-                          disabled={busy || u.role === 'superadmin'}
-                          onClick={withBusy(u.id, () => togglePermission(u.id, has, p.key))}
-                          aria-pressed={has}
+                          className={styles.removeButton}
+                          disabled={busy}
+                          onClick={withBusy(u.id, () => demoteOrRemove(u.id, u.email, u.hasProfile))}
+                          title={u.hasProfile ? 'Demote to alumni role' : 'Remove admin account'}
                         >
-                          <span className={styles.knob}></span>
+                          {u.hasProfile ? '↓ Demote' : '✕ Remove'}
                         </button>
-                      </label>
-                    )
-                  })}
-                </div>
-              </div>
-            )
-          })}
+                      )}
+                    </div>
+
+                    {/* Permissions - Only show for regular admins */}
+                    {u.role !== 'superadmin' && (
+                      <div className={styles.permissionsSection}>
+                        <div className={styles.permissionsLabel}>Permissions</div>
+                        <div className={styles.permissionsList}>
+                          {PERMISSIONS.map(p => {
+                            const has = perms.has(p.key)
+                            return (
+                              <div key={p.key} className={styles.permissionItem}>
+                                <span className={styles.permissionName}>{p.label}</span>
+                                <button
+                                  type="button"
+                                  className={`${styles.toggleSwitch} ${has ? styles.toggleOn : styles.toggleOff}`}
+                                  disabled={busy}
+                                  onClick={withBusy(u.id, () => togglePermission(u.id, has, p.key))}
+                                  aria-pressed={has}
+                                  title={has ? 'Click to revoke' : 'Click to grant'}
+                                >
+                                  <span className={styles.toggleKnob}></span>
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )
+          })
         </div>
-      )}
+      </div>
     </div>
   )
 }
