@@ -65,6 +65,45 @@ router.post("/register", async (req, res) => {
       });
     }
 
+    // Check if email is institute email and lookup institute record
+    const emailLower = email.toLowerCase();
+    const isInstituteEmail =
+      emailLower.endsWith("@iiitnr.edu.in") ||
+      emailLower.endsWith("@iiitnr.ac.in");
+
+    let instituteRecordId = null;
+
+    if (isInstituteEmail) {
+      // Lookup institute record by email
+      try {
+        const instituteResult = await query(
+          "SELECT id FROM institute_records WHERE LOWER(institute_email) = LOWER($1) AND is_active = true",
+          [emailLower]
+        );
+
+        if (instituteResult.rows.length > 0) {
+          instituteRecordId = instituteResult.rows[0].id;
+
+          // Check if account already exists for this institute record
+          const existingRecord = await query(
+            "SELECT id FROM users WHERE institute_record_id = $1",
+            [instituteRecordId]
+          );
+
+          if (existingRecord.rows.length > 0) {
+            return res.status(400).json({
+              success: false,
+              message:
+                "An account has already been registered with this institute email. Please contact support if this is an error.",
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Error looking up institute record:", err);
+        // Continue even if institute record lookup fails - it's not critical
+      }
+    }
+
     // Determine provider (should be 'local' for email/password registration)
     const providerName = provider === "google" ? "google" : "local";
 
@@ -74,6 +113,8 @@ router.post("/register", async (req, res) => {
       password,
       role: "alumni",
       provider: providerName,
+      registration_path: isInstituteEmail ? "institute_email" : "local",
+      institute_record_id: instituteRecordId,
       is_approved: false, // ❌ Requires admin approval (for all users)
       is_active: true,
       email_verified: false, // ❌ Requires email verification first
@@ -84,24 +125,17 @@ router.post("/register", async (req, res) => {
     // Generate verification token
     const verificationToken = await User.generateVerificationToken(user.id);
 
-    // Send verification email
-    try {
-      await emailService.sendVerificationEmail(
-        email,
-        verificationToken,
-        // Use email prefix if name not available
-        email.split("@")[0]
-      );
-    } catch (emailError) {
-      console.error("Error sending verification email:", emailError);
-      // Delete the created user if email fails
-      await query("DELETE FROM users WHERE id = $1", [user.id]);
-
-      return res.status(500).json({
-        success: false,
-        message: "Failed to send verification email. Please try again.",
-      });
-    }
+    // ✨ ASYNC FIX: Send verification email in background without waiting
+    // This prevents timeout on slow email servers
+    emailService.sendVerificationEmail(
+      email,
+      verificationToken,
+      // Use email prefix if name not available
+      email.split("@")[0]
+    ).catch(err => {
+      console.error("Background email sending failed:", err);
+      // Email sending failure is logged but doesn't block the response
+    });
 
     // DO NOT create alumni profile yet - wait for verification
     // DO NOT auto-login - require verification first
@@ -290,6 +324,36 @@ router.post("/register/institute-email", async (req, res) => {
       });
     }
 
+    // Lookup institute record by email and link it
+    let instituteRecordId = null;
+    try {
+      const instituteResult = await query(
+        "SELECT id FROM institute_records WHERE LOWER(institute_email) = LOWER($1) AND is_active = true",
+        [emailLower]
+      );
+
+      if (instituteResult.rows.length > 0) {
+        instituteRecordId = instituteResult.rows[0].id;
+
+        // Check if account already exists for this institute record
+        const existingRecord = await query(
+          "SELECT id FROM users WHERE institute_record_id = $1",
+          [instituteRecordId]
+        );
+
+        if (existingRecord.rows.length > 0) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "An account has already been registered with this institute email. Please contact support if this is an error.",
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Error looking up institute record:", err);
+      // Continue even if institute record lookup fails - it's not critical
+    }
+
     // Create new user
     const userData = {
       email: emailLower,
@@ -297,6 +361,7 @@ router.post("/register/institute-email", async (req, res) => {
       role: "alumni",
       provider: "local",
       registration_path: "institute_email",
+      institute_record_id: instituteRecordId,
       is_approved: true, // Auto-approve institute emails (no admin approval needed)
       is_active: true,
       email_verified: false, // Still requires email verification
@@ -307,22 +372,16 @@ router.post("/register/institute-email", async (req, res) => {
     // Generate verification token
     const verificationToken = await User.generateVerificationToken(user.id);
 
-    // Send verification email
-    try {
-      await emailService.sendVerificationEmail(
-        email,
-        verificationToken,
-        email.split("@")[0]
-      );
-    } catch (emailError) {
-      console.error("Error sending verification email:", emailError);
-      await query("DELETE FROM users WHERE id = $1", [user.id]);
-
-      return res.status(500).json({
-        success: false,
-        message: "Failed to send verification email. Please try again.",
-      });
-    }
+    // ✨ ASYNC FIX: Send verification email in background without waiting
+    // This prevents timeout on slow email servers
+    emailService.sendVerificationEmail(
+      email,
+      verificationToken,
+      email.split("@")[0]
+    ).catch(err => {
+      console.error("Background email sending failed:", err);
+      // Email sending failure is logged but doesn't block the response
+    });
 
     res.status(201).json({
       success: true,
@@ -442,23 +501,18 @@ router.post("/register/personal-email", async (req, res) => {
       user.id
     );
 
-    // Send verification email
-    try {
-      await emailService.sendVerificationEmail(
-        email,
-        emailVerificationToken,
-        tokenData.fullName
-      );
-    } catch (emailError) {
-      console.error("Error sending verification email:", emailError);
-      await query("DELETE FROM users WHERE id = $1", [user.id]);
+    // ✨ ASYNC FIX: Send verification email in background without waiting
+    // This prevents timeout on slow email servers
+    emailService.sendVerificationEmail(
+      email,
+      emailVerificationToken,
+      tokenData.fullName
+    ).catch(err => {
+      console.error("Background email sending failed:", err);
+      // Email sending failure is logged but doesn't block the response
+    });
 
-      return res.status(500).json({
-        success: false,
-        message: "Failed to send verification email. Please try again.",
-      });
-    }
-
+    // Return success immediately (don't wait for email)
     res.status(201).json({
       success: true,
       message:
@@ -819,6 +873,35 @@ router.post("/google", async (req, res) => {
         }
       } else if (isInstituteEmail) {
         registrationPath = "institute_email";
+
+        // Lookup institute record by email for duplicate prevention
+        try {
+          const instituteResult = await query(
+            "SELECT id FROM institute_records WHERE LOWER(institute_email) = LOWER($1) AND is_active = true",
+            [emailLower]
+          );
+
+          if (instituteResult.rows.length > 0) {
+            instituteRecordId = instituteResult.rows[0].id;
+
+            // Check if account already exists for this institute record
+            const existingRecord = await query(
+              "SELECT id FROM users WHERE institute_record_id = $1",
+              [instituteRecordId]
+            );
+
+            if (existingRecord.rows.length > 0) {
+              return res.status(400).json({
+                success: false,
+                message:
+                  "An account has already been registered with this institute email. Please contact support if this is an error.",
+              });
+            }
+          }
+        } catch (err) {
+          console.error("Error looking up institute record:", err);
+          // Continue even if institute record lookup fails - it's not critical
+        }
       }
 
       // Register new user with Google provider
@@ -834,6 +917,70 @@ router.post("/google", async (req, res) => {
       };
       user = await User.create(userData);
       isNewUser = true;
+    } else if (user && !user.provider && !user.providerId && !user.email_verified && email === user.email) {
+      // ✨ NEW: User exists but is unverified with email/password only
+      // This handles the case where user registered with email/password but then uses OAuth
+      // Link the OAuth provider to the existing account instead of creating a duplicate
+
+      console.log(
+        `🔗 Linking OAuth to existing unverified account: ${email}`
+      );
+
+      // Determine registration path
+      const emailLower = email.toLowerCase();
+      const isInstituteEmail =
+        emailLower.endsWith("@iiitnr.edu.in") ||
+        emailLower.endsWith("@iiitnr.ac.in");
+
+      let registrationPath = user.registration_path || "oauth";
+      let instituteRecordId = user.institute_record_id;
+
+      // If this is institute email and we don't have an institute record ID yet, look it up
+      if (isInstituteEmail && !instituteRecordId) {
+        try {
+          const instituteResult = await query(
+            "SELECT id FROM institute_records WHERE LOWER(institute_email) = LOWER($1) AND is_active = true",
+            [emailLower]
+          );
+
+          if (instituteResult.rows.length > 0) {
+            instituteRecordId = instituteResult.rows[0].id;
+          }
+        } catch (err) {
+          console.error("Error looking up institute record:", err);
+        }
+      }
+
+      // Update the existing account with OAuth provider details and mark as verified
+      try {
+        await query(
+          `UPDATE users 
+           SET provider = $1, 
+               providerId = $2, 
+               email_verified = TRUE, 
+               is_approved = TRUE,
+               registration_path = $3,
+               institute_record_id = $4,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = $5`,
+          [
+            "google",
+            googleId,
+            registrationPath,
+            instituteRecordId,
+            user.id,
+          ]
+        );
+
+        // Refresh user data from database
+        user = await User.findById(user.id);
+        console.log(
+          `✓ Successfully linked OAuth provider to existing account`
+        );
+      } catch (err) {
+        console.error("Error linking OAuth provider:", err);
+        // Fall through - user will still be logged in as the local account
+      }
     }
 
     // Check if alumni profile exists; do NOT auto-create one
@@ -981,6 +1128,35 @@ router.post("/linkedin", async (req, res) => {
         }
       } else if (isInstituteEmail) {
         registrationPath = "institute_email";
+
+        // Lookup institute record by email for duplicate prevention
+        try {
+          const instituteResult = await query(
+            "SELECT id FROM institute_records WHERE LOWER(institute_email) = LOWER($1) AND is_active = true",
+            [emailLower]
+          );
+
+          if (instituteResult.rows.length > 0) {
+            instituteRecordId = instituteResult.rows[0].id;
+
+            // Check if account already exists for this institute record
+            const existingRecord = await query(
+              "SELECT id FROM users WHERE institute_record_id = $1",
+              [instituteRecordId]
+            );
+
+            if (existingRecord.rows.length > 0) {
+              return res.status(400).json({
+                success: false,
+                message:
+                  "An account has already been registered with this institute email. Please contact support if this is an error.",
+              });
+            }
+          }
+        } catch (err) {
+          console.error("Error looking up institute record:", err);
+          // Continue even if institute record lookup fails - it's not critical
+        }
       }
 
       // Register new user with LinkedIn provider
@@ -996,6 +1172,70 @@ router.post("/linkedin", async (req, res) => {
       };
       user = await User.create(userData);
       isNewUser = true;
+    } else if (user && !user.provider && !user.providerId && !user.email_verified && email === user.email) {
+      // ✨ NEW: User exists but is unverified with email/password only
+      // This handles the case where user registered with email/password but then uses OAuth
+      // Link the OAuth provider to the existing account instead of creating a duplicate
+
+      console.log(
+        `🔗 Linking LinkedIn OAuth to existing unverified account: ${email}`
+      );
+
+      // Determine registration path
+      const emailLower = email.toLowerCase();
+      const isInstituteEmail =
+        emailLower.endsWith("@iiitnr.edu.in") ||
+        emailLower.endsWith("@iiitnr.ac.in");
+
+      let registrationPath = user.registration_path || "oauth";
+      let instituteRecordId = user.institute_record_id;
+
+      // If this is institute email and we don't have an institute record ID yet, look it up
+      if (isInstituteEmail && !instituteRecordId) {
+        try {
+          const instituteResult = await query(
+            "SELECT id FROM institute_records WHERE LOWER(institute_email) = LOWER($1) AND is_active = true",
+            [emailLower]
+          );
+
+          if (instituteResult.rows.length > 0) {
+            instituteRecordId = instituteResult.rows[0].id;
+          }
+        } catch (err) {
+          console.error("Error looking up institute record:", err);
+        }
+      }
+
+      // Update the existing account with OAuth provider details and mark as verified
+      try {
+        await query(
+          `UPDATE users 
+           SET provider = $1, 
+               providerId = $2, 
+               email_verified = TRUE, 
+               is_approved = TRUE,
+               registration_path = $3,
+               institute_record_id = $4,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = $5`,
+          [
+            "linkedin",
+            linkedinId,
+            registrationPath,
+            instituteRecordId,
+            user.id,
+          ]
+        );
+
+        // Refresh user data from database
+        user = await User.findById(user.id);
+        console.log(
+          `✓ Successfully linked OAuth provider to existing account`
+        );
+      } catch (err) {
+        console.error("Error linking OAuth provider:", err);
+        // Fall through - user will still be logged in as the local account
+      }
     }
 
     // Check if alumni profile exists; do NOT auto-create one
