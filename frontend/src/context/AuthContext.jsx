@@ -201,10 +201,13 @@ export const AuthProvider = ({ children }) => {
       // Fetch and decrypt encryption keys immediately after login
       try {
         const crypto = await import('../utils/crypto.js')
-        const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+        const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+        const API = `${API_BASE}/api`
         
-        console.log('[Login] Starting encryption key setup...')
+        console.log('[Login] 🔐 Starting encryption key setup...')
+        console.log('[Login] API URL:', API)
         console.log('[Login] User email:', credentials.email)
+        console.log('[Login] User ID:', response.user?.id)
         
         // Check if keys already exist locally
         let storedPriv = localStorage.getItem('e2e_priv_jwk')
@@ -214,16 +217,74 @@ export const AuthProvider = ({ children }) => {
         
         if (!storedPriv || !storedPub) {
           // Fetch encrypted keys from server
-          console.log('[Login] Fetching encryption keys from server...')
+          console.log('[Login] 📡 Fetching encryption keys from server...')
           const keyResp = await fetch(`${API}/messages/public-key`, {
             headers: { 'Authorization': `Bearer ${response.token}` }
           })
           
-          console.log('[Login] Key fetch response status:', keyResp.status)
+          console.log('[Login] 📊 Key fetch response status:', keyResp.status)
+          
+          if (keyResp.status === 404) {
+            console.log('[Login] ⚠️ No keys found on server (404), will generate new ones')
+            // Generate new keys below
+          } else if (!keyResp.ok) {
+            console.error('[Login] ❌ Key fetch failed:', keyResp.status, keyResp.statusText)
+            const keyData = await keyResp.json()
+            console.error('[Login] Error details:', keyData)
+            throw new Error(`Key fetch failed: ${keyData.message || keyResp.statusText}`)
+          }
+          
           const keyData = await keyResp.json()
-        console.log('[Login] Key fetch response:', keyData)
+          console.log('[Login] 📦 Key fetch response:', keyData)
         
-        if (keyData.success && keyData.data?.encrypted_private_key && keyData.data?.public_key) {
+        if (keyResp.status === 404 || !keyData.success) {
+          // No keys on server - generate new ones
+          console.log('[Login] 🔑 Generating new encryption keys...')
+          const keyPair = await crypto.generateKeyPair()
+          const publicKey = await crypto.exportPublicKey(keyPair.publicKey)
+          const privateKey = await crypto.exportPrivateKey(keyPair.privateKey)
+          
+          console.log('[Login] ✅ Keys generated, public key preview:', publicKey.slice(0, 50))
+          
+          // Encrypt private key with email only
+          const encryptionPassword = credentials.email.toLowerCase()
+          console.log('[Login] 🔒 Encrypting private key with password')
+          const encryptedPrivKey = await crypto.encryptPrivateKeyWithPassword(privateKey, encryptionPassword)
+          const encryptedPrivKeyStr = JSON.stringify(encryptedPrivKey)
+          
+          console.log('[Login] ✅ Private key encrypted')
+          
+          // Upload to server
+          console.log('[Login] 📤 Uploading new keys to server...')
+          const uploadResp = await fetch(`${API}/messages/public-key`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${response.token}`
+            },
+            body: JSON.stringify({ 
+              publicKey, 
+              encryptedPrivateKey: encryptedPrivKeyStr 
+            })
+          })
+          
+          const uploadData = await uploadResp.json()
+          console.log('[Login] 📊 Upload response:', uploadData)
+          
+          if (!uploadData.success) {
+            throw new Error(`Failed to upload keys: ${uploadData.message}`)
+          }
+          
+          // Store locally
+          localStorage.setItem('e2e_priv_jwk', privateKey)
+          localStorage.setItem('e2e_pub_raw', publicKey)
+          sessionStorage.setItem('e2e_priv_jwk', privateKey)
+          sessionStorage.setItem('e2e_pub_raw', publicKey)
+          sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+          localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+          
+          console.log('[Login] ✅ New encryption keys generated, uploaded, and stored')
+        } else if (keyData.success && keyData.data?.encrypted_private_key && keyData.data?.public_key) {
           console.log('[Login] Keys found on server, decrypting...')
           // Decrypt using email only
           const encryptionPassword = credentials.email.toLowerCase()
@@ -248,92 +309,70 @@ export const AuthProvider = ({ children }) => {
             sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
             localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
             
-            console.log('✅ Encryption keys fetched and decrypted during login')
+            console.log('[Login] ✅ Encryption keys fetched and decrypted during login')
           } catch (decryptErr) {
-            console.warn('[Login] Failed to decrypt server key with current password; attempting rotation using local key', decryptErr?.message || decryptErr)
-            const fallbackPriv = localStorage.getItem('e2e_priv_jwk') || sessionStorage.getItem('e2e_priv_jwk')
-            const fallbackPub = keyData.data.public_key || localStorage.getItem('e2e_pub_raw') || sessionStorage.getItem('e2e_pub_raw')
-
-            if (fallbackPriv && fallbackPub) {
-              try {
-                // Re-encrypt local private key with email only and upload so other devices can decrypt
-                const normalizedEncryptionPassword = credentials.email.toLowerCase()
-                const encryptedPrivKeyNew = await crypto.encryptPrivateKeyWithPassword(fallbackPriv, normalizedEncryptionPassword)
-                const encryptedPrivKeyStrNew = JSON.stringify(encryptedPrivKeyNew)
-
-                console.log('[Login] Uploading rotated encrypted key with current password...')
-                const uploadResp = await fetch(`${API}/messages/public-key`, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${response.token}`
-                  },
-                  body: JSON.stringify({ 
-                    publicKey: fallbackPub, 
-                    encryptedPrivateKey: encryptedPrivKeyStrNew 
-                  })
+            console.warn('[Login] ⚠️ Failed to decrypt server key - keys encrypted with old pattern', decryptErr?.message || decryptErr)
+            console.log('[Login] 🔄 Generating new encryption keys to replace incompatible ones...')
+            
+            // Clear old incompatible keys
+            localStorage.removeItem('e2e_priv_jwk')
+            localStorage.removeItem('e2e_pub_raw')
+            localStorage.removeItem('e2e_decrypt_pw')
+            sessionStorage.removeItem('e2e_priv_jwk')
+            sessionStorage.removeItem('e2e_pub_raw')
+            sessionStorage.removeItem('e2e_decrypt_pw')
+            
+            try {
+              // Generate completely new key pair
+              const newKeyPair = await crypto.generateKeyPair()
+              const newPublicKey = await crypto.exportPublicKey(newKeyPair.publicKey)
+              const newPrivateKey = await crypto.exportPrivateKey(newKeyPair.privateKey)
+              
+              // Encrypt with current email-only pattern
+              const encryptionPassword = credentials.email.toLowerCase()
+              const encryptedNewPrivKey = await crypto.encryptPrivateKeyWithPassword(
+                newPrivateKey,
+                encryptionPassword
+              )
+              
+              // Upload new keys to server
+              console.log('[Login] 📤 Uploading new rotation keys to server...')
+              const rotateResp = await fetch(`${API}/messages/public-key`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${response.token}`
+                },
+                body: JSON.stringify({
+                  publicKey: newPublicKey,
+                  encryptedPrivateKey: JSON.stringify(encryptedNewPrivKey)
                 })
-                const uploadData = await uploadResp.json()
-                console.log('[Login] Rotation upload response:', uploadData)
-
-                storedPriv = fallbackPriv
-                storedPub = fallbackPub
-
+              })
+              
+              if (rotateResp.ok) {
+                storedPriv = newPrivateKey
+                storedPub = newPublicKey
+                
+                // Store new keys
                 localStorage.setItem('e2e_priv_jwk', storedPriv)
                 localStorage.setItem('e2e_pub_raw', storedPub)
                 sessionStorage.setItem('e2e_priv_jwk', storedPriv)
                 sessionStorage.setItem('e2e_pub_raw', storedPub)
-                sessionStorage.setItem('e2e_decrypt_pw', normalizedEncryptionPassword)
-                localStorage.setItem('e2e_decrypt_pw', normalizedEncryptionPassword)
-
-                console.log('✅ Encryption keys rotated and uploaded with current password')
-              } catch (rotateErr) {
-                console.error('❌ Failed to rotate/upload encryption keys with current password', rotateErr)
+                sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+                localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+                
+                console.log('[Login] ✅ New encryption keys generated and uploaded successfully')
+                console.log('[Login] ⚠️ Note: Previous encrypted messages cannot be decrypted with new keys')
+              } else {
+                throw new Error('Failed to upload new keys to server')
               }
-            } else {
-              console.warn('[Login] No local private key available to rotate encryption after decrypt failure')
+            } catch (rotateErr) {
+              console.error('[Login] ❌ Failed to generate/upload new encryption keys', rotateErr)
+              // Don't block login, user can try accessing Messages to regenerate
             }
           }
-        } else if (keyResp.status === 404 || !keyData.success) {
-          // No keys on server - generate new ones
-          console.log('[Login] No keys on server, generating new encryption keys...')
-          const keyPair = await crypto.generateKeyPair()
-          const publicKey = await crypto.exportPublicKey(keyPair.publicKey)
-            const privateKey = await crypto.exportPrivateKey(keyPair.privateKey)
-            
-            // Encrypt private key with email only
-            const encryptionPassword = credentials.email.toLowerCase()
-            const encryptedPrivKey = await crypto.encryptPrivateKeyWithPassword(privateKey, encryptionPassword)
-            const encryptedPrivKeyStr = JSON.stringify(encryptedPrivKey)
-            
-            // Upload to server
-            console.log('[Login] Uploading new keys to server...')
-            const uploadResp = await fetch(`${API}/messages/public-key`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${response.token}`
-              },
-              body: JSON.stringify({ 
-                publicKey, 
-                encryptedPrivateKey: encryptedPrivKeyStr 
-              })
-            })
-            
-            const uploadData = await uploadResp.json()
-            console.log('[Login] Upload response:', uploadData)
-            
-            // Store locally
-            localStorage.setItem('e2e_priv_jwk', privateKey)
-            localStorage.setItem('e2e_pub_raw', publicKey)
-            sessionStorage.setItem('e2e_priv_jwk', privateKey)
-            sessionStorage.setItem('e2e_pub_raw', publicKey)
-            sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
-            localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
-            
-            console.log('✅ New encryption keys generated and uploaded')
-          } else {
-            console.warn('[Login] Unexpected key fetch response:', keyData)
+        } else {
+            console.warn('[Login] ⚠️ Unexpected key fetch response:', keyData)
           }
         } else {
           // Keys already exist locally, just store the decryption password
@@ -377,34 +416,44 @@ export const AuthProvider = ({ children }) => {
       
       const response = await authService.register(userData)
       
-      // If registration includes token (auto-approved)
-      if (response.token) {
-        localStorage.setItem('token', response.token)
-        authService.setToken(response.token)
+      // Generate encryption keys for messaging ALWAYS, regardless of approval status
+      // Keys will be stored locally and uploaded when user is approved and logs in
+      try {
+        console.log('[Registration] 🔐 Starting encryption key generation...')
+        const crypto = await import('../utils/crypto.js')
+        const keyPair = await crypto.generateKeyPair()
+        const publicKey = await crypto.exportPublicKey(keyPair.publicKey)
+        const privateKey = await crypto.exportPrivateKey(keyPair.privateKey)
         
-        // Generate encryption keys for messaging immediately after registration
-        try {
-          console.log('[Registration] Starting encryption key generation...')
-          const crypto = await import('../utils/crypto.js')
-          const keyPair = await crypto.generateKeyPair()
-          const publicKey = await crypto.exportPublicKey(keyPair.publicKey)
-          const privateKey = await crypto.exportPrivateKey(keyPair.privateKey)
-          
-          console.log('[Registration] Keys generated, public key preview:', publicKey.slice(0, 50))
-          
-          // Store keys in localStorage (for this device)
-          localStorage.setItem('e2e_pub_raw', publicKey)
-          localStorage.setItem('e2e_priv_jwk', privateKey)
-          
-          // Encrypt private key with email only for cross-device support
-          const encryptionPassword = userData.email.toLowerCase()
-          console.log('[Registration] Encrypting private key...')
-          const encryptedPrivKey = await crypto.encryptPrivateKeyWithPassword(privateKey, encryptionPassword)
-          const encryptedPrivKeyStr = JSON.stringify(encryptedPrivKey)
+        console.log('[Registration] ✅ Keys generated, public key preview:', publicKey.slice(0, 50))
+        
+        // Store keys in localStorage (for this device)
+        localStorage.setItem('e2e_pub_raw', publicKey)
+        localStorage.setItem('e2e_priv_jwk', privateKey)
+        sessionStorage.setItem('e2e_pub_raw', publicKey)
+        sessionStorage.setItem('e2e_priv_jwk', privateKey)
+        
+        // Encrypt private key with email only for cross-device support
+        const encryptionPassword = userData.email.toLowerCase()
+        console.log('[Registration] 🔒 Encrypting private key...')
+        const encryptedPrivKey = await crypto.encryptPrivateKeyWithPassword(privateKey, encryptionPassword)
+        const encryptedPrivKeyStr = JSON.stringify(encryptedPrivKey)
+        
+        console.log('[Registration] ✅ Private key encrypted')
+        
+        // Store encryption password
+        sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+        localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+        
+        // If registration includes token (auto-approved), upload keys immediately
+        if (response.token) {
+          localStorage.setItem('token', response.token)
+          authService.setToken(response.token)
           
           // Upload public key AND encrypted private key to server
-          const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
-          console.log('[Registration] Uploading keys to server:', `${API}/messages/public-key`)
+          const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+          const API = `${API_BASE}/api`
+          console.log('[Registration] 📤 Uploading keys to server:', `${API}/messages/public-key`)
           const uploadResp = await fetch(`${API}/messages/public-key`, {
             method: 'POST',
             headers: {
@@ -417,24 +466,28 @@ export const AuthProvider = ({ children }) => {
             })
           })
           
-          console.log('[Registration] Upload response status:', uploadResp.status)
+          console.log('[Registration] 📊 Upload response status:', uploadResp.status)
           const uploadData = await uploadResp.json()
-          console.log('[Registration] Upload response data:', uploadData)
+          console.log('[Registration] 📦 Upload response data:', uploadData)
           
           if (!uploadData.success) {
-            throw new Error(`Failed to upload keys: ${uploadData.message}`)
+            console.error('[Registration] ⚠️ Failed to upload keys:', uploadData.message)
+          } else {
+            console.log('[Registration] ✅ Keys uploaded successfully')
           }
-          
-          // Store email+password combo for later use (both session and local storage)
-          sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
-          localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
-          
-          console.log('✅ Encryption keys generated and uploaded during registration')
-        } catch (cryptoError) {
-          console.error('⚠️ Failed to generate encryption keys during registration:', cryptoError)
-          console.error('Error details:', cryptoError.message, cryptoError.stack)
-          // Don't fail registration if key generation fails
+        } else {
+          console.log('[Registration] ⏳ Approval pending - keys will be uploaded at first login')
         }
+        
+        console.log('[Registration] ✅ Encryption keys generated and stored locally')
+      } catch (cryptoError) {
+        console.error('[Registration] ❌ Failed to generate encryption keys:', cryptoError)
+        console.error('Error details:', cryptoError.message, cryptoError.stack)
+        // Don't fail registration if key generation fails
+      }
+      
+      // If registration includes token (auto-approved)
+      if (response.token) {
         
         dispatch({
           type: authActions.LOGIN_SUCCESS,

@@ -1886,13 +1886,13 @@ router.post("/complete-onboarding", authenticate, async (req, res) => {
 
     // Send personal email verification in background if personal email exists and not verified
     const userWithEmail = await query(
-      "SELECT personal_email, personal_email_verified FROM users WHERE id = $1",
+      "SELECT email, email_verified FROM users WHERE id = $1",
       [userId]
     );
 
     if (
-      userWithEmail.rows[0]?.personal_email &&
-      !userWithEmail.rows[0]?.personal_email_verified
+      userWithEmail.rows[0]?.email &&
+      !userWithEmail.rows[0]?.email_verified
     ) {
       // Generate verification token
       const crypto = await import("crypto");
@@ -1902,8 +1902,8 @@ router.post("/complete-onboarding", authenticate, async (req, res) => {
       // Update user with verification token
       await query(
         `UPDATE users 
-         SET personal_email_verification_token = $1,
-             personal_email_verification_token_expires = $2
+         SET email_verification_token = $1,
+             email_verification_token_expires = $2
          WHERE id = $3`,
         [verificationToken, tokenExpiry, userId]
       );
@@ -1917,14 +1917,14 @@ router.post("/complete-onboarding", authenticate, async (req, res) => {
 
       emailService
         .sendPersonalEmailVerification(
-          userWithEmail.rows[0].personal_email,
+          userWithEmail.rows[0].email,
           verificationToken,
           firstName
         )
         .catch((err) => console.error("Background email error:", err));
 
       console.log(
-        `✅ Background verification email queued for: ${userWithEmail.rows[0].personal_email}`
+        `✅ Background verification email queued for: ${userWithEmail.rows[0].email}`
       );
     }
 

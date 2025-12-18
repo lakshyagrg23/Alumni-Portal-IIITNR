@@ -514,6 +514,7 @@ router.get('/public-key/:userId', authenticate, async (req, res) => {
   try {
     const { userId } = req.params;
     const record = await PublicKey.findByUserId(userId);
+    console.log('Fetched public key for userId', userId, 'record:', record);  
     if (!record) {
       return res.status(404).json({ success: false, message: 'Public key not found' });
     }

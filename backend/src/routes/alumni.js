@@ -651,14 +651,9 @@ router.post(
 
       // If no profile exists yet (common during onboarding), create a minimal one
       if (profileResult.rows.length === 0) {
-        // Fetch basic user info to satisfy NOT NULL constraints
-        const userInfo = await query(
-          "SELECT first_name, last_name FROM users WHERE id = $1",
-          [req.user.id]
-        );
-
-        const firstName = userInfo.rows[0]?.first_name?.trim() || "Alumni";
-        const lastName = userInfo.rows[0]?.last_name?.trim() || "User";
+        // Use default values since first_name/last_name are in alumni_profiles, not users
+        const firstName = "Alumni";
+        const lastName = "User";
 
         uploadResult = await query(
           `INSERT INTO alumni_profiles (

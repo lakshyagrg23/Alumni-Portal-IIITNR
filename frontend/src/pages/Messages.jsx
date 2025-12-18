@@ -17,8 +17,16 @@ function useQuery() {
 const Messages = () => {
   const { user, token } = useAuth()
   // Fallback to port 5000 to match backend default
-  const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+  const API = `${API_BASE}`
   const query = useQuery()
+  
+  console.log('[Messages] \ud83c\udfaf API Configuration:', { 
+    VITE_API_URL: import.meta.env.VITE_API_URL,
+    API_BASE,
+    API,
+    fullPublicKeyURL: `${API}/messages/public-key`
+  })
   const preTo = query.get('to')
   const [connected, setConnected] = useState(false)
   const [messages, setMessages] = useState([]) // decrypted messages for active conversation
@@ -75,6 +83,36 @@ const Messages = () => {
   const [isBlocked, setIsBlocked] = useState(false)
   // Use global messaging context for unread counts
   const { conversationUnreadMap, clearConversationUnread, setActiveConversationUserId } = useMessaging()
+  
+  // Debug panel state
+  const [showDebugPanel, setShowDebugPanel] = useState(false)
+  const [debugLogs, setDebugLogs] = useState([])
+  const [networkRequests, setNetworkRequests] = useState([])
+  
+  // Add debug log function
+  const addDebugLog = useCallback((type, message, data = null) => {
+    const timestamp = new Date().toLocaleTimeString()
+    setDebugLogs(prev => [{
+      id: Date.now() + Math.random(),
+      timestamp,
+      type, // 'info', 'success', 'error', 'warning'
+      message,
+      data
+    }, ...prev].slice(0, 50)) // Keep last 50 logs
+  }, [])
+  
+  // Add network request tracker
+  const addNetworkRequest = useCallback((method, url, status, response = null) => {
+    const timestamp = new Date().toLocaleTimeString()
+    setNetworkRequests(prev => [{
+      id: Date.now() + Math.random(),
+      timestamp,
+      method,
+      url,
+      status,
+      response
+    }, ...prev].slice(0, 20)) // Keep last 20 requests
+  }, [])
 
   // Ensure we have the user's encryption keys available locally; fetch/decrypt from server if needed
   const ensureLocalKeys = useCallback(async () => {
@@ -103,14 +141,26 @@ const Messages = () => {
       if (!storedPriv || !storedPub) {
         let encryptedRecord = null
         try {
-          console.log('[Messages] Keys not in storage, fetching from server...')
-          const resp = await axios.get(`${API}/messages/public-key`, { headers: { Authorization: `Bearer ${token}` } })
+          console.log('[Messages] \ud83d\udce1 Keys not in storage, fetching from server...')
+          console.log('[Messages] \ud83d\udd17 Fetching from:', `${API}/messages/public-key`)
+          console.log('[Messages] \ud83d\udd11 Token present:', !!token, 'Token length:', token?.length)
+          
+          const resp = await axios.get(`${API}/messages/public-key`, { 
+            headers: { Authorization: `Bearer ${token}` } 
+          })
+          
+          console.log('[Messages] \ud83d\udcca Response status:', resp.status)
+          console.log('[Messages] \ud83d\udce6 Response data:', resp.data)
           encryptedRecord = resp.data?.data || null
         } catch (fetchErr) {
-          console.warn('[Messages] Failed to fetch keys from server:', fetchErr)
+          console.error('[Messages] \u274c Failed to fetch keys from server:', fetchErr)
+          console.error('[Messages] \ud83d\udcca Error status:', fetchErr.response?.status)
+          console.error('[Messages] \ud83d\udce6 Error response:', fetchErr.response?.data)
+          console.error('[Messages] \ud83d\udd17 Request URL:', fetchErr.config?.url)
+          
           const errorMessage = fetchErr.response?.status === 404 
-            ? 'No encryption keys found on server. This appears to be your first time using messaging.'
-            : 'Failed to retrieve encryption keys. Please log out and log in again.'
+            ? '\u26a0\ufe0f No encryption keys found. Click here to generate keys, or log out and log in again.'
+            : `\u274c Failed to retrieve encryption keys (${fetchErr.response?.status || 'Network Error'}). Please log out and log in again.`
           setErrorMsg(errorMessage)
           return null
         }
@@ -147,23 +197,70 @@ const Messages = () => {
 
           if (!decryptedPrivKey) {
             console.warn('[Messages] Failed to decrypt server keys with provided password(s)')
-            setErrorMsg('Could not unlock your encryption keys. Please log out and log back in; if you changed your password, use the one used when messaging keys were first created.')
-            return null
+            console.log('[Messages] 🔄 Generating new encryption keys to replace incompatible ones...')
+            
+            // Generate new keys since old ones use incompatible encryption
+            try {
+              const newKeyPair = await crypto.generateKeyPair()
+              const newPublicKey = await crypto.exportPublicKey(newKeyPair.publicKey)
+              const newPrivateKey = await crypto.exportPrivateKey(newKeyPair.privateKey)
+              
+              // Encrypt with current email pattern
+              const encryptionPassword = user.email.toLowerCase()
+              const encryptedNewPrivKey = await crypto.encryptPrivateKeyWithPassword(
+                newPrivateKey,
+                encryptionPassword
+              )
+              
+              // Upload to server
+              console.log('[Messages] 📤 Uploading new keys to server...')
+              await axios.post(
+                `${API}/messages/public-key`,
+                {
+                  publicKey: newPublicKey,
+                  encryptedPrivateKey: JSON.stringify(encryptedNewPrivKey)
+                },
+                { headers: { Authorization: `Bearer ${token}` } }
+              )
+              
+              // Store new keys
+              storedPriv = newPrivateKey
+              storedPub = newPublicKey
+              
+              localStorage.setItem('e2e_priv_jwk', storedPriv)
+              localStorage.setItem('e2e_pub_raw', storedPub)
+              sessionStorage.setItem('e2e_priv_jwk', storedPriv)
+              sessionStorage.setItem('e2e_pub_raw', storedPub)
+              sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+              localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+              
+              console.log('[Messages] ✅ New encryption keys generated and stored successfully')
+              
+              // Clear any previous errors
+              setErrorMsg('')
+              
+              // Keys are already in storedPriv/storedPub, continue below
+            } catch (genErr) {
+              console.error('[Messages] ❌ Failed to generate new keys:', genErr)
+              setErrorMsg('Could not generate new encryption keys. Please refresh the page and try again.')
+              return null
+            }
+          } else {
+            // Successfully decrypted existing keys
+            storedPriv = decryptedPrivKey
+            storedPub = encryptedRecord.public_key
+
+            // Persist the working password so future loads skip prompt
+            sessionStorage.setItem('e2e_decrypt_pw', usedPassword)
+            localStorage.setItem('e2e_decrypt_pw', usedPassword)
+
+            localStorage.setItem('e2e_priv_jwk', storedPriv)
+            localStorage.setItem('e2e_pub_raw', storedPub)
+            sessionStorage.setItem('e2e_priv_jwk', storedPriv)
+            sessionStorage.setItem('e2e_pub_raw', storedPub)
+
+            console.log('✅ Keys fetched and decrypted from server')
           }
-
-          storedPriv = decryptedPrivKey
-          storedPub = encryptedRecord.public_key
-
-          // Persist the working password so future loads skip prompt
-          sessionStorage.setItem('e2e_decrypt_pw', usedPassword)
-          localStorage.setItem('e2e_decrypt_pw', usedPassword)
-
-          localStorage.setItem('e2e_priv_jwk', storedPriv)
-          localStorage.setItem('e2e_pub_raw', storedPub)
-          sessionStorage.setItem('e2e_priv_jwk', storedPriv)
-          sessionStorage.setItem('e2e_pub_raw', storedPub)
-
-          console.log('✅ Keys fetched and decrypted from server')
         } else {
           console.warn('[Messages] Server returned no encrypted private key for user')
           setErrorMsg('No encryption keys found on server. Please log out and log in again to regenerate them.')
@@ -172,35 +269,124 @@ const Messages = () => {
       }
 
       if (!storedPriv || !storedPub) {
-        console.error('❌ No encryption keys available. User must re-login.')
-        setErrorMsg('⚠️ Encryption keys not found. Please: 1) Log out, 2) Log back in, 3) Return to Messages. This syncs your keys across devices.')
+        console.error('❌ No encryption keys available after all attempts')
+        console.error('storedPriv exists:', !!storedPriv)
+        console.error('storedPub exists:', !!storedPub)
+        setErrorMsg('⚠️ Encryption keys not found. Please refresh the page or log out and log back in.')
         return null
       }
 
-      const privateKey = await crypto.importPrivateKey(storedPriv)
-      const publicKey = await crypto.importPublicKey(storedPub)
-      kp = { privateKey, publicKey }
-      publicKeyBase64 = storedPub // Use stored public key for upload
-      localKeysRef.current = kp
+      // Validate and import keys with automatic regeneration on failure
+      console.log('[Messages] 🔍 Validating stored keys...')
+      console.log('[Messages] storedPriv preview:', storedPriv?.slice(0, 100))
+      console.log('[Messages] storedPub preview:', storedPub?.slice(0, 100))
+      
+      let needsRegeneration = false
+      
+      // Try to import keys - if it fails, regenerate
+      try {
+        console.log('[Messages] 🔓 Attempting to import encryption keys...')
+        const privateKey = await crypto.importPrivateKey(storedPriv)
+        const publicKey = await crypto.importPublicKey(storedPub)
+        kp = { privateKey, publicKey }
+        publicKeyBase64 = storedPub
+        localKeysRef.current = kp
+        console.log('[Messages] ✅ Encryption keys imported successfully')
+      } catch (importErr) {
+        console.warn('[Messages] ⚠️ Failed to import stored keys, will regenerate:', importErr.message)
+        needsRegeneration = true
+      }
+      
+      // If import failed, clear storage and generate fresh keys
+      if (needsRegeneration) {
+        console.log('[Messages] 🧹 Clearing corrupted keys from storage...')
+        localStorage.removeItem('e2e_priv_jwk')
+        localStorage.removeItem('e2e_pub_raw')
+        sessionStorage.removeItem('e2e_priv_jwk')
+        sessionStorage.removeItem('e2e_pub_raw')
+        
+        try {
+          console.log('[Messages] 🔄 Generating fresh encryption keys...')
+          const newKeyPair = await crypto.generateKeyPair()
+          const newPublicKey = await crypto.exportPublicKey(newKeyPair.publicKey)
+          const newPrivateKey = await crypto.exportPrivateKey(newKeyPair.privateKey)
+          
+          console.log('[Messages] 📝 New key preview:', newPrivateKey?.slice(0, 100))
+          
+          // Encrypt with current email pattern
+          const encryptionPassword = user.email.toLowerCase()
+          const encryptedNewPrivKey = await crypto.encryptPrivateKeyWithPassword(
+            newPrivateKey,
+            encryptionPassword
+          )
+          
+          // Upload to server
+          console.log('[Messages] 📤 Uploading fresh keys to server...')
+          await axios.post(
+            `${API}/messages/public-key`,
+            {
+              publicKey: newPublicKey,
+              encryptedPrivateKey: JSON.stringify(encryptedNewPrivKey)
+            },
+            { headers: { Authorization: `Bearer ${token}` } }
+          )
+          
+          // Store new keys
+          localStorage.setItem('e2e_priv_jwk', newPrivateKey)
+          localStorage.setItem('e2e_pub_raw', newPublicKey)
+          sessionStorage.setItem('e2e_priv_jwk', newPrivateKey)
+          sessionStorage.setItem('e2e_pub_raw', newPublicKey)
+          sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+          localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+          
+          // Import the newly generated keys
+          const privateKey = await crypto.importPrivateKey(newPrivateKey)
+          const publicKey = await crypto.importPublicKey(newPublicKey)
+          kp = { privateKey, publicKey }
+          publicKeyBase64 = newPublicKey
+          localKeysRef.current = kp
+          
+          console.log('[Messages] ✅ Fresh encryption keys generated, uploaded, and imported successfully')
+          setErrorMsg('')
+        } catch (genErr) {
+          console.error('[Messages] ❌ Failed to generate fresh keys:', genErr)
+          setErrorMsg('Could not recover from corrupted keys. Please log out and log back in.')
+          return null
+        }
+      }
 
       // Upload public key to server if we have one
       if (publicKeyBase64) {
         try {
-          console.log('[Messages] POST public-key ...')
-          const resp = await axios.post(`${API}/messages/public-key`, { publicKey: publicKeyBase64 }, { headers: { Authorization: `Bearer ${token}` }})
-          console.log('✅ public-key uploaded', resp?.status)
+          console.log('[Messages] 📤 Uploading public key to server...')
+          console.log('[Messages] 🔗 POST to:', `${API}/messages/public-key`)
+          console.log('[Messages] 📝 Public key preview:', publicKeyBase64.slice(0, 50))
+          
+          const resp = await axios.post(
+            `${API}/messages/public-key`, 
+            { publicKey: publicKeyBase64 }, 
+            { headers: { Authorization: `Bearer ${token}` }}
+          )
+          
+          console.log('[Messages] ✅ Public key uploaded successfully, status:', resp?.status)
+          console.log('[Messages] 📦 Upload response:', resp?.data)
         } catch (err) {
-          console.error('❌ public-key upload failed', err?.message || err)
+          console.error('[Messages] ❌ Public key upload failed')
+          console.error('[Messages] 📊 Error status:', err.response?.status)
+          console.error('[Messages] 📦 Error response:', err.response?.data)
+          console.error('[Messages] Error message:', err?.message || err)
         }
       }
 
       return kp
     } catch (err) {
-      console.warn('E2E key load error', err)
+      console.error('[Messages] ❌ E2E key load error:', err)
+      console.error('[Messages] Error stack:', err.stack)
+      addDebugLog('error', 'E2E key load error', { error: err.message, stack: err.stack })
       setErrorMsg('⚠️ Encryption keys not found. Please log out and log back in to sync them.')
       return null
     }
-  }, [API, token, user])
+  }, [API, token, user, addDebugLog, addNetworkRequest])
 
   // Detect mobile viewport
   useEffect(() => {
@@ -211,6 +397,22 @@ const Messages = () => {
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
+
+  // Keyboard shortcut to toggle debug panel (Ctrl+Shift+D or Cmd+Shift+D)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'D') {
+        e.preventDefault()
+        setShowDebugPanel(prev => {
+          const newState = !prev
+          addDebugLog('info', `Debug panel ${newState ? 'opened' : 'closed'} via keyboard shortcut`)
+          return newState
+        })
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [addDebugLog])
 
   useEffect(() => {
     if (!user || !token) {
@@ -969,10 +1171,435 @@ const Messages = () => {
   const activePartnerName = activeConversation?.partnerName || selectedPartnerName || (toUserId ? 'Chat' : 'Messages')
   const activePartnerInitials = activePartnerName.slice(0, 2).toUpperCase()
 
+  // Debug panel data
+  const debugData = {
+    api: {
+      baseUrl: API_BASE,
+      apiUrl: API,
+      publicKeyEndpoint: `${API}/messages/public-key`,
+      conversationsEndpoint: `${API}/messages`,
+    },
+    user: {
+      id: user?.id,
+      email: user?.email,
+      role: user?.role,
+    },
+    connection: {
+      connected,
+      socketUrl: getLastSocketUrl(),
+    },
+    encryptionKeys: {
+      publicKey: (localStorage.getItem('e2e_pub_raw') || sessionStorage.getItem('e2e_pub_raw'))?.slice(0, 50) + '...',
+      privateKeyExists: !!(localStorage.getItem('e2e_priv_jwk') || sessionStorage.getItem('e2e_priv_jwk')),
+      decryptPasswordExists: !!(localStorage.getItem('e2e_decrypt_pw') || sessionStorage.getItem('e2e_decrypt_pw')),
+      localKeysLoaded: !!localKeysRef.current,
+      aesKeyLoaded: !!aesKeyRef.current,
+      conversationKeysCount: conversationKeysRef.current?.size || 0,
+    },
+    conversation: {
+      activeUserId: toUserId,
+      activePartnerName,
+      conversationsCount: conversations.length,
+      messagesCount: messages.length,
+      unreadCount: conversationUnreadMap?.[toUserId] || 0,
+    },
+    state: {
+      sending,
+      uploading,
+      isTyping,
+      showSidebar,
+      errorMsg,
+    },
+  }
+
   return (
     <>
       <Helmet><title>Messages - IIIT Naya Raipur Alumni Portal</title></Helmet>
       <div className={styles.container}>
+        {/* Encryption Error Banner */}
+        {errorMsg && (
+          <div style={{
+            background: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '8px',
+            padding: '12px 16px',
+            marginBottom: '16px',
+            color: '#991b1b',
+            fontSize: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px'
+          }}>
+            <span style={{ fontSize: '20px' }}>⚠️</span>
+            <div style={{ flex: 1 }}>
+              <strong>Encryption Key Error:</strong> {errorMsg}
+            </div>
+            <button 
+              onClick={() => setErrorMsg('')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '18px',
+                color: '#991b1b',
+                padding: '4px 8px'
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Debug Panel Toggle Button */}
+        <button
+          onClick={() => setShowDebugPanel(!showDebugPanel)}
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            zIndex: 9999,
+            background: '#1e3a8a',
+            color: 'white',
+            border: 'none',
+            borderRadius: '50%',
+            width: '56px',
+            height: '56px',
+            fontSize: '24px',
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'transform 0.2s, background 0.2s'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          title={showDebugPanel ? 'Hide Debug Panel' : 'Show Debug Panel'}
+        >
+          🐛
+        </button>
+
+        {/* Debug Panel Overlay */}
+        {showDebugPanel && (
+          <div style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            width: '450px',
+            maxHeight: '80vh',
+            background: '#1f2937',
+            color: '#f3f4f6',
+            borderRadius: '12px',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+            zIndex: 9998,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            fontFamily: 'monospace',
+            fontSize: '12px'
+          }}>
+            {/* Debug Panel Header */}
+            <div style={{
+              background: '#111827',
+              padding: '12px 16px',
+              borderBottom: '1px solid #374151',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '18px' }}>🐛</span>
+                <strong style={{ fontSize: '14px' }}>Debug Panel</strong>
+                <span style={{
+                  background: connected ? '#10b981' : '#ef4444',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  fontSize: '10px',
+                  fontWeight: 'bold'
+                }}>
+                  {connected ? '● CONNECTED' : '○ DISCONNECTED'}
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setDebugLogs([])
+                  setNetworkRequests([])
+                }}
+                style={{
+                  background: '#374151',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  padding: '4px 8px',
+                  cursor: 'pointer',
+                  fontSize: '10px'
+                }}
+              >
+                Clear
+              </button>
+            </div>
+
+            {/* Debug Panel Content */}
+            <div style={{
+              flex: 1,
+              overflow: 'auto',
+              padding: '16px'
+            }}>
+              {/* Section: API Configuration */}
+              <DebugSection title="🌐 API Configuration">
+                <DebugItem label="Base URL" value={debugData.api.baseUrl} />
+                <DebugItem label="API URL" value={debugData.api.apiUrl} />
+                <DebugItem label="Public Key Endpoint" value={debugData.api.publicKeyEndpoint} copyable />
+              </DebugSection>
+
+              {/* Section: User Info */}
+              <DebugSection title="👤 User Info">
+                <DebugItem label="User ID" value={debugData.user.id} copyable />
+                <DebugItem label="Email" value={debugData.user.email} />
+                <DebugItem label="Role" value={debugData.user.role} />
+              </DebugSection>
+
+              {/* Section: Connection */}
+              <DebugSection title="🔌 Connection">
+                <DebugItem 
+                  label="Status" 
+                  value={debugData.connection.connected ? 'Connected ✅' : 'Disconnected ❌'} 
+                  valueColor={debugData.connection.connected ? '#10b981' : '#ef4444'}
+                />
+                <DebugItem label="Socket URL" value={debugData.connection.socketUrl} />
+              </DebugSection>
+
+              {/* Section: Encryption Keys */}
+              <DebugSection title="🔐 Encryption Keys">
+                <DebugItem label="Public Key" value={debugData.encryptionKeys.publicKey} copyable />
+                <DebugItem 
+                  label="Private Key Exists" 
+                  value={debugData.encryptionKeys.privateKeyExists ? 'Yes ✅' : 'No ❌'}
+                  valueColor={debugData.encryptionKeys.privateKeyExists ? '#10b981' : '#ef4444'}
+                />
+                <DebugItem 
+                  label="Decrypt Password Exists" 
+                  value={debugData.encryptionKeys.decryptPasswordExists ? 'Yes ✅' : 'No ❌'}
+                  valueColor={debugData.encryptionKeys.decryptPasswordExists ? '#10b981' : '#ef4444'}
+                />
+                <DebugItem 
+                  label="Local Keys Loaded" 
+                  value={debugData.encryptionKeys.localKeysLoaded ? 'Yes ✅' : 'No ❌'}
+                  valueColor={debugData.encryptionKeys.localKeysLoaded ? '#10b981' : '#ef4444'}
+                />
+                <DebugItem label="AES Key Loaded" value={debugData.encryptionKeys.aesKeyLoaded ? 'Yes' : 'No'} />
+                <DebugItem label="Cached Conversation Keys" value={debugData.encryptionKeys.conversationKeysCount} />
+              </DebugSection>
+
+              {/* Section: Active Conversation */}
+              <DebugSection title="💬 Active Conversation">
+                <DebugItem label="Partner User ID" value={debugData.conversation.activeUserId || 'None'} />
+                <DebugItem label="Partner Name" value={debugData.conversation.activePartnerName} />
+                <DebugItem label="Total Conversations" value={debugData.conversation.conversationsCount} />
+                <DebugItem label="Messages Loaded" value={debugData.conversation.messagesCount} />
+                <DebugItem label="Unread Count" value={debugData.conversation.unreadCount} />
+              </DebugSection>
+
+              {/* Section: State */}
+              <DebugSection title="⚙️ Component State">
+                <DebugItem label="Sending" value={debugData.state.sending ? 'Yes' : 'No'} />
+                <DebugItem label="Uploading" value={debugData.state.uploading ? 'Yes' : 'No'} />
+                <DebugItem label="Typing" value={debugData.state.isTyping ? 'Yes' : 'No'} />
+                <DebugItem label="Sidebar Visible" value={debugData.state.showSidebar ? 'Yes' : 'No'} />
+                <DebugItem label="Error Message" value={debugData.state.errorMsg || 'None'} valueColor={debugData.state.errorMsg ? '#ef4444' : '#10b981'} />
+              </DebugSection>
+
+              {/* Section: Network Requests */}
+              <DebugSection title="🌍 Recent Network Requests">
+                {networkRequests.length === 0 ? (
+                  <div style={{ color: '#9ca3af', fontSize: '11px', fontStyle: 'italic' }}>
+                    No requests captured yet
+                  </div>
+                ) : (
+                  networkRequests.slice(0, 5).map(req => (
+                    <div key={req.id} style={{
+                      background: '#374151',
+                      padding: '8px',
+                      borderRadius: '4px',
+                      marginBottom: '6px',
+                      fontSize: '10px'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <span style={{ 
+                          background: req.status >= 200 && req.status < 300 ? '#10b981' : '#ef4444',
+                          padding: '2px 6px',
+                          borderRadius: '3px',
+                          fontWeight: 'bold'
+                        }}>
+                          {req.method} {req.status}
+                        </span>
+                        <span style={{ color: '#9ca3af' }}>{req.timestamp}</span>
+                      </div>
+                      <div style={{ 
+                        color: '#d1d5db',
+                        wordBreak: 'break-all',
+                        fontSize: '9px'
+                      }}>
+                        {req.url}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </DebugSection>
+
+              {/* Section: Debug Logs */}
+              <DebugSection title="📋 Debug Logs">
+                {debugLogs.length === 0 ? (
+                  <div style={{ color: '#9ca3af', fontSize: '11px', fontStyle: 'italic' }}>
+                    No logs yet
+                  </div>
+                ) : (
+                  debugLogs.slice(0, 10).map(log => (
+                    <div key={log.id} style={{
+                      background: '#374151',
+                      padding: '8px',
+                      borderRadius: '4px',
+                      marginBottom: '6px',
+                      fontSize: '10px',
+                      borderLeft: `3px solid ${
+                        log.type === 'error' ? '#ef4444' :
+                        log.type === 'warning' ? '#f59e0b' :
+                        log.type === 'success' ? '#10b981' :
+                        '#3b82f6'
+                      }`
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <span style={{ 
+                          color: log.type === 'error' ? '#fca5a5' :
+                                 log.type === 'warning' ? '#fcd34d' :
+                                 log.type === 'success' ? '#6ee7b7' :
+                                 '#93c5fd',
+                          fontWeight: 'bold'
+                        }}>
+                          {log.type === 'error' ? '❌' :
+                           log.type === 'warning' ? '⚠️' :
+                           log.type === 'success' ? '✅' :
+                           'ℹ️'} {log.type.toUpperCase()}
+                        </span>
+                        <span style={{ color: '#9ca3af' }}>{log.timestamp}</span>
+                      </div>
+                      <div style={{ color: '#d1d5db' }}>{log.message}</div>
+                      {log.data && (
+                        <pre style={{
+                          marginTop: '6px',
+                          padding: '6px',
+                          background: '#1f2937',
+                          borderRadius: '3px',
+                          fontSize: '9px',
+                          overflow: 'auto',
+                          maxHeight: '100px'
+                        }}>
+                          {JSON.stringify(log.data, null, 2)}
+                        </pre>
+                      )}
+                    </div>
+                  ))
+                )}
+              </DebugSection>
+
+              {/* Section: Quick Actions */}
+              <DebugSection title="⚡ Quick Actions">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  <button
+                    onClick={() => {
+                      window.debugE2EKeys()
+                      addDebugLog('info', 'Ran window.debugE2EKeys() in console')
+                    }}
+                    style={{
+                      background: '#374151',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '6px 12px',
+                      cursor: 'pointer',
+                      fontSize: '10px'
+                    }}
+                  >
+                    Check Keys
+                  </button>
+                  <button
+                    onClick={() => {
+                      const data = {
+                        localStorage: {
+                          pub: localStorage.getItem('e2e_pub_raw')?.slice(0, 50),
+                          priv: !!localStorage.getItem('e2e_priv_jwk'),
+                          pw: !!localStorage.getItem('e2e_decrypt_pw')
+                        }
+                      }
+                      addDebugLog('info', 'LocalStorage keys checked', data)
+                    }}
+                    style={{
+                      background: '#374151',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '6px 12px',
+                      cursor: 'pointer',
+                      fontSize: '10px'
+                    }}
+                  >
+                    Check Storage
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const resp = await axios.get(`${API}/messages/public-key`, {
+                          headers: { Authorization: `Bearer ${token}` }
+                        })
+                        addDebugLog('success', 'Fetched public key from server', resp.data)
+                        addNetworkRequest('GET', `${API}/messages/public-key`, resp.status, resp.data)
+                      } catch (err) {
+                        addDebugLog('error', 'Failed to fetch public key', {
+                          status: err.response?.status,
+                          message: err.message
+                        })
+                        addNetworkRequest('GET', `${API}/messages/public-key`, err.response?.status || 0, err.response?.data)
+                      }
+                    }}
+                    style={{
+                      background: '#374151',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '6px 12px',
+                      cursor: 'pointer',
+                      fontSize: '10px'
+                    }}
+                  >
+                    Test Key Fetch
+                  </button>
+                  <button
+                    onClick={() => {
+                      const socket = getSocket()
+                      addDebugLog('info', 'Socket status', {
+                        connected: socket?.connected,
+                        id: socket?.id,
+                        url: getLastSocketUrl()
+                      })
+                    }}
+                    style={{
+                      background: '#374151',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '6px 12px',
+                      cursor: 'pointer',
+                      fontSize: '10px'
+                    }}
+                  >
+                    Check Socket
+                  </button>
+                </div>
+              </DebugSection>
+            </div>
+          </div>
+        )}
+        
         <div className={`${styles.layout} ${showSidebar ? '' : styles.collapsed} ${isMobile ? styles.mobileView : ''}`}> 
           {/* Sidebar */}
           {(showSidebar || !isMobile) && (
@@ -1372,6 +1999,77 @@ const Messages = () => {
 
       </div>
     </>
+  )
+}
+
+// Helper Components for Debug Panel
+const DebugSection = ({ title, children }) => (
+  <div style={{ marginBottom: '20px' }}>
+    <div style={{
+      fontSize: '13px',
+      fontWeight: 'bold',
+      marginBottom: '8px',
+      color: '#f9fafb',
+      borderBottom: '1px solid #374151',
+      paddingBottom: '6px'
+    }}>
+      {title}
+    </div>
+    <div style={{ paddingLeft: '4px' }}>
+      {children}
+    </div>
+  </div>
+)
+
+const DebugItem = ({ label, value, valueColor, copyable }) => {
+  const [copied, setCopied] = React.useState(false)
+  
+  const handleCopy = () => {
+    navigator.clipboard.writeText(value)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+  
+  return (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: '6px 8px',
+      marginBottom: '4px',
+      background: '#374151',
+      borderRadius: '4px',
+      fontSize: '11px'
+    }}>
+      <span style={{ color: '#9ca3af', minWidth: '120px' }}>{label}:</span>
+      <span style={{
+        color: valueColor || '#d1d5db',
+        flex: 1,
+        textAlign: 'right',
+        wordBreak: 'break-all',
+        marginLeft: '8px'
+      }}>
+        {value || 'N/A'}
+      </span>
+      {copyable && (
+        <button
+          onClick={handleCopy}
+          style={{
+            background: copied ? '#10b981' : '#4b5563',
+            color: 'white',
+            border: 'none',
+            borderRadius: '3px',
+            padding: '2px 6px',
+            marginLeft: '8px',
+            cursor: 'pointer',
+            fontSize: '9px',
+            transition: 'background 0.2s'
+          }}
+        >
+          {copied ? '✓' : '📋'}
+        </button>
+      )}
+    </div>
   )
 }
 
