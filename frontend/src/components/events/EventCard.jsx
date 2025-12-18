@@ -71,13 +71,13 @@ const EventCard = ({
         
         <div className={styles.eventMeta}>
           <div className={styles.eventDateTime}>
-            <span className={styles.icon}>📅</span>
+            {/* <span className={styles.icon}>📅</span> */}
             <span>{formatDateTime(event.startDateTime || event.start_datetime || event.startDatetime)}</span>
           </div>
         </div>
 
         <div className={styles.eventLocation}>
-          <span className={styles.icon}>📍</span>
+          {/* <span className={styles.icon}>📍</span> */}
           <span>{event.location}</span>
         </div>
 

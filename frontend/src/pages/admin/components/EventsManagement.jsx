@@ -426,11 +426,11 @@ const EventsManagement = () => {
                   </p>
                   <div className={styles.eventDetails}>
                     <div className={styles.eventDate}>
-                      📅 {formatEventDuration(event)}
+                      {formatEventDuration(event)}
                     </div>
                     {event.location && (
                       <div className={styles.eventLocation}>
-                        📍 {event.location}
+                        {event.location}
                       </div>
                     )}
                     {event.max_participants && (

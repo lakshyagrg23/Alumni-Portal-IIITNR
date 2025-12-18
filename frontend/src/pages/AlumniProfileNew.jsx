@@ -141,11 +141,11 @@ const AlumniProfileNew = () => {
                     {alumni.degree} - {alumni.branch}
                   </span>
                   <span className={styles.tag}>
-                    📅 {isCurrentStudent ? `Expected ${alumni.graduationYear}` : `Class of ${alumni.graduationYear}`}
+                    {isCurrentStudent ? `Expected ${alumni.graduationYear}` : `Class of ${alumni.graduationYear}`}
                   </span>
                   {!isCurrentStudent && alumni.currentCity && (
                     <span className={styles.tag}>
-                      📍 {alumni.currentCity}, {alumni.currentState || alumni.currentCountry}
+                      {alumni.currentCity}, {alumni.currentState || alumni.currentCountry}
                     </span>
                   )}
                   {!isCurrentStudent && alumni.industry && (
