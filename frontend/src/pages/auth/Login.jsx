@@ -171,7 +171,7 @@ const Login = () => {
           <div className={styles.socialLoginContainer}>
             <div className={styles.socialLoginTitle}>Or sign in with</div>
             <div className={styles.socialLoginButtons}>
-              <GoogleLogin />
+              <GoogleLogin isLoginAttempt={true} />
             </div>
           </div>
         </div>

@@ -97,6 +97,18 @@ const LinkedInCallback = () => {
           linkedinData.verificationToken = verificationToken;
         }
 
+        // Add registration path if available
+        const registrationPath = sessionStorage.getItem('linkedin_registration_path');
+        if (registrationPath) {
+          linkedinData.registrationPath = registrationPath;
+        }
+
+        // Add login attempt flag if this is a login-only attempt
+        const isLoginAttempt = sessionStorage.getItem('linkedin_is_login_attempt') === 'true';
+        if (isLoginAttempt) {
+          linkedinData.isLoginAttempt = true;
+        }
+
         // Login with backend
         const response = await loginWithLinkedIn(linkedinData);
         
@@ -105,6 +117,8 @@ const LinkedInCallback = () => {
         // Clean up stored values
         sessionStorage.removeItem('linkedin_redirect_uri');
         sessionStorage.removeItem('linkedin_processed_code');
+        sessionStorage.removeItem('linkedin_registration_path');
+        sessionStorage.removeItem('linkedin_is_login_attempt');
         
         // Admin users go to admin panel
         const userRole = response.user?.role;
@@ -121,6 +135,16 @@ const LinkedInCallback = () => {
         }
       } catch (err) {
         console.error('LinkedIn callback error:', err);
+        
+        // Handle login-only rejection: user not found
+        if (err.response?.status === 401 && err.response?.data?.canRegister) {
+          const errorMessage = err.response?.data?.message || 'No account found. Please register first.';
+          setError(errorMessage);
+          toast.error(errorMessage, { duration: 5000 });
+          setTimeout(() => navigate('/register'), 3000);
+          return;
+        }
+        
         const errorMessage = err.response?.data?.message || err.message || 'Failed to complete LinkedIn login';
         setError(errorMessage);
         toast.error(errorMessage, { duration: 5000 });
