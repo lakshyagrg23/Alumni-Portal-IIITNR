@@ -615,6 +615,26 @@ class AlumniProfile {
    * @returns {Promise<Array<string>>}
    */
   static async getUniqueCities(searchQuery = "") {
+    // Predefined popular Indian cities that should be suggested first
+    const popularCities = [
+      "Bengaluru",
+      "Chennai",
+      "Pune",
+      "Hyderabad",
+      "Ahmedabad",
+      "Gurgaon",
+      "Coimbatore",
+      "Kolkata",
+      "Noida"
+    ];
+
+    // Filter popular cities based on search query
+    const filteredPopularCities = searchQuery
+      ? popularCities.filter(city => 
+          city.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : popularCities;
+
     const searchPattern = `%${searchQuery.toLowerCase()}%`;
 
     const sql = `
@@ -638,12 +658,21 @@ class AlumniProfile {
 
     const result = await query(sql, [searchPattern]);
 
-    return result.rows.map((row) => {
+    const dbCities = result.rows.map((row) => {
       const parts = [row.city];
       if (row.state) parts.push(row.state);
       if (row.country) parts.push(row.country);
       return parts.join(", ");
     });
+
+    // Combine popular cities with database results, removing duplicates
+    const allCities = [...filteredPopularCities, ...dbCities];
+    const uniqueCities = [...new Set(allCities.map(city => city.split(',')[0].trim()))].map(cityName => {
+      // Return the first matching full entry (with state/country if available)
+      return allCities.find(fullCity => fullCity.split(',')[0].trim() === cityName);
+    });
+
+    return uniqueCities.slice(0, 20);
   }
 
   /**

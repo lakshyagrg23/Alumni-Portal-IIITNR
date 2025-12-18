@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import React from 'react';
 
-export default function GoogleLoginButton({ verificationToken = null, registrationPath = null, onSuccess, buttonText = "Continue with Google" }) {
+export default function GoogleLoginButton({ verificationToken = null, registrationPath = null, isLoginAttempt = false, onSuccess, buttonText = "Continue with Google" }) {
   const { loginWithGoogle } = useAuth();
   const navigate = useNavigate();
 
@@ -29,6 +29,11 @@ export default function GoogleLoginButton({ verificationToken = null, registrati
       // Add registration path if provided (for institute email registration)
       if (registrationPath) {
         payload.registrationPath = registrationPath;
+      }
+
+      // Add login attempt flag (true when called from Login page)
+      if (isLoginAttempt) {
+        payload.isLoginAttempt = true;
       }
 
       const response = await loginWithGoogle(payload);
@@ -59,6 +64,16 @@ export default function GoogleLoginButton({ verificationToken = null, registrati
       }
     } catch (err) {
       console.error('Google login error:', err);
+      
+      // Handle login-only rejection: user not found
+      if (isLoginAttempt && err.response?.status === 401 && err.response?.data?.canRegister) {
+        const errorMessage = err.response?.data?.message || 'No account found. Please register first.';
+        toast.error(errorMessage, { duration: 5000 });
+        // Redirect to registration
+        setTimeout(() => navigate('/register'), 2000);
+        return;
+      }
+      
       const errorMessage = err.response?.data?.message || err.message || 'Google login failed.';
       toast.error(errorMessage);
     }

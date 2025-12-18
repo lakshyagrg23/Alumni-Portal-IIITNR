@@ -161,8 +161,8 @@ BEGIN
       AND u.is_approved = true
       AND ap.graduation_year BETWEEN start_year AND end_year
       AND ap.graduation_year <= EXTRACT(YEAR FROM CURRENT_DATE)
-      AND ap.current_company IS NOT NULL
-      AND ap.current_company != ''
+      AND ap.current_employer IS NOT NULL
+      AND ap.current_employer != ''
       AND (
         (ap.industry_sector IS NOT NULL AND ap.industry_sector != '')
         OR (ap.industry IS NOT NULL AND ap.industry != '')
@@ -200,7 +200,7 @@ CREATE OR REPLACE FUNCTION get_top_companies(
 BEGIN
   RETURN QUERY
   SELECT 
-    ap.current_company,
+    ap.current_employer,
     COUNT(*) as count
   FROM alumni_profiles ap
   JOIN users u ON ap.user_id = u.id
@@ -208,10 +208,10 @@ BEGIN
     AND u.is_approved = true
     AND ap.graduation_year BETWEEN start_year AND end_year
     AND ap.graduation_year <= EXTRACT(YEAR FROM CURRENT_DATE)
-    AND ap.current_company IS NOT NULL
-    AND ap.current_company != ''
-  GROUP BY ap.current_company
-  ORDER BY count DESC, ap.current_company ASC
+    AND ap.current_employer IS NOT NULL
+    AND ap.current_employer != ''
+  GROUP BY ap.current_employer
+  ORDER BY count DESC, ap.current_employer ASC
   LIMIT limit_count;
 END;
 $$ LANGUAGE plpgsql;

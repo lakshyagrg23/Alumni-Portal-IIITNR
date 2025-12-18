@@ -733,8 +733,14 @@ router.post("/resend-verification", async (req, res) => {
  */
 router.post("/google", async (req, res) => {
   try {
-    const { email, googleId, name, verificationToken, registrationPath } =
-      req.body;
+    const {
+      email,
+      googleId,
+      name,
+      verificationToken,
+      registrationPath,
+      isLoginAttempt,
+    } = req.body;
     if (!email || !googleId) {
       return res.status(400).json({
         success: false,
@@ -762,6 +768,15 @@ router.post("/google", async (req, res) => {
     let isNewUser = false;
 
     if (!user) {
+      // If this is a login-only attempt and user doesn't exist, deny access
+      if (isLoginAttempt === true) {
+        return res.status(401).json({
+          success: false,
+          message: "No account found with this email. Please register first.",
+          canRegister: true,
+        });
+      }
+
       // Determine registration path based on email domain or verification token
       const emailLower = email.toLowerCase();
       const isInstituteEmail =
@@ -880,8 +895,14 @@ router.post("/google", async (req, res) => {
  */
 router.post("/linkedin", async (req, res) => {
   try {
-    const { email, linkedinId, name, verificationToken, registrationPath } =
-      req.body;
+    const {
+      email,
+      linkedinId,
+      name,
+      verificationToken,
+      registrationPath,
+      isLoginAttempt,
+    } = req.body;
     if (!email || !linkedinId) {
       return res.status(400).json({
         success: false,
@@ -909,6 +930,15 @@ router.post("/linkedin", async (req, res) => {
     let isNewUser = false;
 
     if (!user) {
+      // If this is a login-only attempt and user doesn't exist, deny access
+      if (isLoginAttempt === true) {
+        return res.status(401).json({
+          success: false,
+          message: "No account found with this email. Please register first.",
+          canRegister: true,
+        });
+      }
+
       // Determine registration path based on email domain or verification token
       const emailLower = email.toLowerCase();
       const isInstituteEmail =

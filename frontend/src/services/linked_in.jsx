@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-export default function LinkedInLoginButton({ verificationToken = null }) {
+export default function LinkedInLoginButton({ verificationToken = null, registrationPath = null, isLoginAttempt = false }) {
   const navigate = useNavigate();
 
   const handleLinkedInLogin = () => {
@@ -22,6 +22,16 @@ export default function LinkedInLoginButton({ verificationToken = null }) {
     // Store verification token if provided (for personal email registration path)
     if (verificationToken) {
       sessionStorage.setItem('linkedin_verification_token', verificationToken);
+    }
+
+    // Store registration path if provided (for institute email registration)
+    if (registrationPath) {
+      sessionStorage.setItem('linkedin_registration_path', registrationPath);
+    }
+
+    // Store login attempt flag if this is a login-only attempt
+    if (isLoginAttempt) {
+      sessionStorage.setItem('linkedin_is_login_attempt', 'true');
     }
     
     // Redirect to LinkedIn authorization (same window)
