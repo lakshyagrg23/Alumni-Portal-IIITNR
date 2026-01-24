@@ -95,7 +95,7 @@ const devOrigins = [
 
 const corsOptions = {
   origin:
-    process.env.CORS_ORIGINS?.split(",") ||
+    process.env.CORS_ORIGINS?.split(",").map(o => o.trim()) ||
     (process.env.NODE_ENV === "production"
       ? ["https://alumni.iiitnr.ac.in", "https://www.iiitnr.ac.in"]
       : devOrigins),
@@ -182,11 +182,12 @@ const startServer = async () => {
       io = new IOServer(server, {
         cors: {
           origin:
-            process.env.CORS_ORIGINS?.split(",") ||
+            process.env.CORS_ORIGINS?.split(",").map(o => o.trim()) ||
             (process.env.NODE_ENV === "production"
               ? ["https://alumni.iiitnr.ac.in"]
               : devOrigins),
           methods: ["GET", "POST"],
+          credentials: true,
         },
       });
 

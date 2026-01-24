@@ -158,14 +158,65 @@ const Messages = () => {
           console.error('[Messages] \ud83d\udce6 Error response:', fetchErr.response?.data)
           console.error('[Messages] \ud83d\udd17 Request URL:', fetchErr.config?.url)
           
-          const errorMessage = fetchErr.response?.status === 404 
-            ? '\u26a0\ufe0f No encryption keys found. Click here to generate keys, or log out and log in again.'
-            : `\u274c Failed to retrieve encryption keys (${fetchErr.response?.status || 'Network Error'}). Please log out and log in again.`
-          setErrorMsg(errorMessage)
-          return null
+          // If 404, set encryptedRecord to null to trigger auto-generation below
+          if (fetchErr.response?.status === 404) {
+            console.log('[Messages] \ud83d\udd04 No keys on server (404), will auto-generate...')
+            encryptedRecord = null
+          } else {
+            const errorMessage = `\u274c Failed to retrieve encryption keys (${fetchErr.response?.status || 'Network Error'}). Please log out and log in again.`
+            setErrorMsg(errorMessage)
+            return null
+          }
         }
 
-        if (encryptedRecord?.encrypted_private_key && encryptedRecord?.public_key) {
+        // Auto-generate keys if server has none OR if encrypted_private_key is missing
+        if (!encryptedRecord || !encryptedRecord.encrypted_private_key) {
+          console.log('[Messages] \ud83c\udd95 No keys on server, generating new ones...')
+          
+          try {
+            const newKeyPair = await crypto.generateKeyPair()
+            const newPublicKey = await crypto.exportPublicKey(newKeyPair.publicKey)
+            const newPrivateKey = await crypto.exportPrivateKey(newKeyPair.privateKey)
+            
+            // Encrypt with current email pattern
+            const encryptionPassword = user.email.toLowerCase()
+            const encryptedNewPrivKey = await crypto.encryptPrivateKeyWithPassword(
+              newPrivateKey,
+              encryptionPassword
+            )
+            
+            // Upload to server
+            console.log('[Messages] \ud83d\udce4 Uploading new keys to server...')
+            await axios.post(
+              `${API}/messages/public-key`,
+              {
+                publicKey: newPublicKey,
+                encryptedPrivateKey: JSON.stringify(encryptedNewPrivKey)
+              },
+              { headers: { Authorization: `Bearer ${token}` } }
+            )
+            
+            // Store new keys
+            storedPriv = newPrivateKey
+            storedPub = newPublicKey
+            
+            localStorage.setItem('e2e_priv_jwk', storedPriv)
+            localStorage.setItem('e2e_pub_raw', storedPub)
+            sessionStorage.setItem('e2e_priv_jwk', storedPriv)
+            sessionStorage.setItem('e2e_pub_raw', storedPub)
+            sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+            localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+            
+            console.log('[Messages] \u2705 New encryption keys generated and stored successfully')
+            setErrorMsg('')
+            
+            // Continue with the newly generated keys below
+          } catch (genErr) {
+            console.error('[Messages] \u274c Failed to generate new keys:', genErr)
+            setErrorMsg('Could not generate encryption keys. Please refresh the page and try again.')
+            return null
+          }
+        } else if (encryptedRecord?.encrypted_private_key && encryptedRecord?.public_key) {
           // Build candidate passwords to try (email only now)
           const candidates = []
           if (decryptPw) candidates.push(decryptPw)
@@ -261,10 +312,6 @@ const Messages = () => {
 
             console.log('✅ Keys fetched and decrypted from server')
           }
-        } else {
-          console.warn('[Messages] Server returned no encrypted private key for user')
-          setErrorMsg('No encryption keys found on server. Please log out and log in again to regenerate them.')
-          return null
         }
       }
 
