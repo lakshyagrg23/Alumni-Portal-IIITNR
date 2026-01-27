@@ -23,7 +23,9 @@ const RegisterMethodSelection = () => {
             {/* Institute Email Registration */}
             <div className={styles.methodCard}>
               <div className={`${styles.methodIcon} ${styles.primaryIcon}`} aria-hidden="true">
-                <span className={styles.iconInitial}>IE</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
               </div>
               <h3>Institute Email</h3>
               <p className={styles.methodDesc}>
@@ -54,7 +56,9 @@ const RegisterMethodSelection = () => {
             {/* Personal Email Registration */}
             <div className={styles.methodCard}>
               <div className={`${styles.methodIcon} ${styles.secondaryIcon}`} aria-hidden="true">
-                <span className={styles.iconInitial}>PE</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
               </div>
               <h3>Personal Email</h3>
               <p className={styles.methodDesc}>
