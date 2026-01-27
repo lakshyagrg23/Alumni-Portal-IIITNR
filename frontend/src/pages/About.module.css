@@ -292,7 +292,123 @@
   color: #1e3a8a;
 }
 
+/* Developer Team Section */
+.teamSection {
+  text-align: center;
+}
+
+.teamSubtitle {
+  font-size: 1.1rem;
+  color: #64748b;
+  margin-bottom: 3rem;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.teamGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.developerCard {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 2rem;
+  text-align: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.developerCard:hover {
+  transform: translateY(-8px);
+  border-color: #f97316;
+  box-shadow: 0 8px 24px rgba(249, 115, 22, 0.15);
+}
+
+.devImage {
+  margin-bottom: 1.5rem;
+}
+
+.devImage img {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  margin: 0 auto;
+  border: 1px solid #f97316;
+}
+
+.avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1e3a8a 0%, #f97316 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: bold;
+  color: white;
+  margin: 0 auto;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.devName {
+  font-size: 1.3rem;
+  color: #1e3a8a;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.devDetails {
+  font-size: 0.95rem;
+  color: #64748b;
+  margin-bottom: 1.5rem;
+}
+
+.devLinks {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  align-items: center;
+}
+
+.devLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #1e3a8a;
+  color: #1e3a8a;
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.devLink svg {
+  width: 20px;
+  height: 20px;
+}
+
+.devLink:hover {
+  background: #1e3a8a;
+  color: white;
+  transform: scale(1.1);
+}
+
 /* Responsive Design */
+@media (min-width: 640px) and (max-width: 1024px) {
+  .teamGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 768px) {
   .mainTitle {
     font-size: 2rem;
@@ -316,6 +432,11 @@
 
   .sectionTitle {
     font-size: 1.5rem;
+  }
+
+  .teamGrid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
   }
 
   .highlightsGrid,

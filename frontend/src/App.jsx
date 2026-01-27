@@ -40,6 +40,9 @@ import ProtectedRoute from '@components/auth/ProtectedRoute'
 import AdminRoute from '@components/auth/AdminRoute'
 import OnboardingRoute from '@components/auth/OnboardingRoute'
 
+// Common Components
+import ScrollToTop from '@components/common/ScrollToTop'
+
 // Hooks
 import { useAuth } from '@hooks/useAuth'
 
@@ -73,6 +76,7 @@ function App() {
         />
       </Helmet>
 
+      <ScrollToTop />
       <Header />
       
       <main className={styles.main}>
