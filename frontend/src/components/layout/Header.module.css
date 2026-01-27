@@ -295,6 +295,7 @@
 
 .registerButton:hover {
   background-color: var(--color-primary-dark);
+  color: var(--color-white);
   text-decoration: none;
 }
 
@@ -393,6 +394,7 @@
 
 .mobileRegisterButton:hover {
   background-color: var(--color-primary-dark);
+  color: var(--color-white);
   text-decoration: none;
 }
 

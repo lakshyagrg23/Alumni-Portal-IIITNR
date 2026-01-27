@@ -214,7 +214,7 @@ const About = () => {
                 <div className={styles.developerCard}>
                   <div className={styles.devImage}>
                     {/* <div className={styles.avatar}></div> */}
-                    <img src="/LakshyaGarg.jpg" alt="Lakshya Garg" />
+                    <img src="./developers/LakshyaGarg.jpg" alt="Lakshya Garg" />
                   </div>
                   <h3 className={styles.devName}>Lakshya Garg</h3>
                   <p className={styles.devDetails}>B.Tech CSE, 2023-27</p>
@@ -274,7 +274,7 @@ const About = () => {
 
                 <div className={styles.developerCard}>
                   <div className={styles.devImage}>
-                    <div className={styles.avatar}>D4</div>
+                    <img src="./developers/AwatanshSingh.jpeg" alt="Awatansh Singh" />
                   </div>
                   <h3 className={styles.devName}>Awatansh Singh</h3>
                   <p className={styles.devDetails}>B.Tech DSAI, 2023-27</p>
