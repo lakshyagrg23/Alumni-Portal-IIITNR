@@ -44,9 +44,13 @@ const LinkedInCallback = () => {
         // Retrieve verification token if exists (for personal email registration path)
         const verificationToken = sessionStorage.getItem('linkedin_verification_token');
         
+        // Retrieve whether this is a login attempt
+        const isLoginAttempt = sessionStorage.getItem('linkedin_is_login_attempt') === 'true';
+        
         // Clear stored state and verification token
         sessionStorage.removeItem('linkedin_oauth_state');
         sessionStorage.removeItem('linkedin_verification_token');
+        sessionStorage.removeItem('linkedin_is_login_attempt');
 
         // Validate authorization code
         if (!code) {
@@ -96,6 +100,9 @@ const LinkedInCallback = () => {
         if (verificationToken) {
           linkedinData.verificationToken = verificationToken;
         }
+        
+        // Add isLoginAttempt flag
+        linkedinData.isLoginAttempt = isLoginAttempt;
 
         // Login with backend
         const response = await loginWithLinkedIn(linkedinData);

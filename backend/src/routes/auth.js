@@ -733,7 +733,7 @@ router.post("/resend-verification", async (req, res) => {
  */
 router.post("/google", async (req, res) => {
   try {
-    const { email, googleId, name, verificationToken, registrationPath } =
+    const { email, googleId, name, verificationToken, registrationPath, isLoginAttempt } =
       req.body;
     if (!email || !googleId) {
       return res.status(400).json({
@@ -762,6 +762,15 @@ router.post("/google", async (req, res) => {
     let isNewUser = false;
 
     if (!user) {
+      // If this is a login attempt (not registration), user must exist
+      if (isLoginAttempt) {
+        return res.status(401).json({
+          success: false,
+          message: "No account found with this email. Please register first.",
+          requiresRegistration: true,
+        });
+      }
+      
       // Determine registration path based on email domain or verification token
       const emailLower = email.toLowerCase();
       const isInstituteEmail =
@@ -880,7 +889,7 @@ router.post("/google", async (req, res) => {
  */
 router.post("/linkedin", async (req, res) => {
   try {
-    const { email, linkedinId, name, verificationToken, registrationPath } =
+    const { email, linkedinId, name, verificationToken, registrationPath, isLoginAttempt } =
       req.body;
     if (!email || !linkedinId) {
       return res.status(400).json({
@@ -909,6 +918,15 @@ router.post("/linkedin", async (req, res) => {
     let isNewUser = false;
 
     if (!user) {
+      // If this is a login attempt (not registration), user must exist
+      if (isLoginAttempt) {
+        return res.status(401).json({
+          success: false,
+          message: "No account found with this email. Please register first.",
+          requiresRegistration: true,
+        });
+      }
+      
       // Determine registration path based on email domain or verification token
       const emailLower = email.toLowerCase();
       const isInstituteEmail =

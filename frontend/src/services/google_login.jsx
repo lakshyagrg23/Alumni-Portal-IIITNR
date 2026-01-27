@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import React from 'react';
 
-export default function GoogleLoginButton({ verificationToken = null, registrationPath = null, onSuccess, buttonText = "Continue with Google" }) {
+export default function GoogleLoginButton({ verificationToken = null, registrationPath = null, isLoginAttempt = false, onSuccess, buttonText = "Continue with Google" }) {
   const { loginWithGoogle } = useAuth();
   const navigate = useNavigate();
 
@@ -19,6 +19,7 @@ export default function GoogleLoginButton({ verificationToken = null, registrati
         email: decoded.email,
         googleId: decoded.sub,
         name: decoded.name,
+        isLoginAttempt, // Pass whether this is a login attempt or registration
       };
 
       // Add verification token if provided (for personal email registration path)

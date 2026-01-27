@@ -159,11 +159,11 @@
 }
 
 .selectBtn.secondary {
-  background: linear-gradient(135deg, #6b7280 0%, #9ca3af 100%);
+  background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
 }
 
 .selectBtn.secondary:hover {
-  box-shadow: 0 4px 12px rgba(107, 114, 128, 0.4);
+  box-shadow: 0 4px 12px rgba(15, 118, 110, 0.4);
 }
 
 .footer {

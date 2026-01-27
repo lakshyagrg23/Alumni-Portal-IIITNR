@@ -96,7 +96,7 @@ const UpcomingEvents = ({ onEventClick }) => {
   if (loading) {
     return (
       <div className={styles.upcomingEvents}>
-        <h2 className={styles.sectionTitle}>📅 Upcoming Events</h2>
+        <h2 className={styles.sectionTitle}>Upcoming Events</h2>
         <div className={styles.loading}>
           <div className={styles.spinner}></div>
           <p>Loading upcoming events...</p>
@@ -108,7 +108,7 @@ const UpcomingEvents = ({ onEventClick }) => {
   if (error) {
     return (
       <div className={styles.upcomingEvents}>
-        <h2 className={styles.sectionTitle}>📅 Upcoming Events</h2>
+        <h2 className={styles.sectionTitle}>Upcoming Events</h2>
         <div className={styles.error}>
           <p>{error}</p>
           <button onClick={fetchEvents} className={styles.retryBtn}>
@@ -122,7 +122,7 @@ const UpcomingEvents = ({ onEventClick }) => {
   return (
     <div className={styles.upcomingEvents}>
       <div className={styles.header}>
-        <h2 className={styles.sectionTitle}>📅 Upcoming Events</h2>
+        <h2 className={styles.sectionTitle}>Upcoming Events</h2>
         <p className={styles.sectionDescription}>
           Discover and register for upcoming workshops, webinars, and volunteer opportunities
         </p>
