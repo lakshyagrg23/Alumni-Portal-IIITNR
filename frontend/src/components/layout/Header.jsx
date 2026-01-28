@@ -137,12 +137,14 @@ const Header = () => {
         <div className={styles.userActions}>
           {isAuthenticated ? (
             <>
-              {/* Messages Icon with Badge */}
-              <Link to="/messages" className={styles.messagesIcon} title="Messages">
-                <BiMessageSquareDots size={24} />
+              {/* Messages Button */}
+              <Link to="/messages" className={styles.messagesButton}>
+                <BiMessageSquareDots className={styles.messagesIcon} />
+                <span className={styles.messagesText}>Messages</span>
                 {totalUnread > 0 && (
-                  <span className={styles.notificationBadge}>{totalUnread > 99 ? '99+' : totalUnread}</span>
+                  <span className={styles.messagesBadge}>{totalUnread > 99 ? '99+' : totalUnread}</span>
                 )}
+                <span className={styles.shimmer}></span>
               </Link>
 
               <div className={styles.userMenu}>

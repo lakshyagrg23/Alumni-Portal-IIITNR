@@ -84,7 +84,8 @@ const Messages = () => {
   // Use global messaging context for unread counts
   const { conversationUnreadMap, clearConversationUnread, setActiveConversationUserId } = useMessaging()
   
-  // Debug panel state
+  // Debug panel state (only in development)
+  const isDevelopment = import.meta.env.DEV
   const [showDebugPanel, setShowDebugPanel] = useState(false)
   const [debugLogs, setDebugLogs] = useState([])
   const [networkRequests, setNetworkRequests] = useState([])
@@ -1297,37 +1298,39 @@ const Messages = () => {
           </div>
         )}
 
-        {/* Debug Panel Toggle Button */}
-        <button
-          onClick={() => setShowDebugPanel(!showDebugPanel)}
-          style={{
-            position: 'fixed',
-            bottom: '20px',
-            right: '20px',
-            zIndex: 9999,
-            background: '#1e3a8a',
-            color: 'white',
-            border: 'none',
-            borderRadius: '50%',
-            width: '56px',
-            height: '56px',
-            fontSize: '24px',
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'transform 0.2s, background 0.2s'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-          title={showDebugPanel ? 'Hide Debug Panel' : 'Show Debug Panel'}
-        >
-          🐛
-        </button>
+        {/* Debug Panel Toggle Button - Only in Development */}
+        {isDevelopment && (
+          <button
+            onClick={() => setShowDebugPanel(!showDebugPanel)}
+            style={{
+              position: 'fixed',
+              bottom: '20px',
+              right: '20px',
+              zIndex: 9999,
+              background: '#1e3a8a',
+              color: 'white',
+              border: 'none',
+              borderRadius: '50%',
+              width: '56px',
+              height: '56px',
+              fontSize: '24px',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'transform 0.2s, background 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            title={showDebugPanel ? 'Hide Debug Panel' : 'Show Debug Panel'}
+          >
+            🐛
+          </button>
+        )}
 
-        {/* Debug Panel Overlay */}
-        {showDebugPanel && (
+        {/* Debug Panel Overlay - Only in Development */}
+        {isDevelopment && showDebugPanel && (
           <div style={{
             position: 'fixed',
             top: '20px',
