@@ -83,6 +83,15 @@ const Messages = () => {
   const [showBlockModal, setShowBlockModal] = useState(false)
   const [showReportModal, setShowReportModal] = useState(false)
   const [selectedPartnerName, setSelectedPartnerName] = useState('')
+  
+  // Image cropping state
+  const [showCropModal, setShowCropModal] = useState(false)
+  const [imageToCrop, setImageToCrop] = useState(null)
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
+  const cropCanvasRef = useRef(null)
+  const [crop, setCrop] = useState({ x: 0, y: 0, width: 200, height: 200 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
 
   // DEBUG: Expose key info to console for troubleshooting
   useEffect(() => {
@@ -493,6 +502,45 @@ const Messages = () => {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [addDebugLog])
+
+  // Draw image on canvas when crop modal opens
+  useEffect(() => {
+    if (!showCropModal || !imageToCrop || !cropCanvasRef.current) return
+    
+    const img = new Image()
+    img.src = imageToCrop.url
+    img.onload = () => {
+      const canvas = cropCanvasRef.current
+      if (!canvas) return
+      const maxWidth = 550
+      const maxHeight = 400
+      let width = img.width
+      let height = img.height
+      
+      if (width > maxWidth) {
+        height = (height * maxWidth) / width
+        width = maxWidth
+      }
+      if (height > maxHeight) {
+        width = (width * maxHeight) / height
+        height = maxHeight
+      }
+      
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0, width, height)
+      
+      // Center crop box
+      const cropSize = Math.min(200, width, height)
+      setCrop({
+        x: (width - cropSize) / 2,
+        y: (height - cropSize) / 2,
+        width: cropSize,
+        height: cropSize
+      })
+    }
+  }, [showCropModal, imageToCrop])
 
   useEffect(() => {
     if (!user || !token) {
@@ -1179,6 +1227,24 @@ const Messages = () => {
     const file = e.target.files?.[0]
     if (!file) return
     setErrorMsg('')
+    
+    // If it's an image, show crop modal
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        setImageToCrop({
+          url: event.target.result,
+          file: file,
+          name: file.name,
+          type: file.type
+        })
+        setShowCropModal(true)
+      }
+      reader.readAsDataURL(file)
+      return
+    }
+    
+    // For non-image files, upload directly
     setUploading(true)
     try {
       if (file.size > 5 * 1024 * 1024) throw new Error('File exceeds 5MB limit')
@@ -1200,6 +1266,95 @@ const Messages = () => {
     }
   }
   const clearAttachment = () => { setAttachmentMeta(null); if (fileInputRef.current) fileInputRef.current.value = '' }
+
+  // Image cropping handlers
+  const handleCropMouseDown = (e) => {
+    setIsDragging(true)
+    setDragStart({ x: e.clientX - crop.x, y: e.clientY - crop.y })
+  }
+
+  const handleCropMouseMove = (e) => {
+    if (!isDragging || !cropCanvasRef.current) return
+    const canvas = cropCanvasRef.current
+    const rect = canvas.getBoundingClientRect()
+    const newX = Math.max(0, Math.min(e.clientX - dragStart.x, rect.width - crop.width))
+    const newY = Math.max(0, Math.min(e.clientY - dragStart.y, rect.height - crop.height))
+    setCrop({ ...crop, x: newX, y: newY })
+  }
+
+  const handleCropMouseUp = () => {
+    setIsDragging(false)
+  }
+
+  const handleCropImage = async () => {
+    if (!imageToCrop || !cropCanvasRef.current) return
+    
+    setUploading(true)
+    try {
+      const canvas = cropCanvasRef.current
+      const img = new Image()
+      img.src = imageToCrop.url
+      
+      await new Promise((resolve) => {
+        img.onload = resolve
+      })
+      
+      // Calculate scale between displayed canvas and actual image
+      const scaleX = img.width / canvas.width
+      const scaleY = img.height / canvas.height
+      
+      // Create crop canvas
+      const cropCanvas = document.createElement('canvas')
+      const ctx = cropCanvas.getContext('2d')
+      cropCanvas.width = crop.width * scaleX
+      cropCanvas.height = crop.height * scaleY
+      
+      ctx.drawImage(
+        img,
+        crop.x * scaleX,
+        crop.y * scaleY,
+        crop.width * scaleX,
+        crop.height * scaleY,
+        0,
+        0,
+        cropCanvas.width,
+        cropCanvas.height
+      )
+      
+      // Convert to blob and upload
+      cropCanvas.toBlob(async (blob) => {
+        try {
+          const form = new FormData()
+          form.append('file', blob, imageToCrop.name)
+          console.log('[Messages] POST /messages/upload (cropped) name=', imageToCrop.name, 'size=', blob.size)
+          const res = await axios.post(`${API}/messages/upload`, form, { headers: { Authorization: `Bearer ${token}` } })
+          console.log('[Messages] upload status', res?.status)
+          const meta = res.data?.data
+          console.log('[Messages] upload response meta:', meta)
+          setAttachmentMeta(meta)
+          setShowCropModal(false)
+          setImageToCrop(null)
+        } catch (err) {
+          console.error('[Messages] upload failed', err?.message || err)
+          showError(`Upload failed: ${err.message || 'Could not upload file'}`, 'error')
+        } finally {
+          setUploading(false)
+          if (fileInputRef.current) fileInputRef.current.value = ''
+        }
+      }, imageToCrop.type)
+    } catch (err) {
+      console.error('[Messages] Crop failed', err)
+      showError('Failed to crop image', 'error')
+      setUploading(false)
+    }
+  }
+
+  const handleCancelCrop = () => {
+    setShowCropModal(false)
+    setImageToCrop(null)
+    setCrop({ x: 0, y: 0, width: 200, height: 200 })
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   // Handle message deletion
   const handleDeleteMessage = async (messageId) => {
@@ -2743,6 +2898,182 @@ const Messages = () => {
                     })}
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Image Crop Modal */}
+        {showCropModal && imageToCrop && (
+          <div className={styles.modalOverlay} onClick={handleCancelCrop}>
+            <div 
+              className={styles.modalCard} 
+              style={{ maxWidth: '600px', padding: 0 }} 
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className={styles.modalHeader} style={{ padding: '1rem 1.5rem' }}>
+                <h3 className={styles.modalTitle}>Crop Image</h3>
+                <button className={styles.modalClose} onClick={handleCancelCrop}>
+                  <BiX size={24} />
+                </button>
+              </div>
+              
+              <div style={{ padding: '1.5rem', background: '#f9fafb' }}>
+                <div style={{ 
+                  position: 'relative', 
+                  width: '100%', 
+                  maxHeight: '400px',
+                  background: '#000',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  userSelect: 'none'
+                }}>
+                  <canvas
+                    ref={cropCanvasRef}
+                    style={{
+                      width: '100%',
+                      height: 'auto',
+                      display: 'block',
+                      maxHeight: '400px'
+                    }}
+                    onLoad={(e) => {
+                      const img = new Image()
+                      img.src = imageToCrop.url
+                      img.onload = () => {
+                        const canvas = cropCanvasRef.current
+                        if (!canvas) return
+                        const maxWidth = 550
+                        const maxHeight = 400
+                        let width = img.width
+                        let height = img.height
+                        
+                        if (width > maxWidth) {
+                          height = (height * maxWidth) / width
+                          width = maxWidth
+                        }
+                        if (height > maxHeight) {
+                          width = (width * maxHeight) / height
+                          height = maxHeight
+                        }
+                        
+                        canvas.width = width
+                        canvas.height = height
+                        const ctx = canvas.getContext('2d')
+                        ctx.drawImage(img, 0, 0, width, height)
+                        
+                        // Center crop box
+                        const cropSize = Math.min(200, width, height)
+                        setCrop({
+                          x: (width - cropSize) / 2,
+                          y: (height - cropSize) / 2,
+                          width: cropSize,
+                          height: cropSize
+                        })
+                      }
+                    }}
+                  />
+                  
+                  {/* Crop overlay */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: `${crop.y}px`,
+                      left: `${crop.x}px`,
+                      width: `${crop.width}px`,
+                      height: `${crop.height}px`,
+                      border: '2px solid #3b82f6',
+                      boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)',
+                      cursor: 'move',
+                      pointerEvents: 'all'
+                    }}
+                    onMouseDown={handleCropMouseDown}
+                    onMouseMove={handleCropMouseMove}
+                    onMouseUp={handleCropMouseUp}
+                    onMouseLeave={handleCropMouseUp}
+                  >
+                    {/* Corner handles */}
+                    <div style={{
+                      position: 'absolute',
+                      top: -4,
+                      left: -4,
+                      width: 8,
+                      height: 8,
+                      background: '#3b82f6',
+                      borderRadius: '50%'
+                    }} />
+                    <div style={{
+                      position: 'absolute',
+                      top: -4,
+                      right: -4,
+                      width: 8,
+                      height: 8,
+                      background: '#3b82f6',
+                      borderRadius: '50%'
+                    }} />
+                    <div style={{
+                      position: 'absolute',
+                      bottom: -4,
+                      left: -4,
+                      width: 8,
+                      height: 8,
+                      background: '#3b82f6',
+                      borderRadius: '50%'
+                    }} />
+                    <div style={{
+                      position: 'absolute',
+                      bottom: -4,
+                      right: -4,
+                      width: 8,
+                      height: 8,
+                      background: '#3b82f6',
+                      borderRadius: '50%'
+                    }} />
+                  </div>
+                </div>
+                
+                <div style={{ 
+                  marginTop: '1rem',
+                  padding: '0.75rem',
+                  background: '#eff6ff',
+                  borderRadius: '6px',
+                  fontSize: '0.875rem',
+                  color: '#1e40af'
+                }}>
+                  💡 Drag the blue box to select the area you want to keep
+                </div>
+              </div>
+
+              <div style={{ 
+                padding: '1rem 1.5rem', 
+                display: 'flex', 
+                gap: '0.75rem', 
+                justifyContent: 'flex-end',
+                borderTop: '1px solid #e5e7eb'
+              }}>
+                <button 
+                  onClick={handleCancelCrop} 
+                  className={styles.attachButton}
+                  disabled={uploading}
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleCropImage}
+                  className={styles.sendButton}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <>
+                      <div className={styles.spinner} style={{ width: 14, height: 14 }} />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <BiImage size={16} />
+                      Crop & Upload
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>

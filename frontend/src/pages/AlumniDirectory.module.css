@@ -125,49 +125,76 @@
 }
 
 .toggleLabel {
-  margin: 0;
-  font-size: 0.875rem;
-  color: rgba(248, 250, 252, 0.85);
-  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9375rem;
+  color: #ffffff;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 /* Toggle Container */
 .toggleContainer {
   display: inline-flex;
-  gap: 0.25rem;
-  padding: 0.35rem;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25), inset 0 1px 2px rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
 }
 
 .toggleButton {
-  padding: 0.55rem 1.05rem;
+  padding: 0.75rem 1.75rem;
   border: none;
-  border-radius: 8px;
-  font-size: 0.875rem;
+  border-radius: 10px;
+  font-size: 0.9375rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   background: transparent;
-  color: #e5e7eb;
+  color: rgba(255, 255, 255, 0.7);
   white-space: nowrap;
+  position: relative;
+  text-transform: capitalize;
+  letter-spacing: 0.02em;
+}
+
+.toggleButton::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.toggleButton:hover::before {
+  opacity: 1;
 }
 
 .toggleButton:hover {
-  background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
+  transform: translateY(-1px);
 }
 
 .toggleButton.active {
-  background: #ffffff;
+  background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
   color: #1e3a8a;
-  box-shadow: 0 8px 18px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 10px 25px rgba(255, 255, 255, 0.3), 0 4px 12px rgba(30, 58, 138, 0.15);
+  transform: translateY(-2px);
+  font-weight: 800;
+}
+
+.toggleButton.active::before {
+  display: none;
 }
 
 .toggleButton.active:hover {
-  background: #f8fafc;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  transform: translateY(-2px) scale(1.02);
 }
 
 /* Search and Filters */
