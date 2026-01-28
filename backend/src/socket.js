@@ -167,6 +167,134 @@ export default function (io) {
         socket.emit('secure:error', { message: 'Failed to send message', details: err.message });
       }
     });
+    // Handle message deletion
+    socket.on('message:delete', async ({ messageId, toUserId }) => {
+      try {
+        if (!messageId) {
+          socket.emit('message:error', { message: 'Message ID required' });
+          return;
+        }
+
+        // Fetch the message to verify ownership
+        const message = await MessageModel.findById(messageId);
+        if (!message) {
+          socket.emit('message:error', { message: 'Message not found' });
+          return;
+        }
+
+        // Get sender's alumni profile
+        let senderAlumniId = socket.alumniId;
+        if (!senderAlumniId) {
+          const profile = await AlumniProfile.findByUserId(socket.user.id);
+          senderAlumniId = profile?.id;
+        }
+
+        // Only sender can delete their message
+        if (message.sender_id !== senderAlumniId) {
+          socket.emit('message:error', { message: 'Unauthorized to delete this message' });
+          return;
+        }
+
+        // Soft delete the message
+        const deletedMessage = await MessageModel.softDelete(messageId, senderAlumniId);
+
+        // Resolve recipient user ID
+        const recipient = await AlumniProfile.findById(message.receiver_id);
+        const recipientUserId = recipient?.user_id;
+
+        // Notify recipient
+        if (recipientUserId) {
+          io.to(`user:${recipientUserId}`).emit('message:deleted', {
+            messageId,
+            deletedAt: deletedMessage.deleted_at,
+          });
+        }
+
+        // Notify all sender's devices
+        io.to(`user:${socket.user.id}`).emit('message:deleted', {
+          messageId,
+          deletedAt: deletedMessage.deleted_at,
+        });
+
+        socket.emit('message:delete:success', { messageId });
+      } catch (err) {
+        console.error('❌ message:delete error:', err);
+        socket.emit('message:error', { message: 'Failed to delete message' });
+      }
+    });
+
+    // Handle message editing
+    socket.on('message:edit', async ({ messageId, newCiphertext, newIv, toUserId }) => {
+      try {
+        if (!messageId || !newCiphertext) {
+          socket.emit('message:error', { message: 'Message ID and content required' });
+          return;
+        }
+
+        // Fetch the message to verify ownership
+        const message = await MessageModel.findById(messageId);
+        if (!message) {
+          socket.emit('message:error', { message: 'Message not found' });
+          return;
+        }
+
+        // Get sender's alumni profile
+        let senderAlumniId = socket.alumniId;
+        if (!senderAlumniId) {
+          const profile = await AlumniProfile.findByUserId(socket.user.id);
+          senderAlumniId = profile?.id;
+        }
+
+        // Only sender can edit their message
+        if (message.sender_id !== senderAlumniId) {
+          socket.emit('message:error', { message: 'Unauthorized to edit this message' });
+          return;
+        }
+
+        // Don't allow editing deleted messages
+        if (message.is_deleted) {
+          socket.emit('message:error', { message: 'Cannot edit deleted message' });
+          return;
+        }
+
+        // Update the message
+        const updatedMessage = await MessageModel.updateContent(messageId, newCiphertext, newIv);
+
+        // Get sender and receiver profile names
+        const senderProfile = await AlumniProfile.findById(senderAlumniId);
+        const receiverProfile = await AlumniProfile.findById(message.receiver_id);
+        
+        const senderName = senderProfile ? `${senderProfile.first_name || ''} ${senderProfile.last_name || ''}`.trim() : null;
+        const receiverName = receiverProfile ? `${receiverProfile.first_name || ''} ${receiverProfile.last_name || ''}`.trim() : null;
+
+        // Enrich message
+        const enrichedMessage = {
+          ...updatedMessage,
+          sender_user_id: socket.user.id,
+          receiver_user_id: receiverProfile?.user_id,
+          sender_name: senderName,
+          receiver_name: receiverName,
+        };
+
+        // Notify recipient
+        if (receiverProfile?.user_id) {
+          io.to(`user:${receiverProfile.user_id}`).emit('message:edited', {
+            message: enrichedMessage,
+          });
+        }
+
+        // Notify all sender's devices
+        io.to(`user:${socket.user.id}`).emit('message:edited', {
+          message: enrichedMessage,
+        });
+
+        socket.emit('message:edit:success', { message: enrichedMessage });
+      } catch (err) {
+        console.error('❌ message:edit error:', err);
+        socket.emit('message:error', { message: 'Failed to edit message' });
+      }
+    });
+
     socket.on('publickey:publish', async ({ publicKey }) => {
       try {
         if (!publicKey) {

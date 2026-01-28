@@ -21,6 +21,16 @@ const Messages = () => {
   const API = `${API_BASE}`
   const query = useQuery()
   
+  // Helper function to get full file URL
+  // Static files are served from server root, not from /api path
+  const getFileUrl = (url) => {
+    if (!url) return ''
+    if (url.startsWith('http://') || url.startsWith('https://')) return url
+    // Remove /api from API_BASE for static file URLs
+    const serverBase = API_BASE.replace(/\/api\/?$/, '')
+    return `${serverBase}${url.startsWith('/') ? url : '/' + url}`
+  }
+  
   console.log('[Messages] \ud83c\udfaf API Configuration:', { 
     VITE_API_URL: import.meta.env.VITE_API_URL,
     API_BASE,
@@ -45,7 +55,23 @@ const Messages = () => {
   const markedReadRef = useRef(new Set())
   const [sending, setSending] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+  const [errorType, setErrorType] = useState('info') // 'info', 'warning', 'error', 'success'
   const messagesListRef = useRef(null)
+  
+  // Helper to show error with type
+  const showError = useCallback((message, type = 'error') => {
+    setErrorMsg(message)
+    setErrorType(type)
+    // Auto-dismiss success messages
+    if (type === 'success') {
+      setTimeout(() => setErrorMsg(''), 4000)
+    }
+  }, [])
+  
+  const clearError = useCallback(() => {
+    setErrorMsg('')
+    setErrorType('info')
+  }, [])
   const messagesEndRef = useRef(null)
   const [showSidebar, setShowSidebar] = useState(true)
   const [showNewChatModal, setShowNewChatModal] = useState(false)
@@ -81,6 +107,12 @@ const Messages = () => {
   const [reportDescription, setReportDescription] = useState('')
   const [blockReason, setBlockReason] = useState('')
   const [isBlocked, setIsBlocked] = useState(false)
+  
+  // Message edit/delete state
+  const [editingMessageId, setEditingMessageId] = useState(null)
+  const [editText, setEditText] = useState('')
+  const [messageMenuOpen, setMessageMenuOpen] = useState(null) // stores message ID of open menu
+  
   // Use global messaging context for unread counts
   const { conversationUnreadMap, clearConversationUnread, setActiveConversationUserId } = useMessaging()
   
@@ -574,9 +606,13 @@ const Messages = () => {
               try {
                 const obj = JSON.parse(plain)
                 if (obj && typeof obj === 'object') {
-                  if (obj.file) fileData = obj.file
-                  if (obj.caption) plain = obj.caption
-                  else if (obj.text) plain = obj.text
+                  if (obj.file) {
+                    fileData = obj.file
+                    // Use caption if exists (even if empty string), otherwise text, otherwise empty
+                    plain = ('caption' in obj) ? obj.caption : (obj.text || '')
+                  } else if (obj.text) {
+                    plain = obj.text
+                  }
                 }
               } catch {/* not JSON */}
             } catch (err) {
@@ -692,6 +728,35 @@ const Messages = () => {
         }
       })
 
+      // Handle message deletion
+      socket.on('message:deleted', ({ messageId, deletedAt }) => {
+        console.log('📨 Message deleted:', messageId)
+        setMessages((prev) => prev.map((m) => 
+          m.id === messageId ? { ...m, is_deleted: true, deleted_at: deletedAt, text: '' } : m
+        ))
+      })
+
+      // Handle message editing
+      socket.on('message:edited', ({ message }) => {
+        console.log('✏️ Message edited:', message.id)
+        setMessages((prev) => prev.map((m) => {
+          if (m.id === message.id) {
+            // Message needs to be re-decrypted
+            return { ...m, needsDecryption: true, encryptedContent: message.content, iv: message.iv, is_edited: true, edited_at: message.edited_at }
+          }
+          return m
+        }))
+        // Trigger re-decryption of edited message
+        if (localKeysRef.current && toUserId) {
+          loadConversation(toUserId, localKeysRef.current)
+        }
+      })
+
+      socket.on('message:error', (err) => {
+        console.error('❌ Message operation error:', err)
+        setErrorMsg(err?.message || 'Message operation failed')
+      })
+
       // load conversations list (includes partnerName & partnerAvatar)
       try {
         console.log('[Messages] GET /messages (conversations)')
@@ -804,7 +869,9 @@ const Messages = () => {
           sender_name: m.sender_name,
           receiver_name: m.receiver_name,
           sent_at: m.sent_at,
-          isOutgoing: fromAuthUserId === user.id
+          isOutgoing: fromAuthUserId === user.id,
+          is_deleted: m.is_deleted,
+          is_edited: m.is_edited
         };
         
         try {
@@ -814,11 +881,19 @@ const Messages = () => {
             let fileData = null
             try {
               const obj = JSON.parse(plain)
-              if (obj?.file) fileData = obj.file
-              if (obj?.caption) plain = obj.caption
-              else if (obj?.text) plain = obj.text
+              if (obj?.file) {
+                fileData = obj.file
+                // Use caption if exists (even if empty string), otherwise text, otherwise empty
+                plain = ('caption' in obj) ? obj.caption : (obj.text || '')
+              } else if (obj?.text) {
+                plain = obj.text
+              }
             } catch {/* not JSON */}
-            decoded.push({ ...messageData, text: plain, file: fileData })
+            decoded.push({ 
+              ...messageData, 
+              text: messageData.is_deleted ? '' : plain, 
+              file: messageData.is_deleted ? null : fileData 
+            })
             continue
           }
 
@@ -859,11 +934,19 @@ const Messages = () => {
           let fileData = null
           try {
             const obj = JSON.parse(plain)
-            if (obj?.file) fileData = obj.file
-            if (obj?.caption) plain = obj.caption
-            else if (obj?.text) plain = obj.text
+            if (obj?.file) {
+              fileData = obj.file
+              // Use caption if exists (even if empty string), otherwise text, otherwise empty
+              plain = ('caption' in obj) ? obj.caption : (obj.text || '')
+            } else if (obj?.text) {
+              plain = obj.text
+            }
           } catch {/* not JSON */}
-          decoded.push({ ...messageData, text: plain, file: fileData })
+          decoded.push({ 
+            ...messageData, 
+            text: messageData.is_deleted ? '' : plain, 
+            file: messageData.is_deleted ? null : fileData 
+          })
         } catch (e) {
           // provide extra debugging info in console to help diagnose stored-message decryption failures
           try {
@@ -936,11 +1019,10 @@ const Messages = () => {
       setIsBlocked(true)
       setShowBlockModal(false)
       setBlockReason('')
-      setErrorMsg('')
-      alert('User blocked successfully')
+      showError('User blocked successfully', 'success')
     } catch (err) {
       console.error('Failed to block user:', err)
-      setErrorMsg(err.response?.data?.message || 'Failed to block user')
+      showError(err.response?.data?.message || 'Failed to block user', 'error')
     }
   }
 
@@ -950,11 +1032,10 @@ const Messages = () => {
         headers: { Authorization: `Bearer ${token}` }
       })
       setIsBlocked(false)
-      setErrorMsg('')
-      alert('User unblocked successfully')
+      showError('User unblocked successfully', 'success')
     } catch (err) {
       console.error('Failed to unblock user:', err)
-      setErrorMsg(err.response?.data?.message || 'Failed to unblock user')
+      showError(err.response?.data?.message || 'Failed to unblock user', 'error')
     }
   }
 
@@ -989,7 +1070,7 @@ const Messages = () => {
     console.log('handleSend called', { toUserId, text: text?.substring(0, 20), textLength: text?.length })
     
     if (!toUserId || (!text && !attachmentMeta)) {
-      setErrorMsg('Provide a message or attachment for a recipient')
+      showError('Please select a recipient and enter a message or attachment', 'warning')
       console.error('❌ Missing toUserId or content', { toUserId, textLength: text?.length, hasAttachment: !!attachmentMeta })
       return;
     }
@@ -999,7 +1080,7 @@ const Messages = () => {
       keyPair = await ensureLocalKeys()
     }
     if (!keyPair) {
-      setErrorMsg('Encryption keys not loaded. Please log out and log back in to re-sync secure messaging.')
+      showError('Encryption keys not loaded. Please log out and log back in to re-sync secure messaging.', 'error')
       return
     }
 
@@ -1107,16 +1188,107 @@ const Messages = () => {
       const res = await axios.post(`${API}/messages/upload`, form, { headers: { Authorization: `Bearer ${token}` } })
       console.log('[Messages] upload status', res?.status)
       const meta = res.data?.data
+      console.log('[Messages] upload response meta:', meta)
+      console.log('[Messages] Full URL will be:', getFileUrl(meta?.url))
       setAttachmentMeta(meta)
     } catch (err) {
       console.error('[Messages] upload failed', err?.message || err)
-      setErrorMsg(`Upload error: ${err.message || 'Upload failed'}`)
+      showError(`Upload failed: ${err.message || 'Could not upload file'}`, 'error')
     } finally {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
   const clearAttachment = () => { setAttachmentMeta(null); if (fileInputRef.current) fileInputRef.current.value = '' }
+
+  // Handle message deletion
+  const handleDeleteMessage = async (messageId) => {
+    try {
+      const socket = getSocket()
+      if (!socket || !socket.connected) {
+        setErrorMsg('Not connected to server')
+        return
+      }
+
+      socket.emit('message:delete', { messageId, toUserId })
+      setMessageMenuOpen(null)
+      console.log('🗑️ Delete request sent for message:', messageId)
+    } catch (err) {
+      console.error('Failed to delete message:', err)
+      setErrorMsg('Failed to delete message')
+    }
+  }
+
+  // Handle message edit initiation
+  const handleStartEdit = (message) => {
+    setEditingMessageId(message.id)
+    setEditText(message.text || '')
+    setMessageMenuOpen(null)
+  }
+
+  // Handle message edit submission
+  const handleSubmitEdit = async () => {
+    if (!editText.trim() || !editingMessageId) return
+
+    try {
+      const socket = getSocket()
+      if (!socket || !socket.connected) {
+        setErrorMsg('Not connected to server')
+        return
+      }
+
+      let keyPair = localKeysRef.current
+      if (!keyPair) {
+        keyPair = await ensureLocalKeys()
+      }
+      if (!keyPair) {
+        setErrorMsg('Encryption keys not loaded')
+        return
+      }
+
+      // Get the conversation key
+      let aes = null
+      const cachedKey = conversationKeysRef.current.get(toUserId)
+      
+      if (cachedKey?.aesKey) {
+        aes = cachedKey.aesKey
+      } else {
+        const res = await axios.get(`${API}/messages/public-key/${toUserId}`, { headers: { Authorization: `Bearer ${token}` }})
+        const theirPub = res.data?.data?.public_key || res.data?.publicKey || res.data?.public_key
+        if (!theirPub) {
+          setErrorMsg('Failed to get recipient public key')
+          return
+        }
+        const imported = await crypto.importPublicKey(theirPub)
+        const shared = await crypto.deriveSharedSecret(keyPair.privateKey, imported)
+        aes = await crypto.deriveAESGCMKey(shared)
+        conversationKeysRef.current.set(toUserId, { aesKey: aes, publicKey: theirPub })
+      }
+
+      // Encrypt the new text
+      const enc = await crypto.encryptMessage(aes, JSON.stringify({ text: editText }))
+
+      socket.emit('message:edit', {
+        messageId: editingMessageId,
+        newCiphertext: enc.ciphertext,
+        newIv: enc.iv,
+        toUserId
+      })
+
+      console.log('✏️ Edit request sent for message:', editingMessageId)
+      setEditingMessageId(null)
+      setEditText('')
+    } catch (err) {
+      console.error('Failed to edit message:', err)
+      setErrorMsg('Failed to edit message')
+    }
+  }
+
+  // Handle cancel edit
+  const handleCancelEdit = () => {
+    setEditingMessageId(null)
+    setEditText('')
+  }
 
   // Filter conversations by search term
   const filteredConversations = useMemo(() => {
@@ -1267,31 +1439,54 @@ const Messages = () => {
         {/* Encryption Error Banner */}
         {errorMsg && (
           <div style={{
-            background: '#fef2f2',
-            border: '1px solid #fecaca',
-            borderRadius: '8px',
-            padding: '12px 16px',
+            background: errorType === 'error' ? '#fef2f2' : 
+                       errorType === 'warning' ? '#fffbeb' : 
+                       errorType === 'success' ? '#f0fdf4' : '#eff6ff',
+            border: `1px solid ${errorType === 'error' ? '#fecaca' : 
+                                 errorType === 'warning' ? '#fde68a' : 
+                                 errorType === 'success' ? '#bbf7d0' : '#bfdbfe'}`,
+            borderRadius: '12px',
+            padding: '14px 18px',
             marginBottom: '16px',
-            color: '#991b1b',
+            color: errorType === 'error' ? '#991b1b' : 
+                   errorType === 'warning' ? '#92400e' : 
+                   errorType === 'success' ? '#065f46' : '#1e40af',
             fontSize: '14px',
             display: 'flex',
-            alignItems: 'center',
-            gap: '12px'
+            alignItems: 'flex-start',
+            gap: '12px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+            animation: 'slideDown 0.3s ease-out'
           }}>
-            <span style={{ fontSize: '20px' }}>⚠️</span>
-            <div style={{ flex: 1 }}>
-              <strong>Encryption Key Error:</strong> {errorMsg}
+            <span style={{ fontSize: '22px', flexShrink: 0, marginTop: '2px' }}>
+              {errorType === 'error' ? '❌' : 
+               errorType === 'warning' ? '⚠️' : 
+               errorType === 'success' ? '✅' : 'ℹ️'}
+            </span>
+            <div style={{ flex: 1, lineHeight: 1.5 }}>
+              <div style={{ fontWeight: 600, marginBottom: '4px' }}>
+                {errorType === 'error' ? 'Error' : 
+                 errorType === 'warning' ? 'Warning' : 
+                 errorType === 'success' ? 'Success' : 'Info'}
+              </div>
+              <div style={{ fontSize: '13px', opacity: 0.95 }}>{errorMsg}</div>
             </div>
             <button 
-              onClick={() => setErrorMsg('')}
+              onClick={clearError}
               style={{
                 background: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
-                fontSize: '18px',
-                color: '#991b1b',
-                padding: '4px 8px'
+                fontSize: '20px',
+                color: 'currentColor',
+                padding: '4px',
+                opacity: 0.6,
+                transition: 'opacity 0.2s',
+                flexShrink: 0
               }}
+              onMouseEnter={(e) => e.target.style.opacity = '1'}
+              onMouseLeave={(e) => e.target.style.opacity = '0.6'}
+              aria-label="Dismiss notification"
             >
               ✕
             </button>
@@ -1665,7 +1860,69 @@ const Messages = () => {
               </div>
             </div>
             <div className={styles.conversationList} role="list">
-              {filteredConversations.length === 0 && <div style={{ padding:'0.5rem', fontSize:12, color:'#6b7280' }}>No conversations</div>}
+              {filteredConversations.length === 0 && (
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  padding: '3rem 1.5rem',
+                  textAlign: 'center',
+                  height: '100%'
+                }}>
+                  <div style={{ marginBottom: '1rem', opacity: 0.5 }}>
+                    <BiMessageRounded size={48} color="#9ca3af" />
+                  </div>
+                  <h3 style={{ 
+                    fontSize: '1rem', 
+                    fontWeight: 600, 
+                    color: '#374151', 
+                    marginBottom: '0.5rem' 
+                  }}>
+                    No Conversations Yet
+                  </h3>
+                  <p style={{ 
+                    fontSize: '0.875rem', 
+                    color: '#6b7280', 
+                    marginBottom: '1.5rem',
+                    lineHeight: 1.5
+                  }}>
+                    Start connecting with alumni and students
+                  </p>
+                  <button
+                    onClick={() => {
+                      setShowNewChatModal(true)
+                      loadPeopleList()
+                    }}
+                    style={{
+                      background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '0.625rem 1.25rem',
+                      fontSize: '0.875rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      transition: 'all 0.2s',
+                      boxShadow: '0 2px 4px rgba(30, 58, 138, 0.2)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-1px)'
+                      e.currentTarget.style.boxShadow = '0 4px 8px rgba(30, 58, 138, 0.3)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)'
+                      e.currentTarget.style.boxShadow = '0 2px 4px rgba(30, 58, 138, 0.2)'
+                    }}
+                  >
+                    <BiMessageRounded size={18} />
+                    Start New Chat
+                  </button>
+                </div>
+              )}
               {filteredConversations.map(c => {
                 const active = c.partnerUserId === toUserId
                 const unreadCount = conversationUnreadMap?.[c.partnerUserId] || 0
@@ -1723,7 +1980,13 @@ const Messages = () => {
                 </button>
               )}  
               <div style={{ display:'flex', alignItems:'center', gap:14, flex:1 }}>
-                <div className={styles.avatar}>{activePartnerInitials}</div>
+                <div className={styles.avatar}>
+                  {activePartnerInitials === 'ME' ? (
+                    <img src="/chat.png" alt="Messages" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                  ) : (
+                    activePartnerInitials
+                  )}
+                </div>
                 <div style={{ flex:1 }}>
                   <div className={styles.chatTitle}>{activePartnerName}</div>
                   <div className={styles.chatSubtitle}>{toUserId ? 'End-to-end encrypted' : 'Choose a conversation to start messaging'}</div>
@@ -1764,10 +2027,46 @@ const Messages = () => {
 
             <div className={styles.messagesViewport} ref={messagesListRef}>
               {!toUserId ? (
-                <div style={{ height:'100%', display:'grid', placeItems:'center' }}>
-                  <div style={{ textAlign:'center', color:'#6b7280' }}>
-                    <div style={{ fontSize:48, lineHeight:1 }}><BiMessageRounded size={64} /></div>
-                    <div style={{ fontSize:16, marginTop:8 }}>Select a conversation to start messaging</div>
+                <div style={{ height:'100%', display:'grid', placeItems:'center', padding: '2rem' }}>
+                  <div style={{ textAlign:'center', color:'#6b7280', maxWidth: '400px' }}>
+                    <div style={{ fontSize:48, lineHeight:1, marginBottom: '1.5rem' }}>
+                      <BiMessageRounded size={64} color="#cbd5e1" />
+                    </div>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#374151', marginBottom: '0.5rem' }}>
+                      No Conversation Selected
+                    </h3>
+                    <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+                      Choose an existing conversation from the sidebar or start a new chat with alumni and students
+                    </p>
+                    <button
+                      onClick={() => setShowNewChatModal(true)}
+                      style={{
+                        background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '0.75rem 1.5rem',
+                        fontSize: '0.9375rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        transition: 'all 0.2s',
+                        boxShadow: '0 4px 6px rgba(30, 58, 138, 0.2)'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px)'
+                        e.currentTarget.style.boxShadow = '0 6px 12px rgba(30, 58, 138, 0.3)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)'
+                        e.currentTarget.style.boxShadow = '0 4px 6px rgba(30, 58, 138, 0.2)'
+                      }}
+                    >
+                      <BiMessageRounded size={20} />
+                      Start New Chat
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -1779,30 +2078,430 @@ const Messages = () => {
                 const key = m.id || m.clientId || `${m.from}-${m.sent_at}-${idx}`
                 const isOutgoing = m.isOutgoing !== undefined ? m.isOutgoing : (m.from === user.id)
                 const bubbleClass = `${styles.bubble} ${isOutgoing ? styles.bubbleOutgoing : styles.bubbleIncoming}`
+                const isEditing = editingMessageId === m.id
+                const isDeleted = m.is_deleted
+                
                 return (
                   <div key={key} className={`${styles.messageRow} ${isOutgoing ? styles.messageOutgoing : styles.messageIncoming}`}> 
-                    <div className={bubbleClass}> 
+                    <div className={bubbleClass} style={{ position: 'relative' }}> 
+                      {/* Message actions menu - only for outgoing messages */}
+                      {isOutgoing && !isDeleted && !m.pending && m.id && !isEditing && (
+                        <div style={{ 
+                          position: 'absolute', 
+                          top: 8, 
+                          right: 8,
+                          opacity: 0.7,
+                          transition: 'opacity 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                        onMouseLeave={(e) => e.currentTarget.style.opacity = 0.7}
+                        >
+                          <button
+                            onClick={() => setMessageMenuOpen(messageMenuOpen === m.id ? null : m.id)}
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.9)',
+                              backdropFilter: 'blur(8px)',
+                              border: 'none',
+                              borderRadius: '50%',
+                              width: '28px',
+                              height: '28px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              padding: 0,
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                              transition: 'all 0.2s ease',
+                              color: '#1e3a8a'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'scale(1.1)'
+                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(30, 58, 138, 0.2)'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'scale(1)'
+                              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
+                            }}
+                            title="Message options"
+                          >
+                            <BiDotsVerticalRounded size={18} />
+                          </button>
+                          {messageMenuOpen === m.id && (
+                            <>
+                              {/* Backdrop to close menu */}
+                              <div 
+                                style={{
+                                  position: 'fixed',
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  bottom: 0,
+                                  zIndex: 99
+                                }}
+                                onClick={() => setMessageMenuOpen(null)}
+                              />
+                              <div style={{
+                                position: 'absolute',
+                                top: '100%',
+                                right: 0,
+                                marginTop: '4px',
+                                background: 'white',
+                                border: 'none',
+                                borderRadius: '12px',
+                                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.08)',
+                                zIndex: 100,
+                                minWidth: '160px',
+                                overflow: 'hidden',
+                                animation: 'slideDown 0.15s ease-out'
+                              }}>
+                                <button
+                                  onClick={() => handleStartEdit(m)}
+                                  style={{
+                                    width: '100%',
+                                    padding: '12px 16px',
+                                    border: 'none',
+                                    background: 'transparent',
+                                    textAlign: 'left',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: 500,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                    color: '#374151',
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = 'linear-gradient(to right, #eff6ff, #dbeafe)'
+                                    e.currentTarget.style.color = '#1e3a8a'
+                                    e.currentTarget.style.paddingLeft = '20px'
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'transparent'
+                                    e.currentTarget.style.color = '#374151'
+                                    e.currentTarget.style.paddingLeft = '16px'
+                                  }}
+                                >
+                                  <span style={{ fontSize: '18px' }}>✏️</span>
+                                  <span>Edit Message</span>
+                                </button>
+                                <div style={{ height: '1px', background: '#f3f4f6', margin: '0 8px' }} />
+                                <button
+                                  onClick={() => {
+                                    if (confirm('Are you sure you want to delete this message?')) {
+                                      handleDeleteMessage(m.id)
+                                    }
+                                  }}
+                                  style={{
+                                    width: '100%',
+                                    padding: '12px 16px',
+                                    border: 'none',
+                                    background: 'transparent',
+                                    textAlign: 'left',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: 500,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                    color: '#ef4444',
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = 'linear-gradient(to right, #fef2f2, #fee2e2)'
+                                    e.currentTarget.style.color = '#dc2626'
+                                    e.currentTarget.style.paddingLeft = '20px'
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'transparent'
+                                    e.currentTarget.style.color = '#ef4444'
+                                    e.currentTarget.style.paddingLeft = '16px'
+                                  }}
+                                >
+                                  <span style={{ fontSize: '18px' }}>🗑️</span>
+                                  <span>Delete Message</span>
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+                      
                       <div style={{ fontSize:12, fontWeight:600, marginBottom:4 }}>{isOutgoing ? 'You' : (m.sender_name || activePartnerName || 'User')}</div>
-                      {m.file && m.file.mimeType?.startsWith('image/') && (
-                        <div style={{ marginBottom:6 }}>
-                          <a href={m.file.url} target="_blank" rel="noopener noreferrer" style={{ display:'inline-block' }}>
-                            <img src={m.file.url} alt={m.file.name} style={{ maxWidth:'240px', borderRadius:8, boxShadow:'0 2px 4px rgba(0,0,0,0.08)' }} />
-                          </a>
+                      
+                      {/* Show deleted message placeholder */}
+                      {isDeleted ? (
+                        <div style={{ 
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '8px 12px',
+                          background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)',
+                          borderRadius: '8px',
+                          border: '1px dashed #d1d5db',
+                          fontStyle: 'italic', 
+                          color: '#9ca3af', 
+                          fontSize: 13
+                        }}>
+                          <span style={{ fontSize: '16px', opacity: 0.5 }}>🚫</span>
+                          <span>This message was deleted</span>
                         </div>
-                      )}
-                      {m.file && !m.file.mimeType?.startsWith('image/') && (
-                        <div style={{ marginBottom:6 }}>
-                          <a href={m.file.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration:'none', color:'#1e3a8a', fontSize:12, display:'flex', alignItems:'center', gap:6 }}>
-                            <BiPaperclip size={14} /> {m.file.name} ({Math.round(m.file.size/1024)} KB)
-                          </a>
+                      ) : isEditing ? (
+                        /* Edit mode */
+                        <div style={{ marginTop: 8 }}>
+                          <div style={{
+                            background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                            padding: '12px',
+                            borderRadius: '12px',
+                            border: '2px solid #3b82f6',
+                            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)'
+                          }}>
+                            <div style={{ 
+                              fontSize: '11px', 
+                              fontWeight: 600, 
+                              color: '#1e3a8a', 
+                              marginBottom: '8px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}>
+                              <span style={{ fontSize: '14px' }}>✏️</span>
+                              EDITING MESSAGE
+                            </div>
+                            <textarea
+                              value={editText}
+                              onChange={(e) => setEditText(e.target.value)}
+                              style={{
+                                width: '100%',
+                                minHeight: '70px',
+                                padding: '10px 12px',
+                                border: '1px solid #bfdbfe',
+                                borderRadius: '8px',
+                                fontSize: '14px',
+                                lineHeight: '1.5',
+                                resize: 'vertical',
+                                fontFamily: 'inherit',
+                                background: 'white',
+                                transition: 'border-color 0.2s ease',
+                                outline: 'none'
+                              }}
+                              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                              onBlur={(e) => e.target.style.borderColor = '#bfdbfe'}
+                              autoFocus
+                              placeholder="Edit your message..."
+                            />
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '12px', justifyContent: 'flex-end' }}>
+                              <button
+                                onClick={handleCancelEdit}
+                                style={{
+                                  background: 'white',
+                                  color: '#6b7280',
+                                  border: '1px solid #e5e7eb',
+                                  borderRadius: '8px',
+                                  padding: '8px 16px',
+                                  fontSize: '13px',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = '#f9fafb'
+                                  e.currentTarget.style.borderColor = '#d1d5db'
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = 'white'
+                                  e.currentTarget.style.borderColor = '#e5e7eb'
+                                }}
+                              >
+                                <BiX size={16} />
+                                Cancel
+                              </button>
+                              <button
+                                onClick={handleSubmitEdit}
+                                disabled={!editText.trim()}
+                                style={{
+                                  background: editText.trim() ? 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)' : '#e5e7eb',
+                                  color: editText.trim() ? 'white' : '#9ca3af',
+                                  border: 'none',
+                                  borderRadius: '8px',
+                                  padding: '8px 20px',
+                                  fontSize: '13px',
+                                  fontWeight: 600,
+                                  cursor: editText.trim() ? 'pointer' : 'not-allowed',
+                                  transition: 'all 0.2s ease',
+                                  boxShadow: editText.trim() ? '0 2px 8px rgba(30, 58, 138, 0.2)' : 'none',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px'
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (editText.trim()) {
+                                    e.currentTarget.style.transform = 'translateY(-1px)'
+                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(30, 58, 138, 0.3)'
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (editText.trim()) {
+                                    e.currentTarget.style.transform = 'translateY(0)'
+                                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(30, 58, 138, 0.2)'
+                                  }
+                                }}
+                              >
+                                <BiSend size={14} />
+                                Save Changes
+                              </button>
+                            </div>
+                          </div>
                         </div>
+                      ) : (
+                        <>
+                          {m.file && m.file.mimeType?.startsWith('image/') && (
+                            <div style={{ 
+                              marginBottom: m.text ? 8 : 0,
+                              position: 'relative',
+                              overflow: 'hidden',
+                              borderRadius: 12,
+                              background: 'rgba(0,0,0,0.02)',
+                            }}>
+                              <a href={getFileUrl(m.file.url)} target="_blank" rel="noopener noreferrer" style={{ display:'block' }}>
+                                <img 
+                                  src={getFileUrl(m.file.url)} 
+                                  alt={m.file.name} 
+                                  style={{ 
+                                    width: '100%',
+                                    maxWidth: '320px',
+                                    height: 'auto',
+                                    display: 'block',
+                                    borderRadius: 12,
+                                    transition: 'transform 0.2s ease',
+                                    cursor: 'pointer'
+                                  }} 
+                                  onError={(e) => { 
+                                    console.error('[Messages] Image load failed:', {
+                                      originalUrl: m.file.url,
+                                      fullUrl: getFileUrl(m.file.url),
+                                      fileName: m.file.name
+                                    });
+                                    e.target.style.display = 'none';
+                                    const fallback = document.createElement('div');
+                                    fallback.style.cssText = 'padding:16px;background:rgba(239,68,68,0.1);border:1px dashed #ef4444;borderRadius:12px;color:#991b1b;fontSize:13px;textAlign:center;';
+                                    fallback.innerHTML = `<div style="margin-bottom:4px;">📷</div><div style="font-weight:500;">Image unavailable</div><div style="font-size:11px;opacity:0.8;margin-top:4px;">${m.file.name}</div>`;
+                                    e.target.parentElement.appendChild(fallback);
+                                  }} 
+                                  onLoad={(e) => {
+                                    console.log('[Messages] ✅ Image loaded successfully:', getFileUrl(m.file.url));
+                                  }}
+                                  onMouseEnter={(e) => e.target.style.transform = 'scale(1.02)'}
+                                  onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                                />
+                              </a>
+                            </div>
+                          )}
+                          {m.file && !m.file.mimeType?.startsWith('image/') && (
+                            <div style={{ 
+                              marginBottom: m.text ? 8 : 0,
+                              padding: '12px 14px',
+                              background: m.isOutgoing ? 'rgba(255,255,255,0.15)' : 'rgba(30,58,138,0.08)',
+                              borderRadius: 10,
+                              border: `1px solid ${m.isOutgoing ? 'rgba(255,255,255,0.25)' : 'rgba(30,58,138,0.15)'}`,
+                              transition: 'all 0.2s ease'
+                            }}>
+                              <a 
+                                href={getFileUrl(m.file.url)} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                style={{ 
+                                  textDecoration:'none', 
+                                  color: m.isOutgoing ? '#ffffff' : '#1e3a8a',
+                                  fontSize: 13,
+                                  display:'flex', 
+                                  alignItems:'center', 
+                                  gap: 10,
+                                  fontWeight: 500
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.parentElement.style.background = m.isOutgoing ? 'rgba(255,255,255,0.25)' : 'rgba(30,58,138,0.12)';
+                                  e.currentTarget.parentElement.style.transform = 'translateY(-1px)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.parentElement.style.background = m.isOutgoing ? 'rgba(255,255,255,0.15)' : 'rgba(30,58,138,0.08)';
+                                  e.currentTarget.parentElement.style.transform = 'translateY(0)';
+                                }}
+                              >
+                                <div style={{
+                                  width: 36,
+                                  height: 36,
+                                  borderRadius: 8,
+                                  background: m.isOutgoing ? 'rgba(255,255,255,0.2)' : 'rgba(30,58,138,0.1)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0
+                                }}>
+                                  {m.file.mimeType?.includes('pdf') ? (
+                                    <span style={{ fontSize: 18 }}>📄</span>
+                                  ) : m.file.mimeType?.includes('video') ? (
+                                    <span style={{ fontSize: 18 }}>🎥</span>
+                                  ) : m.file.mimeType?.includes('audio') ? (
+                                    <span style={{ fontSize: 18 }}>🎵</span>
+                                  ) : (
+                                    <BiPaperclip size={18} style={{ opacity: 0.8 }} />
+                                  )}
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ 
+                                    fontWeight: 600, 
+                                    marginBottom: 2,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                  }}>
+                                    {m.file.name}
+                                  </div>
+                                  <div style={{ 
+                                    fontSize: 11, 
+                                    opacity: 0.75,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px'
+                                  }}>
+                                    {(m.file.size / 1024).toFixed(1)} KB • {m.file.mimeType?.split('/')[1]?.toUpperCase() || 'FILE'}
+                                  </div>
+                                </div>
+                                <BiSend size={16} style={{ opacity: 0.6, transform: 'rotate(-45deg)' }} />
+                              </a>
+                            </div>
+                          )}
+                          {m.text && <div style={{ whiteSpace:'pre-wrap' }}>{m.text}</div>}
+                          {m.is_edited && (
+                            <div style={{ 
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              marginTop: 6,
+                              padding: '2px 8px',
+                              background: 'rgba(59, 130, 246, 0.08)',
+                              borderRadius: '12px',
+                              border: '1px solid rgba(59, 130, 246, 0.15)',
+                              fontSize: 10,
+                              fontWeight: 500,
+                              color: '#3b82f6',
+                              fontStyle: 'normal',
+                              letterSpacing: '0.3px'
+                            }}>
+                              <span style={{ fontSize: '11px' }}>✏️</span>
+                              <span>EDITED</span>
+                            </div>
+                          )}
+                        </>
                       )}
-                      <div style={{ whiteSpace:'pre-wrap' }}>{m.text}</div>
                       <div className={styles.bubbleMeta}> 
                         <span>{m.sent_at ? new Date(m.sent_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) : 'Now'}</span>
                         {m.pending && <span className={`${styles.statusDot} ${styles.statusSending}`} title="Sending" />}
                         {m.error && <span className={`${styles.statusDot} ${styles.statusError}`} title={m.error} />}
-                        <span className={styles.encryptedBadge} title="End-to-end encrypted">E2E</span>
+                        {/* <span className={styles.encryptedBadge} title="End-to-end encrypted">E2E</span> */}
                       </div>
                     </div>
                   </div>
@@ -1818,6 +2517,8 @@ const Messages = () => {
               )}
             </div>
 
+            {/* Only show composer when a conversation is selected */}
+            {toUserId && (
             <div className={styles.composerShell}>
               <div className={styles.composerRow}>
                 <textarea 
@@ -1825,17 +2526,16 @@ const Messages = () => {
                   onChange={onTextChange} 
                   className={styles.composerTextarea} 
                   rows={2} 
-                  placeholder={toUserId ? 'Type a message…' : 'Select a conversation to start messaging'}
-                  disabled={!toUserId }
+                  placeholder="Type a message…"
                   aria-label="Message input"
                 />
                 <div className={styles.composerActions}>
                   <input ref={fileInputRef} type="file" style={{ display:'none' }} onChange={handleFileChange} accept="image/*,application/pdf" />
-                  <button className={styles.attachButton} type="button" onClick={handleFileChoose} disabled={!toUserId || uploading}>
+                  <button className={styles.attachButton} type="button" onClick={handleFileChoose} disabled={uploading}>
                     <BiPaperclip size={16} />
                     {uploading ? 'Uploading…' : 'Attach'}
                   </button>
-                  <button className={styles.sendButton} onClick={handleSend} disabled={ !toUserId }>
+                  <button className={styles.sendButton} onClick={handleSend}>
                     <BiSend size={16} />
                     {sending ? 'Sending…' : 'Send'}
                   </button>
@@ -1860,6 +2560,7 @@ const Messages = () => {
                 </div>
               )}
             </div>
+            )}
           </section>
           )}
         </div>

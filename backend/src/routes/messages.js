@@ -76,7 +76,8 @@ router.get("/", authenticate, async (req, res) => {
             ELSE sender_id 
           END as partner_id
         FROM messages 
-        WHERE sender_id = $1 OR receiver_id = $1
+        WHERE (sender_id = $1 OR receiver_id = $1)
+        AND (is_deleted IS NULL OR is_deleted = FALSE)
       ),
       latest_messages AS (
         SELECT 
@@ -88,6 +89,7 @@ router.get("/", authenticate, async (req, res) => {
           (m.sender_id = $1 AND m.receiver_id = cp.partner_id) OR 
           (m.receiver_id = $1 AND m.sender_id = cp.partner_id)
         )
+        WHERE (m.is_deleted IS NULL OR m.is_deleted = FALSE)
       )
       SELECT * FROM latest_messages WHERE rn = 1
       ORDER BY sent_at DESC
