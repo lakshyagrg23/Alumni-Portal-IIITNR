@@ -1003,6 +1003,7 @@
   overflow-y: auto;
   padding: 1rem 0.75rem;
   background: var(--msg-bg);
+  min-width: 100%;
 }
 
 .modalContent::-webkit-scrollbar {

@@ -810,6 +810,7 @@ const Messages = () => {
         console.log('[Messages] GET /messages (conversations)')
         const convRes = await axios.get(`${API}/messages`, { headers: { Authorization: `Bearer ${token}` }})
         console.log('[Messages] conversations status', convRes?.status, 'count', convRes?.data?.data?.length)
+        console.log('[Messages] 🖼️ First conversation data:', convRes?.data?.data?.[0])
         setConversations(convRes.data?.data || [])
       } catch (e) {
         console.warn('Failed to load conversations', e?.message || e)
@@ -2081,9 +2082,37 @@ const Messages = () => {
               {filteredConversations.map(c => {
                 const active = c.partnerUserId === toUserId
                 const unreadCount = conversationUnreadMap?.[c.partnerUserId] || 0
+                const partnerProfilePic = c.partnerAvatar
                 return (
                   <div key={c.partnerAlumniId} role="listitem" tabIndex={0} className={`${styles.conversationItem} ${active ? styles.active : ''}`} onClick={() => handleSelectConversation(c)} onKeyDown={(e) => { if (e.key==='Enter') handleSelectConversation(c) }}>
-                    <div className={styles.conversationAvatar}>{(c.partnerName || 'User').slice(0,2).toUpperCase()}</div>
+                    <div className={styles.conversationAvatar}>
+                      {partnerProfilePic ? (
+                        <img 
+                          src={getFileUrl(partnerProfilePic)} 
+                          alt={c.partnerName} 
+                          style={{ 
+                            width: '100%', 
+                            height: '100%', 
+                            objectFit: 'cover', 
+                            borderRadius: '50%' 
+                          }} 
+                        />
+                      ) : (
+                        <div style={{
+                          width: '100%',
+                          height: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
+                          color: 'white',
+                          fontSize: '14px',
+                          fontWeight: 600
+                        }}>
+                          {(c.partnerName || 'U').slice(0, 2).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
                     <div className={styles.conversationMeta}>
                       <div className={styles.conversationName}>{c.partnerName || 'User'}</div>
                       {unreadCount > 0 && !active && (
@@ -2138,8 +2167,26 @@ const Messages = () => {
                 <div className={styles.avatar}>
                   {activePartnerInitials === 'ME' ? (
                     <img src="/chat.png" alt="Messages" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                  ) : activeConversation?.partnerAvatar ? (
+                    <img 
+                      src={getFileUrl(activeConversation.partnerAvatar)} 
+                      alt={activePartnerName} 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
+                    />
                   ) : (
-                    activePartnerInitials
+                    <div style={{
+                      width: '100%',
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
+                      color: 'white',
+                      fontSize: '18px',
+                      fontWeight: 600
+                    }}>
+                      {activePartnerInitials}
+                    </div>
                   )}
                 </div>
                 <div style={{ flex:1 }}>
@@ -2238,6 +2285,34 @@ const Messages = () => {
                 
                 return (
                   <div key={key} className={`${styles.messageRow} ${isOutgoing ? styles.messageOutgoing : styles.messageIncoming}`}> 
+                    {/* Profile picture for incoming messages */}
+                    {!isOutgoing && (
+                      <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        flexShrink: 0,
+                        boxShadow: '0 2px 6px rgba(30, 58, 138, 0.2)',
+                        overflow: 'hidden',
+                        alignSelf: 'flex-end',
+                        marginRight: '8px',
+                        background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '13px',
+                        fontWeight: 600
+                      }}>
+                        {activeConversation?.partnerAvatar ? (
+                          <img 
+                            src={getFileUrl(activeConversation.partnerAvatar)} 
+                            alt={activePartnerName} 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
+                          />
+                        ) : activePartnerInitials}
+                      </div>
+                    )}
                     <div className={bubbleClass} style={{ position: 'relative' }}> 
                       {/* Message actions menu - only for outgoing messages */}
                       {isOutgoing && !isDeleted && !m.pending && m.id && !isEditing && (
@@ -2855,7 +2930,6 @@ const Messages = () => {
                   autoFocus
                 />
               </div>
-
               <div className={styles.modalContent}>
                 {loadingPeople ? (
                   <div className={styles.modalLoading}>
@@ -2873,13 +2947,22 @@ const Messages = () => {
                       const userId = person.userId || person.user_id
                       const fullName = `${person.firstName || ''} ${person.lastName || ''}`.trim()
                       const initials = `${person.firstName?.charAt(0) || ''}${person.lastName?.charAt(0) || ''}`
+                      const profilePic = person.profilePicture || person.profile_picture || person.profile_picture_url
                       return (
                         <div
                           key={userId}
                           className={styles.alumniItem}
                           onClick={() => handleStartNewChat(person)}
                         >
-                          <div className={styles.alumniAvatar}>{initials}</div>
+                          <div className={styles.alumniAvatar}>
+                            {profilePic ? (
+                              <img 
+                                src={getFileUrl(profilePic)} 
+                                alt={fullName} 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
+                              />
+                            ) : initials}
+                          </div>
                           <div className={styles.alumniInfo}>
                             <div className={styles.alumniName}>{fullName}</div>
                             {person.currentCompany && (

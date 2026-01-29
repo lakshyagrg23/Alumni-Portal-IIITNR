@@ -500,6 +500,157 @@ class EmailService {
       </html>
     `;
   }
+
+  /**
+   * Send new message notification email
+   * @param {string} recipientEmail - Recipient's email address
+   * @param {string} recipientName - Recipient's name
+   * @param {string} senderName - Sender's name
+   * @param {string} messagePreview - Preview text (if available, otherwise generic text)
+   */
+  async sendMessageNotification(recipientEmail, recipientName, senderName) {
+    const messagesUrl = `${process.env.FRONTEND_URL}/messages`;
+
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || "IIIT Naya Raipur Alumni Portal",
+      to: recipientEmail,
+      subject: `New Message from ${senderName} - IIIT NR Alumni Portal`,
+      html: this.getMessageNotificationTemplate(recipientName, senderName, messagesUrl),
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log("✅ Message notification email sent:", info.messageId);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error("❌ Error sending message notification email:", error);
+      // Don't throw - email notification failure shouldn't block message delivery
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * HTML template for message notification
+   */
+  getMessageNotificationTemplate(recipientName, senderName, messagesUrl) {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+          }
+          .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 24px;
+          }
+          .content {
+            padding: 40px 30px;
+            color: #333;
+            line-height: 1.6;
+          }
+          .message-box {
+            background: #f8f9fa;
+            border-left: 4px solid #1e3a8a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+          }
+          .sender-name {
+            font-weight: 700;
+            color: #1e3a8a;
+            font-size: 18px;
+            margin-bottom: 8px;
+          }
+          .message-text {
+            color: #666;
+            font-size: 14px;
+          }
+          .button {
+            display: inline-block;
+            padding: 14px 40px;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white !important;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-weight: 600;
+            transition: transform 0.2s;
+          }
+          .button:hover {
+            transform: translateY(-2px);
+          }
+          .footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+          }
+          .icon {
+            font-size: 48px;
+            text-align: center;
+            margin-bottom: 20px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>💬 New Message</h1>
+          </div>
+          <div class="content">
+            <div class="icon">📨</div>
+            <h2 style="color: #1e3a8a; margin-bottom: 10px;">Hi ${recipientName}!</h2>
+            <p>You have a new message in your IIIT Naya Raipur Alumni Portal inbox.</p>
+            
+            <div class="message-box">
+              <div class="sender-name">From: ${senderName}</div>
+              <div class="message-text">
+                🔒 This message is end-to-end encrypted. Log in to view the full message.
+              </div>
+            </div>
+
+            <p>Click the button below to read your message:</p>
+            <center>
+              <a href="${messagesUrl}" class="button">View Message</a>
+            </center>
+            
+            <p style="margin-top: 30px; font-size: 14px; color: #666;">
+              <strong>Privacy Notice:</strong> Your messages are end-to-end encrypted. 
+              Only you and the sender can read them.
+            </p>
+          </div>
+          <div class="footer">
+            <p>© ${new Date().getFullYear()} IIIT Naya Raipur Alumni Portal</p>
+            <p>This is an automated email. Please do not reply to this message.</p>
+            <p style="margin-top: 10px; font-size: 12px;">
+              To manage your notification preferences, visit your <a href="${process.env.FRONTEND_URL}/profile/settings" style="color: #1e3a8a;">account settings</a>.
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
 }
 
 const emailService = new EmailService();

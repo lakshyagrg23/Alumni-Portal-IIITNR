@@ -2,6 +2,8 @@ import jwt from 'jsonwebtoken';
 import MessageModel from './models/Message.js';
 import PublicKeyModel from './models/PublicKey.js';
 import AlumniProfile from './models/AlumniProfile.js';
+import emailService from './services/emailService.js';
+import { query } from './config/database.js';
 
 /**
  * Socket.io handlers for real-time messaging with minimal E2E support.
@@ -155,6 +157,39 @@ export default function (io) {
 
         // Acknowledge sender
         socket.emit('secure:sent', { clientId, message: enrichedMessage });
+
+        // Send email notification to recipient (async, non-blocking)
+        // Only send if recipient is not currently connected (to avoid spam)
+        try {
+          const recipientSockets = await io.in(`user:${recipient.userId}`).fetchSockets();
+          const recipientIsOnline = recipientSockets.length > 0;
+          
+          if (!recipientIsOnline) {
+            // Fetch recipient's email from users table
+            const userResult = await query('SELECT email FROM users WHERE id = $1', [recipient.userId]);
+            if (userResult.rows && userResult.rows.length > 0) {
+              const recipientEmail = userResult.rows[0].email;
+              const recipientDisplayName = receiverName || 'there';
+              const senderDisplayName = senderName || 'Someone';
+              
+              // Send notification email asynchronously (don't await - fire and forget)
+              emailService.sendMessageNotification(
+                recipientEmail,
+                recipientDisplayName,
+                senderDisplayName
+              ).catch(err => {
+                console.error('Failed to send message notification email:', err);
+              });
+              
+              console.log(`📧 Email notification queued for ${recipientEmail}`);
+            }
+          } else {
+            console.log(`⏭️ Recipient is online, skipping email notification`);
+          }
+        } catch (emailErr) {
+          // Non-fatal - log but don't fail message delivery
+          console.error('Error checking recipient status for email notification:', emailErr);
+        }
       } catch (err) {
         console.error('❌ secure:send error:', err);
         console.error('Error details:', {
