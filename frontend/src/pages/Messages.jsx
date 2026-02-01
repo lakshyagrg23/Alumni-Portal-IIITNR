@@ -760,7 +760,9 @@ const Messages = () => {
       socket.on('secure:receive', () => {
         // small timeout to allow state update to flush
         setTimeout(() => {
-          if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+          if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
+          }
         }, 80)
       })
 
@@ -785,18 +787,74 @@ const Messages = () => {
       })
 
       // Handle message editing
-      socket.on('message:edited', ({ message }) => {
+      socket.on('message:edited', async ({ message }) => {
         console.log('✏️ Message edited:', message.id)
-        setMessages((prev) => prev.map((m) => {
-          if (m.id === message.id) {
-            // Message needs to be re-decrypted
-            return { ...m, needsDecryption: true, encryptedContent: message.content, iv: message.iv, is_edited: true, edited_at: message.edited_at }
+        console.log('✏️ Edited message data:', { 
+          sender_user_id: message.sender_user_id, 
+          receiver_user_id: message.receiver_user_id,
+          currentUserId: user.id 
+        })
+        
+        // Decrypt the new content immediately
+        try {
+          // Determine which user to get the key for
+          // If I sent the message, use receiver's key; if I received it, use sender's key
+          const partnerId = message.sender_user_id === user.id 
+            ? message.receiver_user_id 
+            : message.sender_user_id
+          
+          console.log('✏️ Using partner ID for decryption:', partnerId)
+          
+          let aes = null
+          const cachedKey = conversationKeysRef.current.get(partnerId)
+          
+          if (cachedKey?.aesKey) {
+            console.log('✏️ Using cached key for partner:', partnerId)
+            aes = cachedKey.aesKey
+          } else if (localKeysRef.current) {
+            console.log('✏️ Fetching public key for partner:', partnerId)
+            const res = await axios.get(`${API}/messages/public-key/${partnerId}`, { headers: { Authorization: `Bearer ${token}` }})
+            const theirPub = res.data?.data?.public_key || res.data?.publicKey || res.data?.public_key
+            if (theirPub) {
+              const imported = await crypto.importPublicKey(theirPub)
+              const shared = await crypto.deriveSharedSecret(localKeysRef.current.privateKey, imported)
+              aes = await crypto.deriveAESGCMKey(shared)
+              conversationKeysRef.current.set(partnerId, { aesKey: aes, publicKey: theirPub })
+              console.log('✏️ Derived and cached key for partner:', partnerId)
+            }
           }
-          return m
-        }))
-        // Trigger re-decryption of edited message
-        if (localKeysRef.current && toUserId) {
-          loadConversation(toUserId, localKeysRef.current)
+
+          let newText = 'Encrypted message'
+          if (aes && message.content && message.iv) {
+            try {
+              console.log('✏️ Attempting to decrypt edited message...')
+              const decrypted = await crypto.decryptMessage(aes, message.iv, message.content)
+              const parsed = JSON.parse(decrypted)
+              newText = parsed.text || decrypted
+              console.log('✏️ Successfully decrypted edited message:', newText.substring(0, 50))
+            } catch (err) {
+              console.warn('Failed to decrypt edited message:', err)
+            }
+          } else {
+            console.warn('Missing decryption requirements:', { hasAes: !!aes, hasContent: !!message.content, hasIv: !!message.iv })
+          }
+
+          // Update the message immediately with decrypted content
+          setMessages((prev) => prev.map((m) => {
+            if (m.id === message.id) {
+              return { ...m, text: newText, is_edited: true, edited_at: message.edited_at }
+            }
+            return m
+          }))
+          
+          console.log('✏️ Message UI updated')
+        } catch (err) {
+          console.error('Error processing edited message:', err)
+          // Fallback: reload conversation
+          if (localKeysRef.current && toUserId) {
+            console.log('✏️ Reloading conversation as fallback')
+            loadConversation(toUserId, localKeysRef.current)
+          }
         }
       })
 
@@ -857,6 +915,16 @@ const Messages = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preTo])
+
+  // Auto-scroll to bottom when messages update (for edits, new messages, etc.)
+  useEffect(() => {
+    if (messages.length > 0 && messagesEndRef.current) {
+      // Use requestAnimationFrame to ensure DOM has updated
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
+      })
+    }
+  }, [messages])
 
   const loadConversation = async (otherUserId, kp) => {
     try {
@@ -1211,7 +1279,7 @@ const Messages = () => {
       // Auto-scroll to bottom after sending message
       setTimeout(() => {
         if (messagesEndRef.current) {
-          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
         }
       }, 100)
     } catch (err) {
