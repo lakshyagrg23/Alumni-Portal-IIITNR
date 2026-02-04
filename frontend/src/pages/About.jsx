@@ -234,7 +234,7 @@ const About = () => {
 
                 <div className={styles.developerCard}>
                   <div className={styles.devImage}>
-                    <img src="./developers/TarangVarshney.png" alt="Tarang Varshney" />
+                    <img src="./developers/TarangVarshney.jpeg" alt="Tarang Varshney" />
                   </div>
                   <h3 className={styles.devName}>Tarang Varshney</h3>
                   <p className={styles.devDetails}>B.Tech CSE, 2023-27</p>

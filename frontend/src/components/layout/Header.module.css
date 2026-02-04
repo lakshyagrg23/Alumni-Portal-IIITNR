@@ -19,11 +19,14 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-6);
+  min-height: 70px;
+  overflow: hidden;
 }
 
 /* Logo Section */
 .logo {
   flex-shrink: 0;
+  min-width: 0;
 }
 
 .logoLink {
@@ -76,6 +79,7 @@
   display: none;
   align-items: center;
   gap: var(--spacing-8);
+  flex: 1;
 }
 
 .navLink {
@@ -118,6 +122,9 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-4);
+  flex-shrink: 0;
+  min-width: 0;
+  justify-content: flex-end;
 }
 
 /* Messages Button - Creative Design */
@@ -418,6 +425,8 @@
   border: none;
   cursor: pointer;
   gap: 4px;
+  flex-shrink: 0;
+  /* margin-left: auto; */
 }
 
 .hamburger {
@@ -525,13 +534,78 @@
 
 /* Responsive Design */
 @media (max-width: 767px) {
+  .container {
+    gap: var(--spacing-2);
+    padding: 0 var(--spacing-2);
+  }
+
+  .logo {
+    flex: 0 0 auto;
+  }
+
+  .desktopNav {
+    display: none !important;
+    flex: 0;
+  }
+
+  .userActions {
+    margin-left: auto;
+    gap: var(--spacing-2);
+  }
+
   .logoImage {
-    width: 45px;
-    height: 45px;
+    width: 40px;
+    height: 40px;
   }
   
   .instituteName {
-    font-size: var(--font-size-base);
+    font-size: var(--font-size-sm);
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .portalName {
+    display: none;
+  }
+
+  .messagesButton {
+    padding: var(--spacing-2) var(--spacing-3);
+    font-size: 0;
+  }
+
+  .messagesIcon {
+    font-size: 18px;
+  }
+
+  .messagesText {
+    display: none;
+  }
+
+  .messagesBadge {
+    min-width: 20px;
+    height: 20px;
+    font-size: 10px;
+    padding: 0 5px;
+  }
+
+  .userButton {
+    padding: var(--spacing-1);
+    gap: 0;
+  }
+
+  .userAvatar {
+    width: 28px;
+    height: 28px;
+  }
+
+  .userName {
+    display: none !important;
+  }
+
+  .chevron {
+    display: none;
   }
 }
 
