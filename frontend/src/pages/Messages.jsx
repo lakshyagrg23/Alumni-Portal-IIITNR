@@ -805,11 +805,13 @@ const Messages = () => {
           
           console.log('✏️ Using partner ID for decryption:', partnerId)
           
+          // CRITICAL: Use account-aware cache key to prevent cross-account pollution
           let aes = null
-          const cachedKey = conversationKeysRef.current.get(partnerId)
+          const cacheKey = `${user.id}:${partnerId}`
+          const cachedKey = conversationKeysRef.current.get(cacheKey)
           
           if (cachedKey?.aesKey) {
-            console.log('✏️ Using cached key for partner:', partnerId)
+            console.log('✏️ Using cached key for:', cacheKey)
             aes = cachedKey.aesKey
           } else if (localKeysRef.current) {
             console.log('✏️ Fetching public key for partner:', partnerId)
@@ -819,8 +821,8 @@ const Messages = () => {
               const imported = await crypto.importPublicKey(theirPub)
               const shared = await crypto.deriveSharedSecret(localKeysRef.current.privateKey, imported)
               aes = await crypto.deriveAESGCMKey(shared)
-              conversationKeysRef.current.set(partnerId, { aesKey: aes, publicKey: theirPub })
-              console.log('✏️ Derived and cached key for partner:', partnerId)
+              conversationKeysRef.current.set(cacheKey, { aesKey: aes, publicKey: theirPub })
+              console.log('✏️ Derived and cached key for:', cacheKey)
             }
           }
 
@@ -882,6 +884,13 @@ const Messages = () => {
       return () => {
         try { console.log('[Messages] cleanup: closing socket') } catch {}
         closeSocket()
+        // CRITICAL: Clear all cached keys when user changes to prevent cross-account key pollution
+        // This prevents decryption failures when switching between accounts
+        localKeysRef.current = null
+        aesKeyRef.current = null
+        conversationKeysRef.current.clear()
+        markedReadRef.current.clear()
+        console.log('[Messages] cleanup: cleared all cached encryption keys')
       }
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -935,12 +944,14 @@ const Messages = () => {
       const decoded = []
       
       // Check if we already have a cached key for this conversation
+      // CRITICAL: Use account-aware cache key to prevent cross-account pollution
       let convoAes = null
       let recipientHasKey = false
-      const cachedKey = conversationKeysRef.current.get(otherUserId)
+      const cacheKey = `${user.id}:${otherUserId}`
+      const cachedKey = conversationKeysRef.current.get(cacheKey)
       
       if (cachedKey?.aesKey) {
-        console.log('[Messages] Using cached conversation key for user:', otherUserId)
+        console.log('[Messages] Using cached conversation key for:', cacheKey)
         convoAes = cachedKey.aesKey
         recipientHasKey = true
       } else {
@@ -955,9 +966,9 @@ const Messages = () => {
             convoAes = await crypto.deriveAESGCMKey(shared)
             recipientHasKey = true
             
-            // Cache the key for future use
-            conversationKeysRef.current.set(otherUserId, { aesKey: convoAes, publicKey: partnerPub })
-            console.log('[Messages] Conversation key derived and cached')
+            // Cache the key with user context to prevent cross-account pollution
+            conversationKeysRef.current.set(cacheKey, { aesKey: convoAes, publicKey: partnerPub })
+            console.log('[Messages] Conversation key derived and cached for:', cacheKey)
           }
         } catch (e) {
           // Recipient hasn't generated encryption keys yet
@@ -1220,11 +1231,13 @@ const Messages = () => {
       }
 
       // Check if we have a cached conversation key for this user
+      // CRITICAL: Include current user.id in cache key to prevent cross-account key pollution
       let aes = null
-      const cachedKey = conversationKeysRef.current.get(toUserId)
+      const cacheKey = `${user.id}:${toUserId}` // Cache key includes both participants
+      const cachedKey = conversationKeysRef.current.get(cacheKey)
       
       if (cachedKey?.aesKey) {
-        console.log('✅ Using cached conversation key for user:', toUserId)
+        console.log('✅ Using cached conversation key for:', cacheKey)
         aes = cachedKey.aesKey
       } else {
         // Derive key for the first time and cache it
@@ -1239,15 +1252,19 @@ const Messages = () => {
         const shared = await crypto.deriveSharedSecret(keyPair.privateKey, imported)
         aes = await crypto.deriveAESGCMKey(shared)
         
-        // Cache the key for future messages
-        conversationKeysRef.current.set(toUserId, { aesKey: aes, publicKey: theirPub })
-        console.log('✅ Conversation key cached')
+        // Cache the key with user context to prevent cross-account pollution
+        conversationKeysRef.current.set(cacheKey, { aesKey: aes, publicKey: theirPub })
+        console.log('✅ Conversation key cached for:', cacheKey)
       }
 
       console.log('🔐 Encrypting message...')
       const payloadObject = attachmentMeta ? { file: attachmentMeta, caption: text } : { text }
       const enc = await crypto.encryptMessage(aes, JSON.stringify(payloadObject))
       console.log('✅ Message encrypted')
+
+      // Get sender's public key for snapshot (critical for decryption without DB lookup)
+      const senderPubKeyBase64 = await crypto.exportPublicKey(keyPair.publicKey)
+      console.log('✅ Sender public key exported for snapshot')
 
       // create a client-side id to track pending message
       const clientId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,9)}`
@@ -1256,6 +1273,7 @@ const Messages = () => {
         ciphertext: enc.ciphertext,
         metadata: { iv: enc.iv, ciphertext: enc.ciphertext, messageType: attachmentMeta ? 'file' : 'text', clientId },
         clientId,
+        senderPublicKey: senderPubKeyBase64, // ✅ Include sender's public key for accurate snapshot
       }
 
       console.log('📤 Emitting secure:send...', { toUserId, clientId })
@@ -1471,8 +1489,10 @@ const Messages = () => {
       }
 
       // Get the conversation key
+      // CRITICAL: Use account-aware cache key to prevent cross-account pollution
       let aes = null
-      const cachedKey = conversationKeysRef.current.get(toUserId)
+      const cacheKey = `${user.id}:${toUserId}`
+      const cachedKey = conversationKeysRef.current.get(cacheKey)
       
       if (cachedKey?.aesKey) {
         aes = cachedKey.aesKey
@@ -1486,7 +1506,7 @@ const Messages = () => {
         const imported = await crypto.importPublicKey(theirPub)
         const shared = await crypto.deriveSharedSecret(keyPair.privateKey, imported)
         aes = await crypto.deriveAESGCMKey(shared)
-        conversationKeysRef.current.set(toUserId, { aesKey: aes, publicKey: theirPub })
+        conversationKeysRef.current.set(cacheKey, { aesKey: aes, publicKey: theirPub })
       }
 
       // Encrypt the new text

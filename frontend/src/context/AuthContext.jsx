@@ -246,9 +246,9 @@ export const AuthProvider = ({ children }) => {
           
           console.log('[Login] ✅ Keys generated, public key preview:', publicKey.slice(0, 50))
           
-          // Encrypt private key with email only
-          const encryptionPassword = credentials.email.toLowerCase()
-          console.log('[Login] 🔒 Encrypting private key with password')
+          // Encrypt private key with verified email from backend for consistency
+          const encryptionPassword = (response.user?.email || credentials.email).toLowerCase()
+          console.log('[Login] 🔒 Encrypting private key with verified email')
           const encryptedPrivKey = await crypto.encryptPrivateKeyWithPassword(privateKey, encryptionPassword)
           const encryptedPrivKeyStr = JSON.stringify(encryptedPrivKey)
           
@@ -286,9 +286,13 @@ export const AuthProvider = ({ children }) => {
           console.log('[Login] ✅ New encryption keys generated, uploaded, and stored')
         } else if (keyData.success && keyData.data?.encrypted_private_key && keyData.data?.public_key) {
           console.log('[Login] Keys found on server, decrypting...')
-          // Decrypt using email only
-          const encryptionPassword = credentials.email.toLowerCase()
+          
+          // Use VERIFIED email from backend response (not client input) to ensure consistency
+          const verifiedEmail = response.user?.email || credentials.email
+          const encryptionPassword = verifiedEmail.toLowerCase()
           const encryptedData = JSON.parse(keyData.data.encrypted_private_key)
+          
+          console.log('[Login] Using email for decryption:', encryptionPassword)
           
           try {
             const decryptedPrivKey = await crypto.decryptPrivateKeyWithPassword(
@@ -305,11 +309,11 @@ export const AuthProvider = ({ children }) => {
             sessionStorage.setItem('e2e_priv_jwk', storedPriv)
             sessionStorage.setItem('e2e_pub_raw', storedPub)
             
-            // Store decryption password for future use
+            // Store decryption password for future use (use verified email)
             sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
             localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
             
-            console.log('[Login] ✅ Encryption keys fetched and decrypted during login')
+            console.log('[Login] ✅ Encryption keys fetched and decrypted during login with verified email')
           } catch (decryptErr) {
             console.warn('[Login] ⚠️ Failed to decrypt server key - keys encrypted with old pattern', decryptErr?.message || decryptErr)
             console.log('[Login] 🔄 Generating new encryption keys to replace incompatible ones...')
@@ -328,11 +332,11 @@ export const AuthProvider = ({ children }) => {
               const newPublicKey = await crypto.exportPublicKey(newKeyPair.publicKey)
               const newPrivateKey = await crypto.exportPrivateKey(newKeyPair.privateKey)
               
-              // Encrypt with current email-only pattern
-              const encryptionPassword = credentials.email.toLowerCase()
+              // Encrypt with verified email pattern (same as current password)
+              const newEncryptionPassword = (response.user?.email || credentials.email).toLowerCase()
               const encryptedNewPrivKey = await crypto.encryptPrivateKeyWithPassword(
                 newPrivateKey,
-                encryptionPassword
+                newEncryptionPassword
               )
               
               // Upload new keys to server
@@ -358,8 +362,8 @@ export const AuthProvider = ({ children }) => {
                 localStorage.setItem('e2e_pub_raw', storedPub)
                 sessionStorage.setItem('e2e_priv_jwk', storedPriv)
                 sessionStorage.setItem('e2e_pub_raw', storedPub)
-                sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
-                localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
+                sessionStorage.setItem('e2e_decrypt_pw', newEncryptionPassword)
+                localStorage.setItem('e2e_decrypt_pw', newEncryptionPassword)
                 
                 console.log('[Login] ✅ New encryption keys generated and uploaded successfully')
                 console.log('[Login] ⚠️ Note: Previous encrypted messages cannot be decrypted with new keys')
@@ -377,13 +381,13 @@ export const AuthProvider = ({ children }) => {
         } else {
           // Keys already exist locally, just store the decryption password
           console.log('[Login] Using existing local keys')
-          // Use only email for consistency
-          const decryptPw = credentials.email.toLowerCase()
+          // Use verified email from backend for consistency
+          const decryptPw = (response.user?.email || credentials.email).toLowerCase()
           sessionStorage.setItem('e2e_decrypt_pw', decryptPw)
           localStorage.setItem('e2e_decrypt_pw', decryptPw)
           sessionStorage.setItem('e2e_priv_jwk', storedPriv)
           sessionStorage.setItem('e2e_pub_raw', storedPub)
-          console.log('✅ Using existing local encryption keys')
+          console.log('✅ Using existing local encryption keys with verified email')
         }
       } catch (keyErr) {
         console.error('❌ Failed to fetch/decrypt encryption keys during login:', keyErr)

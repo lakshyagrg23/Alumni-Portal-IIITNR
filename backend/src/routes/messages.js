@@ -252,11 +252,19 @@ router.post("/send", authenticate, async (req, res) => {
       });
     }
 
+    // Get public key snapshots
+    // CRITICAL: Accept sender's public key from client if provided (for cases where key not yet uploaded to server)
+    const senderPublicKey = req.body.senderPublicKey || null;
+    const receiverPublicKeyRecord = await PublicKey.findByUserId(receiverAlumni.user_id);
+    const receiverPublicKey = receiverPublicKeyRecord?.public_key || null;
+
     const record = await Message.create({ 
       sender_id: senderAlumni.id, 
       receiver_id: receiverAlumni.id, 
       content, 
-      message_type: messageType 
+      message_type: messageType,
+      sender_public_key: senderPublicKey,
+      receiver_public_key: receiverPublicKey
     });
 
     res.status(201).json({
@@ -460,11 +468,19 @@ router.post("/conversation/:userId/start", authenticate, async (req, res) => {
     
     // Create initial message if provided
     if (initialMessage) {
+      // Get public key snapshots
+      // Accept sender's public key from client if provided (critical for decryption)
+      const senderPublicKey = req.body.senderPublicKey || null;
+      const receiverPublicKeyRecord = await PublicKey.findByUserId(receiverAlumni.user_id);
+      const receiverPublicKey = receiverPublicKeyRecord?.public_key || null;
+
       await Message.create({ 
         sender_id: senderAlumni.id, 
         receiver_id: receiverAlumni.id, 
         content: initialMessage, 
-        message_type: 'text' 
+        message_type: 'text',
+        sender_public_key: senderPublicKey,
+        receiver_public_key: receiverPublicKey
       });
     }
     
