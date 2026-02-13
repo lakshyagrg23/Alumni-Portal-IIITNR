@@ -4,6 +4,7 @@ import User from "../models/User.js";
 import bcrypt from "bcryptjs"; // kept for potential future use (password validation etc.)
 import jwt from "jsonwebtoken";
 import axios from "axios";
+import { OAuth2Client } from "google-auth-library";
 import { authenticate } from "../models/middleware/auth.js";
 import { query } from "../config/database.js";
 import emailService from "../services/emailService.js";
@@ -728,17 +729,48 @@ router.post("/resend-verification", async (req, res) => {
  */
 /**
  * @route   POST /api/auth/google
- * @desc    Google OAuth login/registration (supports both institute and personal email paths)
+ * @desc    Google OAuth login/registration (SECURE - verifies token with Google)
  * @access  Public
  */
 router.post("/google", async (req, res) => {
   try {
-    const { email, googleId, name, verificationToken, registrationPath, isLoginAttempt } =
-      req.body;
-    if (!email || !googleId) {
+    const { credential, verificationToken, registrationPath, isLoginAttempt } = req.body;
+    
+    // SECURITY: credential must be the raw Google JWT token, not decoded data
+    if (!credential) {
       return res.status(400).json({
         success: false,
-        message: "Google login failed: missing email or googleId.",
+        message: "Google login failed: missing credential token.",
+      });
+    }
+
+    // SECURITY FIX: Verify the Google token with Google's servers
+    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    let ticket;
+    try {
+      ticket = await client.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+    } catch (verifyError) {
+      console.error("Google token verification failed:", verifyError);
+      return res.status(401).json({
+        success: false,
+        message: "Invalid Google token. Authentication failed.",
+      });
+    }
+
+    // Extract verified payload from Google (now we can trust this data)
+    const payload = ticket.getPayload();
+    const email = payload.email;
+    const googleId = payload.sub;
+    const name = payload.name;
+    
+    // Verify email is verified by Google
+    if (!payload.email_verified) {
+      return res.status(401).json({
+        success: false,
+        message: "Google email not verified.",
       });
     }
 
@@ -884,10 +916,19 @@ router.post("/google", async (req, res) => {
 
 /**
  * @route   POST /api/auth/linkedin
- * @desc    LinkedIn OAuth login
+ * @desc    LinkedIn OAuth login - DISABLED FOR SECURITY
  * @access  Public
+ * @note    Temporarily disabled until proper LinkedIn token verification is implemented
  */
 router.post("/linkedin", async (req, res) => {
+  // SECURITY: LinkedIn OAuth temporarily disabled - same vulnerability as Google OAuth
+  // Requires proper token verification implementation before re-enabling
+  return res.status(503).json({
+    success: false,
+    message: "LinkedIn authentication is temporarily unavailable. Please use Google OAuth or email/password login.",
+  });
+  
+  /* DISABLED CODE - DO NOT USE UNTIL TOKEN VERIFICATION IS IMPLEMENTED
   try {
     const { email, linkedinId, name, verificationToken, registrationPath, isLoginAttempt } =
       req.body;
@@ -1035,6 +1076,7 @@ router.post("/linkedin", async (req, res) => {
       message: "Server error. Please try again.",
     });
   }
+  */ // END OF DISABLED CODE
 });
 
 /**

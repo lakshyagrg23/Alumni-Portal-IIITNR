@@ -554,7 +554,9 @@ export const AuthProvider = ({ children }) => {
       })
 
       // Handle encryption keys for OAuth users
-      if (googleData?.email && googleData?.googleId) {
+      // Use email from verified backend response, not from client-provided data
+      const userEmail = response.user?.email;
+      if (userEmail) {
         try {
           const crypto = await import('../utils/crypto.js')
           const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
@@ -576,8 +578,8 @@ export const AuthProvider = ({ children }) => {
               // Keys exist on server - decrypt them
               console.log('[Google OAuth] Keys found on server, decrypting...')
               
-              // Use only email for encryption/decryption (works across all auth methods)
-              const encryptionPassword = googleData.email.toLowerCase()
+              // Use verified email from backend for encryption/decryption
+              const encryptionPassword = userEmail.toLowerCase()
               
               try {
                 const encPrivKeyObj = JSON.parse(keyData.data.encryptedPrivateKey)
@@ -605,7 +607,7 @@ export const AuthProvider = ({ children }) => {
               const publicKey = await crypto.exportPublicKey(keyPair.publicKey)
               const privateKey = await crypto.exportPrivateKey(keyPair.privateKey)
               
-              const encryptionPassword = googleData.email.toLowerCase()
+              const encryptionPassword = userEmail.toLowerCase()
               const encryptedPrivKey = await crypto.encryptPrivateKeyWithPassword(privateKey, encryptionPassword)
               const encryptedPrivKeyStr = JSON.stringify(encryptedPrivKey)
               
@@ -630,7 +632,7 @@ export const AuthProvider = ({ children }) => {
           } else {
             // Keys already in localStorage
             console.log('[Google OAuth] Using existing local keys')
-            const encryptionPassword = googleData.email.toLowerCase()
+            const encryptionPassword = userEmail.toLowerCase()
             sessionStorage.setItem('e2e_decrypt_pw', encryptionPassword)
             localStorage.setItem('e2e_decrypt_pw', encryptionPassword)
             sessionStorage.setItem('e2e_priv_jwk', storedPriv)
