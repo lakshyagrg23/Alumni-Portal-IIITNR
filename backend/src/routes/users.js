@@ -1,15 +1,15 @@
 import express from "express";
 const router = express.Router();
 import User from "../models/User.js";
+import { authenticate, requireAdminAuth } from "../models/middleware/auth.js";
 
 /**
  * @route   GET /api/users
  * @desc    Get all users (Admin only)
  * @access  Private/Admin
  */
-router.get("/", async (req, res) => {
+router.get("/", requireAdminAuth, async (req, res) => {
   try {
-    // This will need admin authentication middleware
     const users = await User.findAll({
       orderBy: "created_at",
       orderDirection: "DESC",
@@ -31,12 +31,24 @@ router.get("/", async (req, res) => {
 
 /**
  * @route   GET /api/users/:id
- * @desc    Get user by ID
+ * @desc    Get user by ID (Own profile or Admin)
  * @access  Private
  */
-router.get("/:id", async (req, res) => {
+router.get("/:id", authenticate, async (req, res) => {
   try {
     const { id } = req.params;
+
+    // IDOR Protection: Check if user is accessing their own data or is admin
+    const requestedUserId = id.toString();
+    const isOwnData = req.user.id.toString() === requestedUserId;
+    const isAdmin = req.user.role === 'admin' || req.user.role === 'superadmin';
+
+    if (!isOwnData && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. You can only view your own profile.",
+      });
+    }
 
     const user = await User.findById(id);
     if (!user) {
@@ -61,19 +73,39 @@ router.get("/:id", async (req, res) => {
 
 /**
  * @route   PUT /api/users/:id
- * @desc    Update user
+ * @desc    Update user (Own profile or Admin)
  * @access  Private
  */
-router.put("/:id", async (req, res) => {
+router.put("/:id", authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
+
+    // IDOR Protection: Check if user is accessing their own data or is admin
+    const requestedUserId = id.toString();
+    const isOwnData = req.user.id.toString() === requestedUserId;
+    const isAdmin = req.user.role === 'admin' || req.user.role === 'superadmin';
+
+    if (!isOwnData && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. You can only update your own profile.",
+      });
+    }
 
     // Remove sensitive fields that shouldn't be updated via this route
     delete updateData.password_hash;
     delete updateData.provider_id;
     delete updateData.email_verification_token;
     delete updateData.password_reset_token;
+
+    // Non-admin users cannot modify privilege fields
+    if (!isAdmin) {
+      delete updateData.role;
+      delete updateData.is_approved;
+      delete updateData.is_active;
+      delete updateData.email_verified;
+    }
 
     const updatedUser = await User.update(id, updateData);
 
@@ -103,7 +135,7 @@ router.put("/:id", async (req, res) => {
  * @desc    Delete user (Admin only)
  * @access  Private/Admin
  */
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAdminAuth, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -134,7 +166,7 @@ router.delete("/:id", async (req, res) => {
  * @desc    Approve user (Admin only)
  * @access  Private/Admin
  */
-router.put("/:id/approve", async (req, res) => {
+router.put("/:id/approve", requireAdminAuth, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -166,7 +198,7 @@ router.put("/:id/approve", async (req, res) => {
  * @desc    Deactivate user (Admin only)
  * @access  Private/Admin
  */
-router.put("/:id/deactivate", async (req, res) => {
+router.put("/:id/deactivate", requireAdminAuth, async (req, res) => {
   try {
     const { id } = req.params;
 
