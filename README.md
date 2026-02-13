@@ -52,7 +52,6 @@ A production-ready alumni portal for IIIT Naya Raipur featuring real-time commun
 ## 📊 Architecture Highlights
 
 - **Monorepo Structure** - Organized workspace with frontend/backend separation
-- **17-Table Database Schema** - Normalized design with foreign key constraints
 - **RESTful API** - 11 route modules with modular architecture
 - **Real-time Layer** - WebSocket integration for instant updates
 - **Security-First Design** - Multiple layers of protection and validation
