@@ -361,11 +361,14 @@
   transition: all 0.3s ease;
   box-shadow: var(--msg-shadow-sm);
   flex-shrink: 0;
+  position: relative;
+  z-index: 20;
 }
 
 .showSidebarBtn:hover {
   transform: translateY(-2px);
   box-shadow: var(--msg-shadow-md);
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
 }
 
 .avatar {
@@ -1456,14 +1459,18 @@
   .showSidebarBtn {
     min-width: 44px;
     min-height: 44px;
-    display: flex;
+    display: flex !important;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
+    z-index: 30;
+    position: relative;
   }
   
   .chatHeader {
     padding: 1rem 1.25rem;
     min-height: 76px;
+    gap: 1rem;
   }
   
   .chatTitle {

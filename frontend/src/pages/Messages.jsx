@@ -2226,8 +2226,13 @@ const Messages = () => {
           {(!isMobile || !showSidebar) && (
           <section className={styles.chatShell} aria-label="Chat conversation">
             <header className={styles.chatHeader}>
-              {!showSidebar && (
-                <button onClick={() => setShowSidebar(true)} className={styles.showSidebarBtn} title="Show conversations">
+              {(isMobile && !showSidebar) && (
+                <button 
+                  onClick={() => setShowSidebar(true)} 
+                  className={styles.showSidebarBtn} 
+                  title="Show conversations"
+                  aria-label="Show conversations"
+                >
                   <BiMessageRounded size={24} />
                 </button>
               )}  

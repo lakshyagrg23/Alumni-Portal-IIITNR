@@ -533,6 +533,46 @@
   .instituteName {
     font-size: var(--font-size-base);
   }
+  
+  .portalName {
+    display: none;
+  }
+  
+  /* Ensure Messages button is visible on mobile */
+  .messagesButton {
+    padding: var(--spacing-2) var(--spacing-3);
+    gap: var(--spacing-1);
+    min-width: auto;
+    white-space: nowrap;
+  }
+  
+  .messagesText {
+    display: none;
+  }
+  
+  .messagesIcon {
+    font-size: 22px;
+    animation: none; /* Disable bounce animation on mobile to save performance */
+  }
+  
+  .messagesBadge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    font-size: 10px;
+    padding: 0 4px;
+  }
+  
+  .userActions {
+    gap: var(--spacing-2);
+  }
+  
+  .userAvatar {
+    width: 28px;
+    height: 28px;
+  }
 }
 
 @media (min-width: 768px) {
