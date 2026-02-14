@@ -101,10 +101,11 @@ const RegisterInstituteEmail = () => {
     try {
       setLoading(true);
 
-      // Decode JWT to get email
+      // SECURITY FIX: Decode JWT only for client-side validation
+      // Backend will verify the token with Google's servers
       const decoded = JSON.parse(atob(credentialResponse.credential.split('.')[1]));
       
-      // Check if it's institute email
+      // Client-side check if it's institute email (backend will verify again)
       if (!decoded.email.toLowerCase().endsWith('@iiitnr.edu.in') && 
           !decoded.email.toLowerCase().endsWith('@iiitnr.ac.in')) {
         setErrors({
@@ -114,11 +115,9 @@ const RegisterInstituteEmail = () => {
         return;
       }
 
-      // Use auth context login so state & token are set consistently
+      // Send raw credential token to backend for verification
       const response = await loginWithGoogle({
-        email: decoded.email,
-        googleId: decoded.sub,
-        name: decoded.name,
+        credential: credentialResponse.credential, // Raw Google JWT token
         registrationPath: 'institute_email', // Indicate this is from institute email registration
       });
 

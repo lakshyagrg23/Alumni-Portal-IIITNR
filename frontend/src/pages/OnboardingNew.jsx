@@ -367,10 +367,10 @@ const OnboardingNew = () => {
   const validateForm = () => {
     const newErrors = {}
 
-    // Profile picture
-    if (!instituteData.profilePicture) {
-      newErrors.profilePicture = 'Profile picture is required'
-    }
+    // Profile picture is now OPTIONAL - users can upload later
+    // if (!instituteData.profilePicture) {
+    //   newErrors.profilePicture = 'Profile picture is required'
+    // }
 
     // Professional interests
     if (formData.professionalInterests.length < 1) {
@@ -380,10 +380,8 @@ const OnboardingNew = () => {
       newErrors.professionalInterests = 'Please select at most 7 professional interests'
     }
 
-    // LinkedIn URL
-    if (!formData.linkedinUrl.trim()) {
-      newErrors.linkedinUrl = 'LinkedIn profile URL is required'
-    } else if (!formData.linkedinUrl.includes('linkedin.com')) {
+    // LinkedIn URL (optional but validate format if provided)
+    if (formData.linkedinUrl.trim() && !formData.linkedinUrl.includes('linkedin.com')) {
       newErrors.linkedinUrl = 'Please enter a valid LinkedIn URL'
     }
 
@@ -538,7 +536,6 @@ const OnboardingNew = () => {
             <div className={styles.section}>
               <div className={styles.sectionHeader}>
                 <h3>Profile Picture</h3>
-                <span className={styles.required}>*</span>
               </div>
               <p className={styles.helpText}>Upload a clear photo of yourself</p>
               
@@ -753,7 +750,6 @@ const OnboardingNew = () => {
             <div className={styles.section}>
               <div className={styles.sectionHeader}>
                 <h3>LinkedIn Profile</h3>
-                <span className={styles.required}>*</span>
               </div>
               <p className={styles.helpText}>Your professional networking profile</p>
               

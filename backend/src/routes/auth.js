@@ -4,6 +4,7 @@ import User from "../models/User.js";
 import bcrypt from "bcryptjs"; // kept for potential future use (password validation etc.)
 import jwt from "jsonwebtoken";
 import axios from "axios";
+import { OAuth2Client } from "google-auth-library";
 import { authenticate } from "../models/middleware/auth.js";
 import { query } from "../config/database.js";
 import emailService from "../services/emailService.js";
@@ -90,7 +91,7 @@ router.post("/register", async (req, res) => {
         email,
         verificationToken,
         // Use email prefix if name not available
-        email.split("@")[0]
+        email.split("@")[0],
       );
     } catch (emailError) {
       console.error("Error sending verification email:", emailError);
@@ -156,7 +157,7 @@ router.post("/verify-identity", async (req, res) => {
        WHERE roll_number = $1 
        AND date_of_birth = $2 
        AND is_active = true`,
-      [roll_number.trim(), date_of_birth]
+      [roll_number.trim(), date_of_birth],
     );
 
     if (result.rows.length === 0) {
@@ -196,7 +197,7 @@ router.post("/verify-identity", async (req, res) => {
         type: "identity_verification",
       },
       process.env.JWT_SECRET,
-      { expiresIn: "30m" }
+      { expiresIn: "30m" },
     );
 
     res.json({
@@ -312,7 +313,7 @@ router.post("/register/institute-email", async (req, res) => {
       await emailService.sendVerificationEmail(
         email,
         verificationToken,
-        email.split("@")[0]
+        email.split("@")[0],
       );
     } catch (emailError) {
       console.error("Error sending verification email:", emailError);
@@ -411,7 +412,7 @@ router.post("/register/personal-email", async (req, res) => {
     // Check if someone already registered with this institute record
     const existingRecord = await query(
       "SELECT id FROM users WHERE institute_record_id = $1",
-      [tokenData.instituteRecordId]
+      [tokenData.instituteRecordId],
     );
 
     if (existingRecord.rows.length > 0) {
@@ -439,7 +440,7 @@ router.post("/register/personal-email", async (req, res) => {
 
     // Generate verification token
     const emailVerificationToken = await User.generateVerificationToken(
-      user.id
+      user.id,
     );
 
     // Send verification email
@@ -447,7 +448,7 @@ router.post("/register/personal-email", async (req, res) => {
       await emailService.sendVerificationEmail(
         email,
         emailVerificationToken,
-        tokenData.fullName
+        tokenData.fullName,
       );
     } catch (emailError) {
       console.error("Error sending verification email:", emailError);
@@ -527,7 +528,7 @@ router.post("/login", async (req, res) => {
     // Verify password
     const isValidPassword = await User.verifyPassword(
       password,
-      user.password_hash
+      user.password_hash,
     );
     if (!isValidPassword) {
       return res.status(401).json({
@@ -540,7 +541,7 @@ router.post("/login", async (req, res) => {
     const token = jwt.sign(
       { userId: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" },
     );
 
     // Determine if alumni profile exists (only for non-admin users)
@@ -549,7 +550,7 @@ router.post("/login", async (req, res) => {
       try {
         const result = await query(
           "SELECT 1 FROM alumni_profiles WHERE user_id = $1 LIMIT 1",
-          [user.id]
+          [user.id],
         );
         hasAlumniProfile = result.rows.length > 0;
       } catch (e) {
@@ -599,7 +600,7 @@ router.get("/verify-email", async (req, res) => {
     console.log("📧 Email verification attempt");
     console.log(
       "Token received:",
-      token ? `${token.substring(0, 10)}...` : "MISSING"
+      token ? `${token.substring(0, 10)}...` : "MISSING",
     );
 
     if (!token) {
@@ -640,7 +641,7 @@ router.get("/verify-email", async (req, res) => {
     try {
       const check = await query(
         "SELECT 1 FROM alumni_profiles WHERE user_id = $1 LIMIT 1",
-        [user.id]
+        [user.id],
       );
       hasAlumniProfile = check.rows.length > 0;
     } catch (e) {
@@ -705,7 +706,7 @@ router.post("/resend-verification", async (req, res) => {
     await emailService.sendVerificationEmail(
       email,
       verificationToken,
-      email.split("@")[0] // Use email prefix as name
+      email.split("@")[0], // Use email prefix as name
     );
 
     res.json({
@@ -728,17 +729,49 @@ router.post("/resend-verification", async (req, res) => {
  */
 /**
  * @route   POST /api/auth/google
- * @desc    Google OAuth login/registration (supports both institute and personal email paths)
+ * @desc    Google OAuth login/registration (SECURE - verifies token with Google)
  * @access  Public
  */
 router.post("/google", async (req, res) => {
   try {
-    const { email, googleId, name, verificationToken, registrationPath, isLoginAttempt } =
+    const { credential, verificationToken, registrationPath, isLoginAttempt } =
       req.body;
-    if (!email || !googleId) {
+
+    // SECURITY: credential must be the raw Google JWT token, not decoded data
+    if (!credential) {
       return res.status(400).json({
         success: false,
-        message: "Google login failed: missing email or googleId.",
+        message: "Google login failed: missing credential token.",
+      });
+    }
+
+    // SECURITY FIX: Verify the Google token with Google's servers
+    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    let ticket;
+    try {
+      ticket = await client.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+    } catch (verifyError) {
+      console.error("Google token verification failed:", verifyError);
+      return res.status(401).json({
+        success: false,
+        message: "Invalid Google token. Authentication failed.",
+      });
+    }
+
+    // Extract verified payload from Google (now we can trust this data)
+    const payload = ticket.getPayload();
+    const email = payload.email;
+    const googleId = payload.sub;
+    const name = payload.name;
+
+    // Verify email is verified by Google
+    if (!payload.email_verified) {
+      return res.status(401).json({
+        success: false,
+        message: "Google email not verified.",
       });
     }
 
@@ -770,7 +803,7 @@ router.post("/google", async (req, res) => {
           requiresRegistration: true,
         });
       }
-      
+
       // Determine registration path based on email domain or verification token
       const emailLower = email.toLowerCase();
       const isInstituteEmail =
@@ -785,7 +818,7 @@ router.post("/google", async (req, res) => {
         try {
           const tokenData = jwt.verify(
             verificationToken,
-            process.env.JWT_SECRET
+            process.env.JWT_SECRET,
           );
           if (tokenData.type === "identity_verification") {
             registrationPath = "personal_email";
@@ -794,7 +827,7 @@ router.post("/google", async (req, res) => {
             // Check if someone already registered with this institute record
             const existingRecord = await query(
               "SELECT id FROM users WHERE institute_record_id = $1",
-              [instituteRecordId]
+              [instituteRecordId],
             );
 
             if (existingRecord.rows.length > 0) {
@@ -835,7 +868,7 @@ router.post("/google", async (req, res) => {
     try {
       const check = await query(
         "SELECT 1 FROM alumni_profiles WHERE user_id = $1 LIMIT 1",
-        [user.id]
+        [user.id],
       );
       hasAlumniProfile = check.rows.length > 0;
     } catch (e) {
@@ -846,7 +879,7 @@ router.post("/google", async (req, res) => {
     const token = jwt.sign(
       { userId: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" },
     );
 
     // Build user response based on role
@@ -884,10 +917,20 @@ router.post("/google", async (req, res) => {
 
 /**
  * @route   POST /api/auth/linkedin
- * @desc    LinkedIn OAuth login
+ * @desc    LinkedIn OAuth login - DISABLED FOR SECURITY
  * @access  Public
+ * @note    Temporarily disabled until proper LinkedIn token verification is implemented
  */
 router.post("/linkedin", async (req, res) => {
+  // SECURITY: LinkedIn OAuth temporarily disabled - same vulnerability as Google OAuth
+  // Requires proper token verification implementation before re-enabling
+  return res.status(503).json({
+    success: false,
+    message:
+      "LinkedIn authentication is temporarily unavailable. Please use Google OAuth or email/password login.",
+  });
+
+  /* DISABLED CODE - DO NOT USE UNTIL TOKEN VERIFICATION IS IMPLEMENTED
   try {
     const { email, linkedinId, name, verificationToken, registrationPath, isLoginAttempt } =
       req.body;
@@ -1035,6 +1078,7 @@ router.post("/linkedin", async (req, res) => {
       message: "Server error. Please try again.",
     });
   }
+  */ // END OF DISABLED CODE
 });
 
 /**
@@ -1079,7 +1123,7 @@ router.post("/linkedin/callback", async (req, res) => {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
-      }
+      },
     );
 
     const accessToken = tokenResponse.data.access_token;
@@ -1091,7 +1135,7 @@ router.post("/linkedin/callback", async (req, res) => {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
 
     const userinfo = userinfoResponse.data;
@@ -1114,7 +1158,7 @@ router.post("/linkedin/callback", async (req, res) => {
   } catch (error) {
     console.error(
       "LinkedIn callback error:",
-      error.response?.data || error.message
+      error.response?.data || error.message,
     );
     res.status(500).json({
       success: false,
@@ -1152,7 +1196,7 @@ router.get("/me", authenticate, async (req, res) => {
       try {
         const result = await query(
           "SELECT 1 FROM alumni_profiles WHERE user_id = $1 LIMIT 1",
-          [user.id]
+          [user.id],
         );
         hasAlumniProfile = result.rows.length > 0;
       } catch (e) {
@@ -1210,7 +1254,7 @@ router.get("/profile", authenticate, async (req, res) => {
     try {
       const result = await query(
         "SELECT * FROM alumni_profiles WHERE user_id = $1",
-        [userId]
+        [userId],
       );
       if (result.rows.length > 0) {
         alumniProfile = AlumniProfile.convertFromDbFormat(result.rows[0]);
@@ -1225,7 +1269,7 @@ router.get("/profile", authenticate, async (req, res) => {
 
         if (isIncompleteProfile) {
           console.log(
-            "[Profile] Alumni profile exists but is incomplete, will fetch institute data"
+            "[Profile] Alumni profile exists but is incomplete, will fetch institute data",
           );
         }
       }
@@ -1250,11 +1294,11 @@ router.get("/profile", authenticate, async (req, res) => {
         if (user.institute_record_id) {
           console.log(
             "[Profile] Fetching institute record with ID:",
-            user.institute_record_id
+            user.institute_record_id,
           );
           const instituteResult = await query(
             "SELECT * FROM institute_records WHERE id = $1 AND is_active = true",
-            [user.institute_record_id]
+            [user.institute_record_id],
           );
           if (instituteResult.rows.length > 0) {
             const record = instituteResult.rows[0];
@@ -1290,14 +1334,14 @@ router.get("/profile", authenticate, async (req, res) => {
           } else {
             console.log(
               "[Profile] No institute record found with ID:",
-              user.institute_record_id
+              user.institute_record_id,
             );
           }
         } else {
           // Fallback: Try matching by email (for institute email users)
           const instituteResult = await query(
             "SELECT * FROM institute_records WHERE LOWER(institute_email) = LOWER($1) AND is_active = true",
-            [user.email]
+            [user.email],
           );
           if (instituteResult.rows.length > 0) {
             const record = instituteResult.rows[0];
@@ -1444,12 +1488,12 @@ router.get("/onboarding-data", authenticate, async (req, res) => {
     if (user.institute_record_id) {
       console.log(
         "📝 Fetching institute record by ID:",
-        user.institute_record_id
+        user.institute_record_id,
       );
       try {
         const recordResult = await query(
           "SELECT * FROM institute_records WHERE id = $1",
-          [user.institute_record_id]
+          [user.institute_record_id],
         );
 
         console.log("📊 Institute records query result:", {
@@ -1506,7 +1550,7 @@ router.get("/onboarding-data", authenticate, async (req, res) => {
         } else {
           console.log(
             "⚠️ No institute record found for ID:",
-            user.institute_record_id
+            user.institute_record_id,
           );
         }
       } catch (error) {
@@ -1518,7 +1562,7 @@ router.get("/onboarding-data", authenticate, async (req, res) => {
       try {
         const recordResult = await query(
           "SELECT * FROM institute_records WHERE LOWER(institute_email) = LOWER($1) AND is_active = true",
-          [user.email]
+          [user.email],
         );
 
         console.log("📊 Institute records query result (by email):", {
@@ -1573,7 +1617,7 @@ router.get("/onboarding-data", authenticate, async (req, res) => {
 
           console.log(
             "✅ Pre-fill data prepared from institute email:",
-            preFillData
+            preFillData,
           );
         } else {
           console.log("⚠️ No institute record found for email:", user.email);
@@ -1583,7 +1627,7 @@ router.get("/onboarding-data", authenticate, async (req, res) => {
       }
     } else {
       console.log(
-        "ℹ️ No institute_record_id and not institute_email path - using default data"
+        "ℹ️ No institute_record_id and not institute_email path - using default data",
       );
     }
 
@@ -1688,9 +1732,7 @@ router.put("/profile", authenticate, async (req, res) => {
       "hometownState",
       "bio",
       "interests",
-      "showContactInfo",
-      "showWorkInfo",
-      "showAcademicInfo",
+      // Deprecated: "showContactInfo", "showWorkInfo", "showAcademicInfo" (columns removed in migration)
       "higherStudyInstitution",
       "higherStudyProgram",
       "higherStudyField",
@@ -1779,21 +1821,21 @@ router.put("/profile", authenticate, async (req, res) => {
       // Check if alumni profile exists
       const existingProfile = await query(
         "SELECT id FROM alumni_profiles WHERE user_id = $1",
-        [userId]
+        [userId],
       );
 
       if (existingProfile.rows.length > 0) {
         // Update existing profile using the model
         console.log(
           "Updating existing profile with ID:",
-          existingProfile.rows[0].id
+          existingProfile.rows[0].id,
         );
         const { default: AlumniProfile } = await import(
           "../models/AlumniProfile.js"
         );
         await AlumniProfile.update(
           existingProfile.rows[0].id,
-          normalizedAlumniData
+          normalizedAlumniData,
         );
         console.log("Profile updated successfully");
       } else {
@@ -1812,7 +1854,7 @@ router.put("/profile", authenticate, async (req, res) => {
     const updatedUser = await User.findById(userId);
     const profileResult = await query(
       "SELECT * FROM alumni_profiles WHERE user_id = $1",
-      [userId]
+      [userId],
     );
 
     let alumniProfile = profileResult.rows[0] || null;
@@ -1872,7 +1914,7 @@ router.post("/complete-onboarding", authenticate, async (req, res) => {
       `SELECT first_name, last_name, graduation_year 
        FROM alumni_profiles 
        WHERE user_id = $1`,
-      [userId]
+      [userId],
     );
 
     if (profileCheck.rows.length === 0) {
@@ -1905,7 +1947,7 @@ router.post("/complete-onboarding", authenticate, async (req, res) => {
     // Send personal email verification in background if personal email exists and not verified
     const userWithEmail = await query(
       "SELECT email, email_verified FROM users WHERE id = $1",
-      [userId]
+      [userId],
     );
 
     if (
@@ -1923,13 +1965,13 @@ router.post("/complete-onboarding", authenticate, async (req, res) => {
          SET email_verification_token = $1,
              email_verification_token_expires = $2
          WHERE id = $3`,
-        [verificationToken, tokenExpiry, userId]
+        [verificationToken, tokenExpiry, userId],
       );
 
       // Send verification email (don't wait for it, run in background)
       const profileResult = await query(
         "SELECT first_name FROM alumni_profiles WHERE user_id = $1",
-        [userId]
+        [userId],
       );
       const firstName = profileResult.rows[0]?.first_name || "there";
 
@@ -1937,12 +1979,12 @@ router.post("/complete-onboarding", authenticate, async (req, res) => {
         .sendPersonalEmailVerification(
           userWithEmail.rows[0].email,
           verificationToken,
-          firstName
+          firstName,
         )
         .catch((err) => console.error("Background email error:", err));
 
       console.log(
-        `✅ Background verification email queued for: ${userWithEmail.rows[0].email}`
+        `✅ Background verification email queued for: ${userWithEmail.rows[0].email}`,
       );
     }
 
@@ -2029,7 +2071,7 @@ router.post("/forgot-password", async (req, res) => {
     const resetToken = jwt.sign(
       { userId: user.id, email: user.email },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "1h" },
     );
 
     // Calculate expiration time (1 hour from now)
@@ -2042,7 +2084,7 @@ router.post("/forgot-password", async (req, res) => {
            password_reset_token_expires = $2,
            password_reset_expires = $2
        WHERE id = $3`,
-      [resetToken, expiresAt, user.id]
+      [resetToken, expiresAt, user.id],
     );
 
     // Send password reset email
@@ -2063,7 +2105,7 @@ router.post("/forgot-password", async (req, res) => {
         user.email,
         resetToken,
         user.first_name || user.email.split("@")[0],
-        frontendBaseUrl
+        frontendBaseUrl,
       );
 
       console.log(`✅ Password reset email sent to: ${user.email}`);
@@ -2097,7 +2139,7 @@ const findUserByResetToken = async (token, decodedUserId = null) => {
       `SELECT id, email, first_name, password_reset_token, password_reset_token_expires, password_reset_expires 
        FROM users 
        WHERE id = $1 AND password_reset_token = $2`,
-      [decodedUserId, token]
+      [decodedUserId, token],
     );
     if (byId.rows.length > 0) return byId.rows[0];
   }
@@ -2107,7 +2149,7 @@ const findUserByResetToken = async (token, decodedUserId = null) => {
     `SELECT id, email, first_name, password_reset_token, password_reset_token_expires, password_reset_expires 
      FROM users 
      WHERE password_reset_token = $1`,
-    [token]
+    [token],
   );
   return fallback.rows[0] || null;
 };
@@ -2230,7 +2272,7 @@ router.post("/reset-password", async (req, res) => {
            password_reset_token_expires = NULL,
            password_reset_expires = NULL
        WHERE id = $2`,
-      [hashedPassword, user.id]
+      [hashedPassword, user.id],
     );
 
     console.log(`✅ Password reset successful for user: ${user.email}`);
@@ -2289,13 +2331,13 @@ router.post(
        SET personal_email_verification_token = $1,
            personal_email_verification_token_expires = $2
        WHERE id = $3`,
-        [verificationToken, tokenExpiry, userId]
+        [verificationToken, tokenExpiry, userId],
       );
 
       // Get user's name for email
       const profileResult = await query(
         "SELECT first_name FROM alumni_profiles WHERE user_id = $1",
-        [userId]
+        [userId],
       );
       const firstName = profileResult.rows[0]?.first_name || "there";
 
@@ -2303,11 +2345,11 @@ router.post(
       await emailService.sendPersonalEmailVerification(
         user.personal_email,
         verificationToken,
-        firstName
+        firstName,
       );
 
       console.log(
-        `✅ Personal email verification sent to: ${user.personal_email}`
+        `✅ Personal email verification sent to: ${user.personal_email}`,
       );
 
       res.json({
@@ -2322,7 +2364,7 @@ router.post(
         message: "Failed to send verification email. Please try again later.",
       });
     }
-  }
+  },
 );
 
 /**
@@ -2346,7 +2388,7 @@ router.get("/verify-personal-email/:token", async (req, res) => {
       `SELECT id, personal_email, personal_email_verification_token_expires 
        FROM users 
        WHERE personal_email_verification_token = $1`,
-      [token]
+      [token],
     );
 
     if (result.rows.length === 0) {
@@ -2373,7 +2415,7 @@ router.get("/verify-personal-email/:token", async (req, res) => {
            personal_email_verification_token = NULL,
            personal_email_verification_token_expires = NULL
        WHERE id = $1`,
-      [user.id]
+      [user.id],
     );
 
     console.log(`✅ Personal email verified for user ID: ${user.id}`);

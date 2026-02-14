@@ -43,7 +43,7 @@ router.get("/", async (req, res) => {
 
     const currentYear = new Date().getFullYear();
     const parsedAdmissionYear = parseInt(
-      admissionYear || enrollmentYear || batch
+      admissionYear || enrollmentYear || batch,
     );
     const parsedGraduationYear = parseInt(graduationYear);
 
@@ -109,7 +109,7 @@ router.get("/profile", requireOnboardedUser, async (req, res) => {
        FROM alumni_profiles ap
        JOIN users u ON ap.user_id = u.id
        WHERE ap.user_id = $1`,
-      [req.user.id]
+      [req.user.id],
     );
 
     if (result.rows.length === 0) {
@@ -187,7 +187,7 @@ router.post("/", async (req, res) => {
       const { query } = await import("../config/database.js");
       const userResult = await query(
         "SELECT id FROM users ORDER BY created_at LIMIT 1",
-        []
+        [],
       );
 
       if (userResult.rows.length === 0) {
@@ -221,20 +221,7 @@ router.post("/", async (req, res) => {
       githubUrl: profileData.github_url,
       interests: profileData.interests || [],
       workExperienceYears: profileData.work_experience_years || 0,
-      // Profiles are always public
-      isProfilePublic: true,
-      showContactInfo:
-        profileData.show_contact_info !== undefined
-          ? profileData.show_contact_info
-          : false,
-      showWorkInfo:
-        profileData.show_work_info !== undefined
-          ? profileData.show_work_info
-          : true,
-      showAcademicInfo:
-        profileData.show_academic_info !== undefined
-          ? profileData.show_academic_info
-          : true,
+      // Deprecated columns removed in migration: isProfilePublic, showContactInfo, showWorkInfo, showAcademicInfo
     };
 
     const alumni = await AlumniProfile.create(mappedData);
@@ -296,12 +283,13 @@ router.put("/:id", async (req, res) => {
  */
 router.get("/search/suggestions", async (req, res) => {
   try {
-    const { type, query = '' } = req.query;
+    const { type, query = "" } = req.query;
 
     if (!type) {
       return res.status(400).json({
         success: false,
-        message: "Suggestion type is required. Use: companies, cities, industries, skills, branches",
+        message:
+          "Suggestion type is required. Use: companies, cities, industries, skills, branches",
       });
     }
 
@@ -311,24 +299,24 @@ router.get("/search/suggestions", async (req, res) => {
       case "companies":
         suggestions = await AlumniProfile.getUniqueCompanies(query);
         break;
-      
+
       case "cities":
       case "locations":
         suggestions = await AlumniProfile.getUniqueCities(query);
         break;
-      
+
       case "industries":
         suggestions = await AlumniProfile.getUniqueIndustries(query);
         break;
-      
+
       case "skills":
         suggestions = await AlumniProfile.getUniqueSkills(query);
         break;
-      
+
       case "branches":
         suggestions = await AlumniProfile.getUniqueBranches(query);
         break;
-      
+
       default:
         return res.status(400).json({
           success: false,
@@ -347,7 +335,7 @@ router.get("/search/suggestions", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error while fetching suggestions",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 });
@@ -422,7 +410,7 @@ router.put("/profile/employment", authenticate, async (req, res) => {
         annual_salary_range,
         job_type,
         req.user.id,
-      ]
+      ],
     );
 
     if (result.rows.length === 0) {
@@ -490,7 +478,7 @@ router.put("/profile/education", authenticate, async (req, res) => {
         higher_study_year,
         higher_study_status,
         req.user.id,
-      ]
+      ],
     );
 
     if (result.rows.length === 0) {
@@ -540,7 +528,7 @@ router.put("/profile/consent", authenticate, async (req, res) => {
            updated_at = CURRENT_TIMESTAMP
        WHERE user_id = $3
        RETURNING *`,
-      [consent, req.ip, req.user.id]
+      [consent, req.ip, req.user.id],
     );
 
     if (result.rows.length === 0) {
@@ -610,12 +598,12 @@ router.post(
       // Get user's current profile to check for existing picture
       const profileResult = await query(
         "SELECT profile_picture_url FROM alumni_profiles WHERE user_id = $1",
-        [req.user.id]
+        [req.user.id],
       );
 
       console.log(
         "Current profile picture:",
-        profileResult.rows[0]?.profile_picture_url
+        profileResult.rows[0]?.profile_picture_url,
       );
 
       // Delete old profile picture if exists
@@ -629,7 +617,7 @@ router.post(
         const oldFilePath = path.join(
           __dirname,
           "../../uploads/profile_pics",
-          oldFileName
+          oldFileName,
         );
 
         // Delete old file if it exists
@@ -666,7 +654,7 @@ router.post(
           )
           VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
           RETURNING id, profile_picture_url`,
-          [req.user.id, firstName, lastName, fileUrl]
+          [req.user.id, firstName, lastName, fileUrl],
         );
       } else {
         // Update profile picture URL in database
@@ -675,7 +663,7 @@ router.post(
            SET profile_picture_url = $1, updated_at = CURRENT_TIMESTAMP 
            WHERE user_id = $2 
            RETURNING id, profile_picture_url`,
-          [fileUrl, req.user.id]
+          [fileUrl, req.user.id],
         );
       }
 
@@ -706,7 +694,7 @@ router.post(
           process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
-  }
+  },
 );
 
 /**
@@ -726,7 +714,7 @@ router.delete("/profile/delete-picture", authenticate, async (req, res) => {
     // Get current profile picture URL
     const profileResult = await query(
       "SELECT profile_picture_url FROM alumni_profiles WHERE user_id = $1",
-      [req.user.id]
+      [req.user.id],
     );
 
     if (profileResult.rows.length === 0) {
@@ -750,7 +738,7 @@ router.delete("/profile/delete-picture", authenticate, async (req, res) => {
     const filePath = path.join(
       __dirname,
       "../../uploads/profile_pics",
-      fileName
+      fileName,
     );
 
     if (fs.existsSync(filePath)) {
@@ -768,7 +756,7 @@ router.delete("/profile/delete-picture", authenticate, async (req, res) => {
       `UPDATE alumni_profiles 
        SET profile_picture_url = NULL, updated_at = CURRENT_TIMESTAMP 
        WHERE user_id = $1`,
-      [req.user.id]
+      [req.user.id],
     );
 
     res.json({

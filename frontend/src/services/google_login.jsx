@@ -1,6 +1,5 @@
 
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
-import { jwtDecode } from 'jwt-decode';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -12,13 +11,10 @@ export default function GoogleLoginButton({ verificationToken = null, registrati
 
   const handleSuccess = async (credentialResponse) => {
     try {
-      const decoded = jwtDecode(credentialResponse.credential);
-      
-      // Build payload with verification token if provided
+      // SECURITY FIX: Send the raw credential token to backend for verification
+      // Backend will verify this token with Google's servers
       const payload = {
-        email: decoded.email,
-        googleId: decoded.sub,
-        name: decoded.name,
+        credential: credentialResponse.credential, // Raw Google JWT token
         isLoginAttempt, // Pass whether this is a login attempt or registration
       };
 

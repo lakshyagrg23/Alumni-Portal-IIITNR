@@ -651,6 +651,184 @@ class EmailService {
       </html>
     `;
   }
+
+  /**
+   * Send re-engagement email to users with incomplete onboarding
+   * @param {string} email - Recipient email
+   * @param {string} firstName - User's first name (if available)
+   */
+  async sendReengagementEmail(email, firstName = null) {
+    const loginUrl = `${process.env.FRONTEND_URL}/login`;
+    const displayName = firstName || 'there';
+
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || "IIIT Naya Raipur Alumni Portal",
+      to: email,
+      subject: "Complete Your IIIT Naya Raipur Alumni Profile",
+      html: this.getReengagementEmailTemplate(displayName, loginUrl),
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log(`✅ Re-engagement email sent to ${email}:`, info.messageId);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error(`❌ Error sending re-engagement email to ${email}:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * HTML template for re-engagement email
+   */
+  getReengagementEmailTemplate(firstName, loginUrl) {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+          }
+          .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 24px;
+          }
+          .content {
+            padding: 40px 30px;
+          }
+          .content h2 {
+            color: #1e3a8a;
+            margin-top: 0;
+            font-size: 20px;
+          }
+          .content p {
+            color: #4b5563;
+            line-height: 1.6;
+            margin: 15px 0;
+            font-size: 15px;
+          }
+          .highlight-box {
+            background: #f0f9ff;
+            border-left: 4px solid #1e3a8a;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 4px;
+          }
+          .highlight-box ul {
+            margin: 10px 0;
+            padding-left: 20px;
+          }
+          .highlight-box li {
+            color: #374151;
+            margin: 8px 0;
+            font-size: 15px;
+            line-height: 1.5;
+          }
+          .cta-button {
+            display: inline-block;
+            background: #1e3a8a;
+            color: white !important;
+            padding: 15px 40px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 20px 0;
+            text-align: center;
+            font-size: 16px;
+          }
+          .cta-button:hover {
+            background: #2a4ba8;
+          }
+          .info-box {
+            background: #fef3c7;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 25px 0;
+          }
+          .info-box p {
+            margin: 5px 0;
+            color: #92400e;
+            font-size: 15px;
+            line-height: 1.6;
+          }
+          .footer {
+            background-color: #f9fafb;
+            padding: 20px 30px;
+            text-align: center;
+            color: #6b7280;
+            font-size: 13px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>IIIT Naya Raipur Alumni Portal</h1>
+          </div>
+          <div class="content">
+            <h2>Dear ${firstName},</h2>
+            <p>
+              We noticed that your profile on the IIIT Naya Raipur Alumni Portal is incomplete. 
+              To gain full access to the platform and appear in the alumni directory, please complete your profile setup.
+            </p>
+            
+            <div class="highlight-box">
+              <p style="margin-top: 0; font-weight: 600; color: #1e3a8a;">Benefits of completing your profile:</p>
+              <ul>
+                <li>Visibility in the alumni directory for networking opportunities</li>
+                <li>Connect with fellow IIIT Naya Raipur graduates and batchmates</li>
+                <li>Access to alumni events, job opportunities, and collaborations</li>
+                <li>Participate in alumni initiatives and community discussions</li>
+              </ul>
+            </div>
+
+            <p>
+              Your verified account is ready. Please log in to complete your profile information. 
+              The process takes only a few minutes and will enable you to fully utilize the platform's features.
+            </p>
+
+            <div style="text-align: center;">
+              <a href="${loginUrl}" class="cta-button">Complete Your Profile</a>
+            </div>
+
+
+            <p style="margin-top: 30px;">
+              We look forward to having you as an active member of the IIIT Naya Raipur alumni community.
+            </p>
+
+            <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">
+              If you have any questions or need assistance, please contact us at alumnicoordinator@iiitnr.ac.in
+            </p>
+          </div>
+          <div class="footer">
+            <p>© ${new Date().getFullYear()} IIIT Naya Raipur Alumni Portal</p>
+            <p style="margin-top: 10px; font-size: 12px;">
+              This email was sent to registered users with incomplete profiles.
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
 }
 
 const emailService = new EmailService();

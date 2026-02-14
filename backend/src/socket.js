@@ -91,14 +91,10 @@ export default function (io) {
         }
 
         // Try fetching sender and receiver public keys (may be null)
-        let senderPublicKey = null;
+        // CRITICAL FIX: Use the public key sent by the client (in payload) instead of DB lookup
+        // This eliminates race conditions where sender hasn't uploaded key to server yet
+        const senderPublicKey = payload.senderPublicKey || null;
         let receiverPublicKey = null;
-        try {
-          const pkRec = await PublicKeyModel.findByUserId(socket.user.id);
-          senderPublicKey = pkRec ? pkRec.public_key : null;
-        } catch (e) {
-          senderPublicKey = null;
-        }
         try {
           const recPk = await PublicKeyModel.findByUserId(recipient.userId);
           receiverPublicKey = recPk ? recPk.public_key : null;

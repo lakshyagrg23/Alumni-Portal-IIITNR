@@ -70,9 +70,7 @@ class AlumniProfile {
       bio,
       interests = [],
       isProfilePublic = true,
-      showContactInfo = false,
-      showWorkInfo = true,
-      showAcademicInfo = true,
+      // Deprecated: showContactInfo, showWorkInfo, showAcademicInfo (removed in migration)
       isOpenToWork = false,
       isAvailableForMentorship = false,
       // New professional fields
@@ -116,15 +114,14 @@ class AlumniProfile {
       last_name: lastName,
       middle_name: middleName,
       profile_picture_url: profilePictureUrl,
-      phone,
-      date_of_birth: dateOfBirth,
+      // Deprecated columns (removed in migration): phone, date_of_birth, cgpa, bio, is_profile_public
       gender,
       student_id: studentId,
       admission_year: admissionYear,
       graduation_year: graduationYear,
       degree,
       branch,
-      cgpa,
+      // cgpa, // Removed in migration
       current_company: currentCompany,
       current_position: currentPosition,
       industry,
@@ -173,11 +170,9 @@ class AlumniProfile {
       verification_source: verificationSource,
       hometown_city: hometownCity,
       hometown_state: hometownState,
-      bio,
+      // bio, // Removed in migration
       interests,
-      show_contact_info: showContactInfo,
-      show_work_info: showWorkInfo,
-      show_academic_info: showAcademicInfo,
+      // Deprecated columns removed in migration: show_contact_info, show_work_info, show_academic_info
     };
 
     // Remove undefined values
@@ -356,7 +351,7 @@ class AlumniProfile {
     // Filter by admission (enrollment) year
     if (admissionYear) {
       whereConditions.push(
-        `(ap.admission_year = $${paramIndex} OR ap.graduation_year = $${paramIndex} + 4)`
+        `(ap.admission_year = $${paramIndex} OR ap.graduation_year = $${paramIndex} + 4)`,
       );
       queryParams.push(admissionYear);
       paramIndex++;
@@ -391,7 +386,7 @@ class AlumniProfile {
     // Filter by industry
     if (industry) {
       whereConditions.push(
-        `LOWER(COALESCE(ap.industry_sector, ap.industry, '')) = LOWER($${paramIndex})`
+        `LOWER(COALESCE(ap.industry_sector, ap.industry, '')) = LOWER($${paramIndex})`,
       );
       queryParams.push(industry);
       paramIndex++;
@@ -400,7 +395,7 @@ class AlumniProfile {
     // Filter by company
     if (company) {
       whereConditions.push(
-        `LOWER(COALESCE(ap.current_employer, ap.current_company, '')) = LOWER($${paramIndex})`
+        `LOWER(COALESCE(ap.current_employer, ap.current_company, '')) = LOWER($${paramIndex})`,
       );
       queryParams.push(company);
       paramIndex++;
@@ -753,9 +748,7 @@ class AlumniProfile {
       currentCountry: "current_country",
       hometownCity: "hometown_city",
       hometownState: "hometown_state",
-      showContactInfo: "show_contact_info",
-      showWorkInfo: "show_work_info",
-      showAcademicInfo: "show_academic_info",
+      // Deprecated: showContactInfo, showWorkInfo, showAcademicInfo (columns removed in migration)
       // Legacy field mappings
       profilePicture: "profile_picture_url",
       rollNumber: "student_id",
@@ -850,9 +843,7 @@ class AlumniProfile {
       current_country: "currentCountry",
       hometown_city: "hometownCity",
       hometown_state: "hometownState",
-      show_contact_info: "showContactInfo",
-      show_work_info: "showWorkInfo",
-      show_academic_info: "showAcademicInfo",
+      // Deprecated: show_contact_info, show_work_info, show_academic_info (columns removed in migration)
       created_at: "createdAt",
       updated_at: "updatedAt",
       user_id: "userId",

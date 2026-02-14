@@ -400,10 +400,11 @@ const Profile = () => {
       newErrors.professionalInterests = 'Please select at most 7 professional interests'
     }
 
-    // Validate LinkedIn URL
-    if (!profileData.linkedinUrl.trim()) {
-      newErrors.linkedinUrl = 'LinkedIn profile URL is required'
-    } else if (!profileData.linkedinUrl.includes('linkedin.com')) {
+    // Validate LinkedIn URL (optional - only validate format if provided)
+    // if (!profileData.linkedinUrl.trim()) {
+    //   newErrors.linkedinUrl = 'LinkedIn profile URL is required'
+    // } else 
+    if (profileData.linkedinUrl.trim() && !profileData.linkedinUrl.includes('linkedin.com')) {
       newErrors.linkedinUrl = 'Please enter a valid LinkedIn URL'
     }
 
@@ -564,7 +565,7 @@ const Profile = () => {
                   </button>
                 </div>
                 <span className={styles.uploadHint}>
-                  {uploadingPicture ? 'Uploading...' : 'Click camera to upload *'}
+                  {uploadingPicture ? 'Uploading...' : 'Click camera to upload'}
                 </span>
               </div>
             </div>
@@ -1013,7 +1014,7 @@ const Profile = () => {
                   
                   <div className={styles.formGroup}>
                     <label htmlFor="linkedinUrl">
-                      LinkedIn Profile <span className={styles.required}>*</span>
+                      LinkedIn Profile
                     </label>
                     <input
                       type="url"

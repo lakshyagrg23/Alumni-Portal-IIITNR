@@ -387,6 +387,14 @@
   color: #ef4444;
 }
 
+.optional {
+  color: #6b7280;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-left: 0.5rem;
+  font-style: italic;
+}
+
 .formGroup input,
 .formGroup select,
 .formGroup textarea {

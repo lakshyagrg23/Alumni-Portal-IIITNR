@@ -533,45 +533,31 @@
   .instituteName {
     font-size: var(--font-size-base);
   }
-  
-  .portalName {
-    display: none;
-  }
-  
-  /* Ensure Messages button is visible on mobile */
+
+  /* Make messages button more compact on mobile */
   .messagesButton {
     padding: var(--spacing-2) var(--spacing-3);
     gap: var(--spacing-1);
     min-width: auto;
-    white-space: nowrap;
   }
-  
+
+  /* Hide "Messages" text on mobile, keep icon and badge */
   .messagesText {
     display: none;
   }
-  
+
   .messagesIcon {
     font-size: 22px;
-    animation: none; /* Disable bounce animation on mobile to save performance */
   }
-  
+
   .messagesBadge {
     position: absolute;
     top: -4px;
     right: -4px;
-    min-width: 18px;
-    height: 18px;
+    min-width: 20px;
+    height: 20px;
     font-size: 10px;
-    padding: 0 4px;
-  }
-  
-  .userActions {
-    gap: var(--spacing-2);
-  }
-  
-  .userAvatar {
-    width: 28px;
-    height: 28px;
+    padding: 0 5px;
   }
 }
 
