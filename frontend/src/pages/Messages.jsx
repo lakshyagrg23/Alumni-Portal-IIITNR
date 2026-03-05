@@ -1003,62 +1003,70 @@ const Messages = () => {
         };
         
         try {
-          // If we have a derived conversation AES key use it for decryption
-          if (convoAes && iv) {
-            let plain = await crypto.decryptMessage(convoAes, iv, ciphertext)
-            let fileData = null
-            try {
-              const obj = JSON.parse(plain)
-              if (obj?.file) {
-                fileData = obj.file
-                // Use caption if exists (even if empty string), otherwise text, otherwise empty
-                plain = ('caption' in obj) ? obj.caption : (obj.text || '')
-              } else if (obj?.text) {
-                plain = obj.text
-              }
-            } catch {/* not JSON */}
-            decoded.push({ 
-              ...messageData, 
-              text: messageData.is_deleted ? '' : plain, 
-              file: messageData.is_deleted ? null : fileData 
-            })
-            continue
-          }
-
-          // Fallback: try per-message public key snapshots
+          // CRITICAL FIX: ALWAYS prefer per-message public key snapshots if they exist
+          // Priority 1: Try snapshot keys first (handles key rotation)
           // CRITICAL: If this is OUR message (isOutgoing), use receiver_public_key
           // Otherwise, use sender_public_key
           const isOwnMessage = fromAuthUserId === user.id
           let relevantPubKey = isOwnMessage ? (m.receiver_public_key || m.receiverPublicKey) : (m.sender_public_key || m.senderPublicKey)
+          let decryptionResult = null
           
-          // If no snapshot, fetch the appropriate public key
-          if (!relevantPubKey) {
+          // Priority 1: If snapshot exists, use it (handles key rotation)
+          if (relevantPubKey) {
+            try {
+              console.log('[Messages] Using snapshot public key for message', m.id)
+              const pubKey = await crypto.importPublicKey(relevantPubKey)
+              const shared = await crypto.deriveSharedSecret(kp.privateKey, pubKey)
+              const aes = await crypto.deriveAESGCMKey(shared)
+              decryptionResult = await crypto.decryptMessage(aes, iv, ciphertext)
+            } catch (err) {
+              console.warn('[Messages] Snapshot key decryption failed for message', m.id, err.message)
+              decryptionResult = null
+            }
+          }
+          
+          // Priority 2: If snapshot failed or missing, try cached conversation key
+          if (!decryptionResult && convoAes && iv) {
+            try {
+              console.log('[Messages] Using conversation key fallback for message', m.id)
+              decryptionResult = await crypto.decryptMessage(convoAes, iv, ciphertext)
+            } catch (err) {
+              console.warn('[Messages] Conversation key decryption failed for message', m.id, err.message)
+              decryptionResult = null
+            }
+          }
+          
+          // Priority 3: If still nothing works, fetch current public key as last resort
+          if (!decryptionResult) {
             // For our own messages, fetch the OTHER person's key (otherUserId)
             // For incoming messages, fetch the sender's key
             const keyUserId = isOwnMessage ? otherUserId : fromAuthUserId
             const tryIds = [keyUserId, m.sender_user_id, m.receiver_user_id, m.sender_id, m.alumniFrom].filter(Boolean)
             
+            let fetchedPubKey = null
             for (const idToTry of tryIds) {
               try {
-                console.log('[Messages] GET public-key for historical message, idToTry=', idToTry, 'isOwnMessage=', isOwnMessage)
+                console.log('[Messages] Fetching current public-key for message', m.id, 'idToTry=', idToTry)
                 const pubKeyRes = await axios.get(`${API}/messages/public-key/${idToTry}`, { headers: { Authorization: `Bearer ${token}` }})
-                relevantPubKey = pubKeyRes.data?.data?.public_key || pubKeyRes.data?.publicKey || pubKeyRes.data?.public_key
-                if (relevantPubKey) break
+                fetchedPubKey = pubKeyRes.data?.data?.public_key || pubKeyRes.data?.publicKey || pubKeyRes.data?.public_key
+                if (fetchedPubKey) break
               } catch (e) {
                 // ignore and try next
               }
             }
+            
+            if (!fetchedPubKey) {
+              decoded.push({ ...messageData, text: 'Encrypted message (no pubkey)' })
+              continue
+            }
+            
+            const pubKey = await crypto.importPublicKey(fetchedPubKey)
+            const shared = await crypto.deriveSharedSecret(kp.privateKey, pubKey)
+            const aes = await crypto.deriveAESGCMKey(shared)
+            decryptionResult = await crypto.decryptMessage(aes, iv, ciphertext)
           }
-
-          if (!relevantPubKey) {
-            decoded.push({ ...messageData, text: 'Encrypted message (no pubkey)' })
-            continue
-          }
-
-          const pubKey = await crypto.importPublicKey(relevantPubKey)
-          const shared = await crypto.deriveSharedSecret(kp.privateKey, pubKey)
-          const aes = await crypto.deriveAESGCMKey(shared)
-          let plain = await crypto.decryptMessage(aes, iv, ciphertext)
+          
+          let plain = decryptionResult
           let fileData = null
           try {
             const obj = JSON.parse(plain)
